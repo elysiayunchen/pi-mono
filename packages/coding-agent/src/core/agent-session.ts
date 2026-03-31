@@ -362,6 +362,13 @@ export class AgentSession {
 	 */
 	private _installAgentToolHooks(): void {
 		this.agent.beforeToolCall = async ({ toolCall, args }) => {
+			// === Dangerous tool permission check ===
+			const permissionResult = this._checkToolPermission(toolCall, args);
+			if (permissionResult) {
+				return permissionResult;
+			}
+
+			// === Extension hooks (original code) ===
 			const runner = this._extensionRunner;
 			if (!runner?.hasHandlers("tool_call")) {
 				return undefined;
@@ -409,6 +416,86 @@ export class AgentSession {
 				details: hookResult.details,
 			};
 		};
+	}
+	/**
+	 * Check if a tool call should be blocked for safety.
+	 * Returns a BeforeToolCallResult to block, or undefined to allow.
+	 */
+	private _checkToolPermission(
+		toolCall: { name: string; id: string },
+		args: unknown,
+	): { block: true; reason: string } | undefined {
+		const argsRecord = (args || {}) as Record<string, unknown>;
+
+		// Bash: block dangerous commands
+		if (toolCall.name === "bash") {
+			const command = String(argsRecord.command || argsRecord.cmd || argsRecord.input || "");
+			const dangerousPatterns = [
+				/\brm\s+(-[rf]*\s+)*\/(\s|$)/, // rm of root paths
+				/\brm\s+-rf\s+[~/]/, // rm -rf ~/ or /
+				/\bmkfs\b/, // format disk
+				/\bdd\s+if=/, // raw disk write
+				/\bchmod\s+777\b/, // open permissions
+				/:\s*\(\)\s*\{.*\|.*\}.*;/, // fork bomb
+				/\b(shutdown|reboot|halt|poweroff)\b/,
+				/\bkill\s+-9\s+1\b/, // kill init
+				/>\s*\/dev\/sd/, // overwrite disk
+				/\bformat\s+[c-z]:/i, // Windows format
+			];
+
+			for (const pattern of dangerousPatterns) {
+				if (pattern.test(command)) {
+					this._emit({
+						type: "compaction_start", // reuse existing event type
+						reason: "manual",
+					} as any);
+
+					// Log the block
+					console.warn(
+						`\n⚠️  Dangerous command blocked: ${command}\n` + `   Tool: ${toolCall.name} (${toolCall.id})\n`,
+					);
+
+					return {
+						block: true,
+						reason:
+							`Dangerous command blocked for safety: "${command}". ` +
+							`If this is intentional, you can modify the check in agent-session.ts.`,
+					};
+				}
+			}
+		}
+
+		// Write/Edit: block modification of critical files
+		if (toolCall.name === "write" || toolCall.name === "edit") {
+			const filePath = String(argsRecord.file_path || argsRecord.path || argsRecord.file || "");
+			const criticalPatterns = [
+				/\.git\//,
+				/node_modules\//,
+				/^\.env$/,
+				/^\.env\./,
+				/package-lock\.json$/,
+				/yarn\.lock$/,
+				/pnpm-lock\.yaml$/,
+			];
+
+			for (const pattern of criticalPatterns) {
+				if (pattern.test(filePath)) {
+					console.warn(
+						`\n⚠️  Critical file modification blocked: ${filePath}\n` +
+							`   Tool: ${toolCall.name} (${toolCall.id})\n`,
+					);
+
+					return {
+						block: true,
+						reason:
+							`Modification of critical file blocked: "${filePath}". ` +
+							`This file is protected (.git, node_modules, .env, lock files).`,
+					};
+				}
+			}
+		}
+
+		return undefined; // Allow
 	}
 
 	// =========================================================================

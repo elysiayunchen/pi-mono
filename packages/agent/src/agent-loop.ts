@@ -7,10 +7,12 @@ import {
 	type AssistantMessage,
 	type Context,
 	EventStream,
+	isContextOverflow,
 	streamSimple,
 	type ToolResultMessage,
 	validateToolArguments,
 } from "@mariozechner/pi-ai";
+
 import type {
 	AgentContext,
 	AgentEvent,
@@ -21,6 +23,38 @@ import type {
 	AgentToolResult,
 	StreamFn,
 } from "./types.js";
+
+// ============================================================================
+// Tool Classification (for smart execution)
+// ============================================================================
+
+/** Tools that only read data and have no side effects */
+const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "ls", "glob", "search", "list"]);
+
+/** Tools that modify files or execute commands */
+const MUTATING_TOOLS = new Set([
+	"write",
+	"edit",
+	"bash",
+	"shell",
+	"exec",
+	"command",
+	"delete",
+	"remove",
+	"move",
+	"rename",
+]);
+
+function isReadOnlyTool(toolCall: AgentToolCall): boolean {
+	if (READ_ONLY_TOOLS.has(toolCall.name)) return true;
+	if (MUTATING_TOOLS.has(toolCall.name)) return false;
+	// Unknown tools: treat as mutating for safety
+	return false;
+}
+
+function isMutatingTool(toolCall: AgentToolCall): boolean {
+	return !isReadOnlyTool(toolCall);
+}
 
 export type AgentEventSink = (event: AgentEvent) => Promise<void> | void;
 
@@ -191,7 +225,20 @@ async function runLoop(
 			const message = await streamAssistantResponse(currentContext, config, signal, emit, streamFn);
 			newMessages.push(message);
 
-			if (message.stopReason === "error" || message.stopReason === "aborted") {
+			// Error recovery: try to fix automatically before giving up
+			if (message.stopReason === "error") {
+				const recovered = await tryErrorRecovery(message, currentContext, config, signal, emit);
+				if (recovered) {
+					pendingMessages = [];
+					continue; // Recovery succeeded, retry
+				}
+				// Recovery failed
+				await emit({ type: "turn_end", message, toolResults: [] });
+				await emit({ type: "agent_end", messages: newMessages });
+				return;
+			}
+
+			if (message.stopReason === "aborted") {
 				await emit({ type: "turn_end", message, toolResults: [] });
 				await emit({ type: "agent_end", messages: newMessages });
 				return;
@@ -340,11 +387,16 @@ async function executeToolCalls(
 	signal: AbortSignal | undefined,
 	emit: AgentEventSink,
 ): Promise<ToolResultMessage[]> {
-	const toolCalls = assistantMessage.content.filter((c) => c.type === "toolCall");
-	if (config.toolExecution === "sequential") {
-		return executeToolCallsSequential(currentContext, assistantMessage, toolCalls, config, signal, emit);
+	const toolCalls = assistantMessage.content.filter((c): c is AgentToolCall => c.type === "toolCall");
+
+	switch (config.toolExecution) {
+		case "sequential":
+			return executeToolCallsSequential(currentContext, assistantMessage, toolCalls, config, signal, emit);
+		case "smart":
+			return executeToolCallsSmart(currentContext, assistantMessage, toolCalls, config, signal, emit);
+		default:
+			return executeToolCallsParallel(currentContext, assistantMessage, toolCalls, config, signal, emit);
 	}
-	return executeToolCallsParallel(currentContext, assistantMessage, toolCalls, config, signal, emit);
 }
 
 async function executeToolCallsSequential(
@@ -628,4 +680,160 @@ async function emitToolCallOutcome(
 	await emit({ type: "message_start", message: toolResultMessage });
 	await emit({ type: "message_end", message: toolResultMessage });
 	return toolResultMessage;
+}
+
+// ============================================================================
+// Smart Tool Execution (inspired by Claude Code's StreamingToolExecutor)
+// ============================================================================
+
+/**
+ * Smart execution: read-only tools run in parallel first, then mutating
+ * tools run sequentially. This gives the best of both worlds:
+ * - Fast reads (parallel)
+ * - Safe writes (sequential)
+ */
+async function executeToolCallsSmart(
+	currentContext: AgentContext,
+	assistantMessage: AssistantMessage,
+	toolCalls: AgentToolCall[],
+	config: AgentLoopConfig,
+	signal: AbortSignal | undefined,
+	emit: AgentEventSink,
+): Promise<ToolResultMessage[]> {
+	const readOnly = toolCalls.filter(isReadOnlyTool);
+	const mutating = toolCalls.filter(isMutatingTool);
+
+	const results: ToolResultMessage[] = [];
+
+	// Phase 1: Execute all read-only tools in parallel
+	if (readOnly.length > 0) {
+		const readOnlyResults = await executeToolCallsParallel(
+			currentContext,
+			assistantMessage,
+			readOnly,
+			config,
+			signal,
+			emit,
+		);
+		results.push(...readOnlyResults);
+
+		// Push results to context so mutating tools can see them
+		for (const result of readOnlyResults) {
+			currentContext.messages.push(result);
+		}
+	}
+
+	// Phase 2: Execute mutating tools sequentially
+	if (mutating.length > 0) {
+		const mutatingResults = await executeToolCallsSequential(
+			currentContext,
+			assistantMessage,
+			mutating,
+			config,
+			signal,
+			emit,
+		);
+		results.push(...mutatingResults);
+	}
+
+	return results;
+}
+
+// ============================================================================
+// Error Recovery (inspired by Claude Code's recovery mechanisms)
+// ============================================================================
+
+/**
+ * Try to recover from an error automatically.
+ *
+ * Strategies:
+ * 1. Context overflow → compress and retry
+ * 2. Output too long → add "continue" prompt and retry
+ * 3. Other errors → give up
+ */
+
+// ============================================================================
+// Error Recovery (inspired by Claude Code's recovery mechanisms)
+// ============================================================================
+
+let recoveryAttemptCount = 0;
+const MAX_RECOVERY_ATTEMPTS = 3;
+
+/**
+ * Try to recover from an error automatically.
+ *
+ * Strategies:
+ * 1. Context overflow → compress and retry
+ * 2. Output too long → add "continue" prompt and retry
+ * 3. Other errors → give up
+ */
+async function tryErrorRecovery(
+	message: AssistantMessage,
+	currentContext: AgentContext,
+	config: AgentLoopConfig,
+	signal: AbortSignal | undefined,
+	_emit: AgentEventSink,
+): Promise<boolean> {
+	if (recoveryAttemptCount >= MAX_RECOVERY_ATTEMPTS) {
+		recoveryAttemptCount = 0;
+		return false;
+	}
+
+	const errorMessage = message.errorMessage || "";
+
+	// Strategy 1: Context overflow
+	if (isContextOverflow(message)) {
+		recoveryAttemptCount++;
+
+		// Remove the error message from context
+		const errorIndex = currentContext.messages.indexOf(message);
+		if (errorIndex >= 0) {
+			currentContext.messages.splice(errorIndex, 1);
+		}
+
+		// Apply compression
+		if (config.transformContext) {
+			const compressed = await config.transformContext(currentContext.messages, signal);
+			currentContext.messages = compressed;
+		}
+
+		return true;
+	}
+
+	// Strategy 2: Output too long
+	if (
+		errorMessage.includes("max_tokens") ||
+		errorMessage.includes("output too long") ||
+		errorMessage.includes("maximum context length")
+	) {
+		recoveryAttemptCount++;
+
+		// Remove the error message from context
+		const errorIndex = currentContext.messages.indexOf(message);
+		if (errorIndex >= 0) {
+			currentContext.messages.splice(errorIndex, 1);
+		}
+
+		// Add a "continue" message
+		const continueMessage = {
+			role: "user",
+			content: [
+				{
+					type: "text",
+					text:
+						"Output was truncated. Resume directly — no apology, " +
+						"no recap of what you were doing. Pick up mid-thought " +
+						"if that is where the cut happened. Break remaining work " +
+						"into smaller pieces.",
+				},
+			],
+			timestamp: Date.now(),
+		} as AgentMessage;
+		currentContext.messages.push(continueMessage);
+
+		return true;
+	}
+
+	// No recovery strategy available
+	return false;
 }

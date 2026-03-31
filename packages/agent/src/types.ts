@@ -32,7 +32,7 @@ export type StreamFn = (
  * - "parallel": tool calls are prepared sequentially, then allowed tools execute concurrently.
  *   Final tool results are still emitted in assistant source order.
  */
-export type ToolExecutionMode = "sequential" | "parallel";
+export type ToolExecutionMode = "sequential" | "parallel" | "smart";
 
 /** A single tool call content block emitted by an assistant message. */
 export type AgentToolCall = Extract<AssistantMessage["content"][number], { type: "toolCall" }>;

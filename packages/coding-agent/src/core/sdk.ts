@@ -4,6 +4,7 @@ import { type Message, type Model, streamSimple } from "@mariozechner/pi-ai";
 import { getAgentDir, getDocsPath } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { AuthStorage } from "./auth-storage.js";
+import { applyMultiLayerCompaction } from "./compaction/multi-layer.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import type { ExtensionRunner, LoadExtensionsResult, SessionStartEvent, ToolDefinition } from "./extensions/index.js";
 import { convertToLlm } from "./messages.js";
@@ -320,11 +321,25 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			return runner.emitBeforeProviderRequest(payload);
 		},
 		sessionId: sessionManager.getSessionId(),
-		transformContext: async (messages) => {
+		transformContext: async (messages, _signal) => {
+			// Layer 1 + 2: Fast compression (no API call)
+			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(messages);
+
+			// Layer 3: If still too large, signal to the compaction system
+			// The actual autocompact is handled by AgentSession.compact()
+			if (needsCompact) {
+				// We can't autocompact here (no API key access),
+				// but we return the snipped/microcompacted messages
+				// to buy time. AgentSession will trigger autocompact
+				// via its overflow recovery mechanism.
+			}
+
+			// Run extension context transforms on the compressed messages
 			const runner = extensionRunnerRef.current;
-			if (!runner) return messages;
-			return runner.emitContext(messages);
+			if (!runner) return compressed;
+			return runner.emitContext(compressed);
 		},
+
 		steeringMode: settingsManager.getSteeringMode(),
 		followUpMode: settingsManager.getFollowUpMode(),
 		transport: settingsManager.getTransport(),
