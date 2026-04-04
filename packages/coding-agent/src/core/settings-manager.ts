@@ -980,10 +980,14 @@ export class SettingsManager {
 	 * Returns empty arrays for any unset behavior type.
 	 */
 	getPermissionRules(): { allow: string[]; deny: string[]; ask: string[] } {
+		// Default ask rules for write/edit/bash
+		const DEFAULT_ASK_RULES = ["write", "edit", "bash"];
+		const userAskRules = this.settings.permissionRules?.ask ?? [];
+		const mergedAsk = [...DEFAULT_ASK_RULES, ...userAskRules.filter((r) => !DEFAULT_ASK_RULES.includes(r))];
 		return {
 			allow: [...(this.settings.permissionRules?.allow ?? [])],
 			deny: [...(this.settings.permissionRules?.deny ?? [])],
-			ask: [...(this.settings.permissionRules?.ask ?? [])],
+			ask: mergedAsk,
 		};
 	}
 
