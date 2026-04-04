@@ -107,6 +107,8 @@ export interface AgentOptions {
 	transport?: Transport;
 	maxRetryDelayMs?: number;
 	toolExecution?: ToolExecutionMode;
+	contextPressureThreshold?: number;
+	tokenBudget?: { total: number };
 }
 
 class PendingMessageQueue {
@@ -162,6 +164,8 @@ export class Agent {
 
 	public convertToLlm: (messages: AgentMessage[]) => Message[] | Promise<Message[]>;
 	public transformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
+	public contextPressureThreshold?: number;
+	public tokenBudget?: { total: number };
 	public streamFn: StreamFn;
 	public getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
 	public onPayload?: SimpleStreamOptions["onPayload"];
@@ -191,6 +195,8 @@ export class Agent {
 		this.transformContext = options.transformContext;
 		this.streamFn = options.streamFn ?? streamSimple;
 		this.getApiKey = options.getApiKey;
+		this.contextPressureThreshold = options.contextPressureThreshold;
+		this.tokenBudget = options.tokenBudget;
 		this.onPayload = options.onPayload;
 		this.beforeToolCall = options.beforeToolCall;
 		this.afterToolCall = options.afterToolCall;
@@ -428,6 +434,7 @@ export class Agent {
 				return this.steeringQueue.drain();
 			},
 			getFollowUpMessages: async () => this.followUpQueue.drain(),
+			tokenBudget: this.tokenBudget,
 		};
 	}
 

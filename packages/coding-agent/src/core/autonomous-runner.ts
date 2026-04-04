@@ -1,0 +1,152 @@
+/**
+ * s11 Autonomous Runner — s12.1: worktree isolation support
+ */
+import { randomUUID } from "node:crypto";
+import { updateTask } from "./tasks/task-store.js";
+import { createWorktreeTeammate, sendToTeammate } from "./teammate-runner.js";
+import { createWorktree, removeWorktree } from "./worktree-manager.js";
+
+type NotifyCallback = (msg: string) => void;
+
+let _notifyHost: NotifyCallback | null = null;
+let _hostSessionId = "";
+
+export function initAutonomousRunner(hostSessionId: string, notifyHost: NotifyCallback): void {
+	_hostSessionId = hostSessionId;
+	_notifyHost = notifyHost;
+}
+
+export interface ClaimAndRunOptions {
+	useWorktree?: boolean;
+	/** 任务成功后是否保留 worktree 目录（默认 false = 自动清理）*/
+	keepWorktreeOnSuccess?: boolean;
+}
+
+export function claimAndRun(
+	sessionId: string,
+	taskId: string,
+	teammateId: string,
+	taskDescription: string,
+	options?: ClaimAndRunOptions,
+): void {
+	updateTask(sessionId, taskId, { status: "in_progress" });
+	Promise.resolve()
+		.then(async () => {
+			if (options?.useWorktree) {
+				await _runInWorktree(sessionId, taskId, taskDescription);
+			} else {
+				await _runWithTeammate(sessionId, taskId, teammateId, taskDescription);
+			}
+		})
+		.catch(() => {});
+}
+
+async function _runWithTeammate(
+	sessionId: string,
+	taskId: string,
+	teammateId: string,
+	taskDescription: string,
+): Promise<void> {
+	try {
+		const result = await sendToTeammate(teammateId, taskDescription);
+		updateTask(sessionId, taskId, { status: "completed", output: result });
+		_notifyHost?.(_buildNotification(taskId, "completed", teammateId, result));
+	} catch (err) {
+		const errorMsg = err instanceof Error ? err.message : String(err);
+		updateTask(sessionId, taskId, { status: "failed", output: errorMsg });
+		_notifyHost?.(_buildNotification(taskId, "failed", teammateId, `Error: ${errorMsg}`));
+	}
+}
+
+async function _runInWorktree(
+	sessionId: string,
+	taskId: string,
+	taskDescription: string,
+	keepOnSuccess = false,
+): Promise<void> {
+	const worktreeId = randomUUID().slice(0, 8);
+	const slug = `task-${taskId.slice(0, 8)}`;
+	const originalCwd = process.cwd();
+	const ephemerTeammateId = `wt-auto-${worktreeId}`;
+	let worktreePath = "";
+
+	try {
+		const entry = createWorktree(worktreeId, slug, originalCwd, taskId, ephemerTeammateId);
+		worktreePath = entry.worktreePath;
+
+		const systemPrompt = [
+			"You are an autonomous coding agent executing a task in an isolated worktree.",
+			`Working directory: ${entry.worktreePath}`,
+			entry.branch ? `Git branch: ${entry.branch}` : "Note: plain directory (no git worktree).",
+			`Original project directory: ${originalCwd}`,
+			"",
+			"Execute the following task and return a concise completion report:",
+			taskDescription,
+		].join("\n");
+
+		createWorktreeTeammate(
+			ephemerTeammateId,
+			`auto-wt-${worktreeId}`,
+			"Autonomous task executor",
+			systemPrompt,
+			entry.worktreePath,
+		);
+
+		const result = await sendToTeammate(ephemerTeammateId, taskDescription);
+		updateTask(sessionId, taskId, { status: "completed", output: result });
+		if (!keepOnSuccess) {
+			try {
+				removeWorktree(worktreeId, true);
+			} catch {
+				/* best-effort */
+			}
+		}
+		_notifyHost?.(
+			_buildWorktreeNotification(taskId, "completed", result, keepOnSuccess ? entry.worktreePath : "", entry.branch),
+		);
+	} catch (err) {
+		const errorMsg = err instanceof Error ? err.message : String(err);
+		updateTask(sessionId, taskId, { status: "failed", output: errorMsg });
+		_notifyHost?.(_buildWorktreeNotification(taskId, "failed", `Error: ${errorMsg}`, worktreePath));
+		try {
+			removeWorktree(worktreeId, true);
+		} catch {
+			/* best-effort */
+		}
+	}
+}
+
+function _buildNotification(taskId: string, status: string, teammateId: string, result: string): string {
+	const summary =
+		status === "completed"
+			? `Teammate "${teammateId}" completed task ${taskId}`
+			: `Teammate "${teammateId}" failed task ${taskId}`;
+	return [
+		"<task-notification>",
+		`<task-id>${taskId}</task-id>`,
+		`<status>${status}</status>`,
+		`<summary>${summary}</summary>`,
+		`<r>${result}</r>`,
+		"</task-notification>",
+	].join("\n");
+}
+
+function _buildWorktreeNotification(
+	taskId: string,
+	status: string,
+	result: string,
+	worktreePath: string,
+	branch?: string,
+): string {
+	const summary = status === "completed" ? `Worktree task ${taskId} completed` : `Worktree task ${taskId} failed`;
+	const lines = [
+		"<task-notification>",
+		`<task-id>${taskId}</task-id>`,
+		`<status>${status}</status>`,
+		`<summary>${summary}</summary>`,
+		`<worktree-path>${worktreePath}</worktree-path>`,
+	];
+	if (branch) lines.push(`<branch>${branch}</branch>`);
+	lines.push(`<r>${result}</r>`, "</task-notification>");
+	return lines.join("\n");
+}

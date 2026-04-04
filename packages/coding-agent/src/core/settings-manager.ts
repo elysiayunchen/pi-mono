@@ -46,6 +46,20 @@ export interface MarkdownSettings {
 export type TransportSetting = Transport;
 
 /**
+ * Permission rules for tool calls.
+ * Each array contains rule strings in the format "toolName" or "toolName(pattern)".
+ * Examples:
+ *   "read"           - allow/deny/ask all calls to the read tool
+ *   "bash(git *)"    - allow/deny/ask bash calls starting with "git "
+ *   "write(.env*)"   - allow/deny/ask writes to files matching .env*
+ */
+export interface PermissionRulesSettings {
+	allow?: string[];
+	deny?: string[];
+	ask?: string[];
+}
+
+/**
  * Package source for npm/git packages.
  * - String form: load all resources from the package
  * - Object form: filter which resources to load
@@ -95,6 +109,7 @@ export interface Settings {
 	showHardwareCursor?: boolean; // Show terminal cursor while still positioning it for IME
 	markdown?: MarkdownSettings;
 	sessionDir?: string; // Custom session storage directory (same format as --session-dir CLI flag)
+	permissionRules?: PermissionRulesSettings; // Permission rules for tool calls
 }
 
 /** Deep merge settings: project/overrides take precedence, nested objects merge recursively */
@@ -954,5 +969,97 @@ export class SettingsManager {
 
 	getCodeBlockIndent(): string {
 		return this.settings.markdown?.codeBlockIndent ?? "  ";
+	}
+
+	// =========================================================================
+	// Permission Rules
+	// =========================================================================
+
+	/**
+	 * Get current permission rules from settings.
+	 * Returns empty arrays for any unset behavior type.
+	 */
+	getPermissionRules(): { allow: string[]; deny: string[]; ask: string[] } {
+		return {
+			allow: [...(this.settings.permissionRules?.allow ?? [])],
+			deny: [...(this.settings.permissionRules?.deny ?? [])],
+			ask: [...(this.settings.permissionRules?.ask ?? [])],
+		};
+	}
+
+	/**
+	 * Set permission rules (replaces entire rule set for each behavior type).
+	 */
+	setPermissionRules(rules: { allow?: string[]; deny?: string[]; ask?: string[] }): void {
+		if (!this.globalSettings.permissionRules) {
+			this.globalSettings.permissionRules = {};
+		}
+		if (rules.allow !== undefined) {
+			this.globalSettings.permissionRules.allow = rules.allow;
+			this.markModified("permissionRules", "allow");
+		}
+		if (rules.deny !== undefined) {
+			this.globalSettings.permissionRules.deny = rules.deny;
+			this.markModified("permissionRules", "deny");
+		}
+		if (rules.ask !== undefined) {
+			this.globalSettings.permissionRules.ask = rules.ask;
+			this.markModified("permissionRules", "ask");
+		}
+		this.save();
+	}
+
+	/**
+	 * Add a single permission rule.
+	 * Skips if the rule already exists (deduplication).
+	 */
+	addPermissionRule(behavior: "allow" | "deny" | "ask", rule: string): void {
+		if (!this.globalSettings.permissionRules) {
+			this.globalSettings.permissionRules = {};
+		}
+		const key = behavior as keyof PermissionRulesSettings;
+		if (!this.globalSettings.permissionRules[key]) {
+			this.globalSettings.permissionRules[key] = [];
+		}
+		if (!this.globalSettings.permissionRules[key]!.includes(rule)) {
+			this.globalSettings.permissionRules[key]!.push(rule);
+			this.markModified("permissionRules", key);
+			this.save();
+		}
+	}
+
+	/**
+	 * Remove a single permission rule.
+	 */
+	removePermissionRule(behavior: "allow" | "deny" | "ask", rule: string): void {
+		const key = behavior as keyof PermissionRulesSettings;
+		const rules = this.globalSettings.permissionRules?.[key];
+		if (!rules) return;
+		const index = rules.indexOf(rule);
+		if (index !== -1) {
+			rules.splice(index, 1);
+			this.markModified("permissionRules", key);
+			this.save();
+		}
+	}
+
+	/**
+	 * Clear all permission rules for a given behavior type, or all types if no behavior specified.
+	 */
+	clearPermissionRules(behavior?: "allow" | "deny" | "ask"): void {
+		if (!this.globalSettings.permissionRules) return;
+
+		if (behavior) {
+			const key = behavior as keyof PermissionRulesSettings;
+			if (this.globalSettings.permissionRules[key]?.length) {
+				this.globalSettings.permissionRules[key] = [];
+				this.markModified("permissionRules", key);
+				this.save();
+			}
+		} else {
+			this.globalSettings.permissionRules = {};
+			this.markModified("permissionRules");
+			this.save();
+		}
 	}
 }

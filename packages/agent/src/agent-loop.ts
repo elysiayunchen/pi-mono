@@ -176,6 +176,85 @@ export async function runAgentLoopContinue(
 	return newMessages;
 }
 
+// ── P1-C: Lightweight token estimation (chars/4 heuristic, no cross-package dep) ──
+
+function estimateAgentMessages(messages: AgentMessage[]): number {
+	let chars = 0;
+	for (const msg of messages) {
+		const m = msg as unknown as Record<string, unknown>;
+		const content = m.content;
+		if (typeof content === "string") {
+			chars += content.length;
+		} else if (Array.isArray(content)) {
+			for (const block of content as Array<Record<string, unknown>>) {
+				if (block.type === "text" && typeof block.text === "string") {
+					chars += block.text.length;
+				}
+			}
+		}
+		if (typeof m.command === "string") chars += m.command.length;
+		if (typeof m.output === "string") chars += m.output.length;
+		if (typeof m.summary === "string") chars += m.summary.length;
+	}
+	return Math.ceil(chars / 4);
+}
+
+// ── P2: Token Budget Tracker ─────────────────────────────────────────────────
+
+type BudgetTracker = {
+	continuationCount: number;
+	lastDeltaTokens: number;
+	lastTotalTokens: number;
+	startedAt: number;
+};
+
+function createBudgetTracker(): BudgetTracker {
+	return {
+		continuationCount: 0,
+		lastDeltaTokens: 0,
+		lastTotalTokens: 0,
+		startedAt: Date.now(),
+	};
+}
+
+type BudgetDecision =
+	| { action: "continue"; nudgeMessage: string; continuationCount: number }
+	| { action: "stop"; diminishingReturns: boolean };
+
+const BUDGET_COMPLETION_THRESHOLD = 0.9;
+const BUDGET_DIMINISHING_THRESHOLD = 500;
+const BUDGET_MAX_CONTINUATIONS = 50;
+
+function checkTokenBudget(tracker: BudgetTracker, totalBudget: number, currentTokens: number): BudgetDecision {
+	const pct = Math.round((currentTokens / totalBudget) * 100);
+	const deltaSinceLastCheck = currentTokens - tracker.lastTotalTokens;
+
+	const isDiminishing =
+		tracker.continuationCount >= 3 &&
+		deltaSinceLastCheck < BUDGET_DIMINISHING_THRESHOLD &&
+		tracker.lastDeltaTokens < BUDGET_DIMINISHING_THRESHOLD;
+
+	if (
+		!isDiminishing &&
+		currentTokens < totalBudget * BUDGET_COMPLETION_THRESHOLD &&
+		tracker.continuationCount < BUDGET_MAX_CONTINUATIONS
+	) {
+		tracker.continuationCount++;
+		tracker.lastDeltaTokens = deltaSinceLastCheck;
+		tracker.lastTotalTokens = currentTokens;
+		return {
+			action: "continue",
+			nudgeMessage:
+				`Token budget: ${pct}% used (${currentTokens.toLocaleString()} / ${totalBudget.toLocaleString()}). ` +
+				`Continue working productively — plan your remaining work to fill the budget. ` +
+				`The target is a hard minimum, not a suggestion.`,
+			continuationCount: tracker.continuationCount,
+		};
+	}
+
+	return { action: "stop", diminishingReturns: isDiminishing };
+}
+
 function createAgentStream(): EventStream<AgentEvent, AgentMessage[]> {
 	return new EventStream<AgentEvent, AgentMessage[]>(
 		(event: AgentEvent) => event.type === "agent_end",
@@ -195,6 +274,7 @@ async function runLoop(
 	streamFn?: StreamFn,
 ): Promise<void> {
 	let firstTurn = true;
+	const budgetTracker = config.tokenBudget ? createBudgetTracker() : null;
 	// Check for steering messages at start (user may have typed while waiting)
 	let pendingMessages: AgentMessage[] = (await config.getSteeringMessages?.()) || [];
 
@@ -219,6 +299,18 @@ async function runLoop(
 					newMessages.push(message);
 				}
 				pendingMessages = [];
+			}
+
+			// ── P1-C: Proactive token pressure check ────────────────────────────
+			if (config.contextPressureThreshold !== undefined) {
+				const estimatedTokens = estimateAgentMessages(currentContext.messages);
+				if (estimatedTokens > config.contextPressureThreshold) {
+					await emit({
+						type: "context_pressure",
+						tokens: estimatedTokens,
+						threshold: config.contextPressureThreshold,
+					});
+				}
 			}
 
 			// Stream assistant response
@@ -269,6 +361,28 @@ async function runLoop(
 			// Set as pending so inner loop processes them
 			pendingMessages = followUpMessages;
 			continue;
+		}
+
+		// P2: Token budget auto-continuation
+		if (budgetTracker && config.tokenBudget) {
+			const estimatedTokens = estimateAgentMessages(currentContext.messages);
+			const decision = checkTokenBudget(budgetTracker, config.tokenBudget.total, estimatedTokens);
+			if (decision.action === "continue") {
+				await emit({
+					type: "context_pressure",
+					tokens: estimatedTokens,
+					threshold: Math.floor(config.tokenBudget.total * 0.9),
+				});
+				const nudgeMessage = {
+					role: "user" as const,
+					content: [{ type: "text" as const, text: decision.nudgeMessage }],
+					timestamp: Date.now(),
+				} as AgentMessage;
+				currentContext.messages.push(nudgeMessage);
+				newMessages.push(nudgeMessage);
+				pendingMessages = [];
+				continue;
+			}
 		}
 
 		// No more messages, exit

@@ -1,20 +1,30 @@
 import { join } from "node:path";
 import { Agent, type AgentMessage, type ThinkingLevel } from "@mariozechner/pi-agent-core";
-import { type Message, type Model, streamSimple } from "@mariozechner/pi-ai";
+import { type AssistantMessageEventStream, type Message, type Model, streamSimple } from "@mariozechner/pi-ai";
 import { getAgentDir, getDocsPath } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { AuthStorage } from "./auth-storage.js";
+import { AUTO_COMPACT_THRESHOLD, autoCompactMessages } from "./compaction/auto-compact.js";
 import { applyMultiLayerCompaction } from "./compaction/multi-layer.js";
+import { shutdownCostTracker, wrapStreamForCost } from "./cost-tracker.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import type { ExtensionRunner, LoadExtensionsResult, SessionStartEvent, ToolDefinition } from "./extensions/index.js";
 import { convertToLlm } from "./messages.js";
 import { ModelRegistry } from "./model-registry.js";
 import { findInitialModel } from "./model-resolver.js";
+import { rateLimitScheduler } from "./rate-limit-scheduler.js";
 import type { ResourceLoader } from "./resource-loader.js";
 import { DefaultResourceLoader } from "./resource-loader.js";
 import { getDefaultSessionDir, SessionManager } from "./session-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { time } from "./timings.js";
+
+process.on("beforeExit", shutdownCostTracker);
+process.on("SIGTERM", () => {
+	shutdownCostTracker();
+	process.exit(0);
+});
+
 import {
 	allTools,
 	bashTool,
@@ -73,6 +83,22 @@ export interface CreateAgentSessionOptions {
 	settingsManager?: SettingsManager;
 	/** Session start event metadata for extension runtime startup. */
 	sessionStartEvent?: SessionStartEvent;
+	/**
+	 * Token budget for auto-continuation.
+	 * When set, the agent will continue working until the budget is exhausted.
+	 * Example: { total: 500_000 } for "+500k" token target.
+	 */
+	tokenBudget?: { total: number };
+	/**
+	 * Continue the most recent session for this cwd instead of creating a new one.
+	 * Equivalent to openclaw --continue.
+	 */
+	continueRecent?: boolean;
+	/**
+	 * Open a specific session file by path.
+	 * Takes precedence over continueRecent.
+	 */
+	sessionPath?: string;
 }
 
 /** Result from createAgentSession */
@@ -184,7 +210,19 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	const modelRegistry = options.modelRegistry ?? ModelRegistry.create(authStorage, modelsPath);
 
 	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);
-	const sessionManager = options.sessionManager ?? SessionManager.create(cwd, getDefaultSessionDir(cwd, agentDir));
+	let sessionManager = options.sessionManager;
+	if (!sessionManager) {
+		if (options.sessionPath) {
+			// Resume specific session by file path
+			sessionManager = SessionManager.open(options.sessionPath);
+		} else if (options.continueRecent) {
+			// Continue most recent session for this cwd
+			sessionManager = SessionManager.continueRecent(cwd, getDefaultSessionDir(cwd, agentDir));
+		} else {
+			// Default: new session
+			sessionManager = SessionManager.create(cwd, getDefaultSessionDir(cwd, agentDir));
+		}
+	}
 
 	if (!resourceLoader) {
 		resourceLoader = new DefaultResourceLoader({ cwd, agentDir, settingsManager });
@@ -248,10 +286,29 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		thinkingLevel = "off";
 	}
 
-	const defaultActiveToolNames: ToolName[] = ["read", "bash", "edit", "write"];
-	const initialActiveToolNames: ToolName[] = options.tools
-		? options.tools.map((t) => t.name).filter((n): n is ToolName => n in allTools)
-		: defaultActiveToolNames;
+	const defaultActiveToolNames: string[] = [
+		"read",
+		"bash",
+		"edit",
+		"write",
+		"enter_plan_mode",
+		"exit_plan_mode",
+		"todo_write",
+		"task_create",
+		"task_get",
+		"task_update",
+		"task_list",
+		"task_stop",
+		"task_output",
+		"team_create",
+		"team_delete",
+		"team_list",
+		"send_message",
+	];
+	const initialActiveToolNames: string[] =
+		options.tools && options.tools.length > 0
+			? options.tools.map((t) => t.name).filter((n): n is ToolName => n in allTools)
+			: defaultActiveToolNames;
 
 	let agent: Agent;
 
@@ -307,11 +364,18 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			if (!auth.ok) {
 				throw new Error(auth.error);
 			}
-			return streamSimple(model, context, {
-				...options,
-				apiKey: auth.apiKey,
-				headers: auth.headers || options?.headers ? { ...auth.headers, ...options?.headers } : undefined,
-			});
+			const release = await rateLimitScheduler.acquire(model.provider);
+			let stream: AssistantMessageEventStream;
+			try {
+				stream = streamSimple(model, context, {
+					...options,
+					apiKey: auth.apiKey,
+					headers: auth.headers || options?.headers ? { ...auth.headers, ...options?.headers } : undefined,
+				});
+			} finally {
+				release();
+			}
+			return wrapStreamForCost(stream, sessionManager.getSessionId(), model.id, model.provider);
 		},
 		onPayload: async (payload, _model) => {
 			const runner = extensionRunnerRef.current;
@@ -321,25 +385,46 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			return runner.emitBeforeProviderRequest(payload);
 		},
 		sessionId: sessionManager.getSessionId(),
-		transformContext: async (messages, _signal) => {
-			// Layer 1 + 2: Fast compression (no API call)
+		transformContext: async (messages, signal) => {
+			// Layer 1 + 2: Fast, free compression (snip + microcompact)
 			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(messages);
 
-			// Layer 3: If still too large, signal to the compaction system
-			// The actual autocompact is handled by AgentSession.compact()
-			if (needsCompact) {
-				// We can't autocompact here (no API key access),
-				// but we return the snipped/microcompacted messages
-				// to buy time. AgentSession will trigger autocompact
-				// via its overflow recovery mechanism.
+			let result = compressed;
+
+			// Layer 3: LLM-based summarisation when layers 1+2 are not enough.
+			// modelRegistry is available via closure (same pattern as streamFn above).
+			if (needsCompact && model) {
+				try {
+					const auth = await modelRegistry.getApiKeyAndHeaders(model);
+					if (auth.ok) {
+						const release2 = await rateLimitScheduler.acquire(model.provider);
+						let compactResult: any;
+						try {
+							compactResult = await autoCompactMessages(
+								compressed,
+								model,
+								auth.apiKey!,
+								auth.headers,
+								signal ?? undefined,
+							);
+						} finally {
+							release2();
+						}
+						result = compactResult.messages;
+					}
+				} catch {
+					// Compaction failed — proceed with snip+microcompact output.
+				}
 			}
 
-			// Run extension context transforms on the compressed messages
+			// Run extension context transforms on the (possibly compacted) messages
 			const runner = extensionRunnerRef.current;
-			if (!runner) return compressed;
-			return runner.emitContext(compressed);
+			if (!runner) return result;
+			return runner.emitContext(result);
 		},
 
+		contextPressureThreshold: AUTO_COMPACT_THRESHOLD,
+		tokenBudget: options.tokenBudget,
 		steeringMode: settingsManager.getSteeringMode(),
 		followUpMode: settingsManager.getFollowUpMode(),
 		transport: settingsManager.getTransport(),
@@ -381,4 +466,27 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		extensionsResult,
 		modelFallbackMessage,
 	};
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// [P2-A] Session Discovery helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * List sessions for a specific cwd, sorted by most-recent-first.
+ * If cwd is omitted, lists ALL sessions across all project directories.
+ */
+export async function listSessions(cwd?: string): Promise<import("./session-manager.js").SessionInfo[]> {
+	if (cwd) {
+		return SessionManager.list(cwd);
+	}
+	return SessionManager.listAll();
+}
+
+/**
+ * Get the most recent session path for a cwd, or undefined if none.
+ */
+export async function getMostRecentSessionPath(cwd?: string): Promise<string | undefined> {
+	const sessions = await listSessions(cwd ?? process.cwd());
+	return sessions[0]?.path;
 }

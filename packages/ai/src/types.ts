@@ -218,6 +218,11 @@ export interface Tool<TParameters extends TSchema = TSchema> {
 	name: string;
 	description: string;
 	parameters: TParameters;
+	isReadOnly?: (input: unknown) => boolean;
+	isConcurrencySafe?: (input: unknown) => boolean;
+	isDestructive?: (input: unknown) => boolean;
+	interruptBehavior?: () => "cancel" | "block";
+	maxResultSizeChars?: number;
 }
 
 export interface Context {

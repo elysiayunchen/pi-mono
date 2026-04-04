@@ -2,6 +2,7 @@
 
 // Config paths
 export { getAgentDir, VERSION } from "./config.js";
+export { AdaptiveGuard, getAdaptiveGuard } from "./core/adaptive-guard.js";
 export {
 	AgentSession,
 	type AgentSessionConfig,
@@ -46,6 +47,14 @@ export {
 	serializeConversation,
 	shouldCompact,
 } from "./core/compaction/index.js";
+export {
+	type CostStats,
+	formatCost,
+	formatCostSummary,
+	getCostStats,
+	getSessionCost,
+	shutdownCostTracker,
+} from "./core/cost-tracker.js";
 export { createEventBus, type EventBus, type EventBusController } from "./core/event-bus.js";
 // Extension system
 export type {
@@ -138,10 +147,12 @@ export {
 	wrapRegisteredTool,
 	wrapRegisteredTools,
 } from "./core/extensions/index.js";
+export { type FileBackup, type FileSnapshot, getFileHistory } from "./core/file-history.js";
 // Footer data provider (git branch + extension statuses - data not otherwise available to extensions)
 export type { ReadonlyFooterDataProvider } from "./core/footer-data-provider.js";
 export { convertToLlm } from "./core/messages.js";
 export { ModelRegistry } from "./core/model-registry.js";
+export { ModelRouterOptions, ModelRoutingDecision, selectOptimalModel } from "./core/model-router.js";
 export type {
 	PackageManager,
 	PathMetadata,
@@ -154,6 +165,7 @@ export { DefaultPackageManager } from "./core/package-manager.js";
 export type { ResourceCollision, ResourceDiagnostic, ResourceLoader } from "./core/resource-loader.js";
 export { DefaultResourceLoader } from "./core/resource-loader.js";
 // SDK for programmatic usage
+// [P2-A] Session Persistence helpers
 export {
 	type AgentSessionRuntimeBootstrap,
 	AgentSessionRuntimeHost,
@@ -173,10 +185,13 @@ export {
 	createReadOnlyTools,
 	createReadTool,
 	createWriteTool,
+	getMostRecentSessionPath,
+	listSessions,
 	type PromptTemplate,
 	// Pre-built tools (use process.cwd())
 	readOnlyTools,
 } from "./core/sdk.js";
+export { getSessionLearner, LearningData, SessionLearner, TaskPattern } from "./core/session-learner.js";
 export {
 	type BranchSummaryEntry,
 	buildSessionContext,
@@ -245,6 +260,14 @@ export {
 	type EditToolOptions,
 	editTool,
 	editToolDefinition,
+	enterPlanModeTool,
+	enterPlanModeToolDefinition,
+	enterWorktreeTool,
+	enterWorktreeToolDefinition,
+	exitPlanModeTool,
+	exitPlanModeToolDefinition,
+	exitWorktreeTool,
+	exitWorktreeToolDefinition,
 	type FindOperations,
 	type FindToolDetails,
 	type FindToolInput,
@@ -270,9 +293,33 @@ export {
 	type ReadToolOptions,
 	readTool,
 	readToolDefinition,
+	sendMessageTool,
+	sendMessageToolDefinition,
 	type ToolsOptions,
 	type TruncationOptions,
 	type TruncationResult,
+	taskAssignTool,
+	taskAssignToolDefinition,
+	taskCreateTool,
+	taskCreateToolDefinition,
+	taskGetTool,
+	taskGetToolDefinition,
+	taskListTool,
+	taskListToolDefinition,
+	taskOutputTool,
+	taskOutputToolDefinition,
+	taskStopTool,
+	taskStopToolDefinition,
+	taskUpdateTool,
+	taskUpdateToolDefinition,
+	teamCreateTool,
+	teamCreateToolDefinition,
+	teamDeleteTool,
+	teamDeleteToolDefinition,
+	teamListTool,
+	teamListToolDefinition,
+	todoWriteTool,
+	todoWriteToolDefinition,
 	truncateHead,
 	truncateLine,
 	truncateTail,

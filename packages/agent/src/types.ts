@@ -125,6 +125,13 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	convertToLlm: (messages: AgentMessage[]) => Message[] | Promise<Message[]>;
 
 	/**
+	 * Token count above which a `context_pressure` event is emitted before each LLM call.
+	 * When combined with a compaction-aware `transformContext`, enables proactive auto-compact.
+	 * Recommended: 80_000. When undefined, no pressure events are emitted.
+	 */
+	contextPressureThreshold?: number;
+
+	/**
 	 * Optional transform applied to the context before `convertToLlm`.
 	 *
 	 * Use this for operations that work at the AgentMessage level:
@@ -211,6 +218,17 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 * The hook receives the agent abort signal and is responsible for honoring it.
 	 */
 	afterToolCall?: (context: AfterToolCallContext, signal?: AbortSignal) => Promise<AfterToolCallResult | undefined>;
+
+	/**
+	 * Token budget for auto-continuation.
+	 *
+	 * When set, the agent will continue working (injecting a nudge message)
+	 * after it would naturally stop, until the budget is exhausted.
+	 *
+	 * - total: target token count to reach (e.g. 500_000 for "+500k")
+	 * - remaining: decremented each turn; when <= 0 or diminishing returns, stops
+	 */
+	tokenBudget?: { total: number };
 }
 
 /**
@@ -327,6 +345,10 @@ export type AgentEvent =
 	// Agent lifecycle
 	| { type: "agent_start" }
 	| { type: "agent_end"; messages: AgentMessage[] }
+	/** Emitted when estimated context tokens exceed contextPressureThreshold. */
+	| { type: "context_pressure"; tokens: number; threshold: number }
+	/** Emitted after successful LLM-based auto-compaction. */
+	| { type: "context_compacted"; tokensFreed: number; tokensAfter: number }
 	// Turn lifecycle - a turn is one assistant response + any tool calls/results
 	| { type: "turn_start" }
 	| { type: "turn_end"; message: AgentMessage; toolResults: ToolResultMessage[] }

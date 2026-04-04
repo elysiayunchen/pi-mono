@@ -29,8 +29,10 @@ import { getDocsPath } from "../config.js";
 import { theme } from "../modes/interactive/theme/theme.js";
 import { stripFrontmatter } from "../utils/frontmatter.js";
 import { sleep } from "../utils/sleep.js";
+import { initAutonomousRunner } from "./autonomous-runner.js";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.js";
 import {
+	applyMultiLayerCompaction,
 	type CompactionResult,
 	calculateContextTokens,
 	collectEntriesForBranchSummary,
@@ -41,6 +43,7 @@ import {
 	shouldCompact,
 } from "./compaction/index.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
+import { efficiencyGuard } from "./efficiency-guard.js";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.js";
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.js";
 import {
@@ -67,8 +70,12 @@ import {
 	type TurnStartEvent,
 	wrapRegisteredTools,
 } from "./extensions/index.js";
+import { getFileHistory } from "./file-history.js";
+import { runPreToolUseHooks } from "./hooks/pre-tool-use.js";
+import { loadClaudeMd } from "./knowledge/claude-md-loader.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
 import type { ModelRegistry } from "./model-registry.js";
+import { checkDangerousCommand, checkPermission, type ToolPermissionContext } from "./permissions/rule-engine.js";
 import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.js";
 import type { ResourceExtensionPaths, ResourceLoader } from "./resource-loader.js";
 import type { BranchSummaryEntry, CompactionEntry, SessionManager } from "./session-manager.js";
@@ -77,10 +84,12 @@ import type { SettingsManager } from "./settings-manager.js";
 import type { SlashCommandInfo } from "./slash-commands.js";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.js";
 import { buildSystemPrompt } from "./system-prompt.js";
+import { setCurrentSessionId } from "./tasks/task-store.js";
+import { initTeammateRunner } from "./teammate-runner.js";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.js";
 import { createAllToolDefinitions } from "./tools/index.js";
+import { setTodosRef } from "./tools/todo-write.js";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.js";
-
 // ============================================================================
 // Skill Block Parsing
 // ============================================================================
@@ -265,6 +274,16 @@ export class AgentSession {
 	// Bash execution state
 	private _bashAbortController: AbortController | undefined = undefined;
 	private _pendingBashMessages: BashExecutionMessage[] = [];
+	// 规划模式状态
+	private _planMode: "default" | "plan" = "default";
+	private _coordinatorMode = false;
+	private _todos: Array<{
+		id: string;
+		description: string;
+		status: "pending" | "in_progress" | "completed" | "cancelled";
+		createdAt: number;
+		updatedAt: number;
+	}> = [];
 
 	// Extension system
 	private _extensionRunner: ExtensionRunner | undefined = undefined;
@@ -293,7 +312,7 @@ export class AgentSession {
 	private _toolPromptSnippets: Map<string, string> = new Map();
 	private _toolPromptGuidelines: Map<string, string[]> = new Map();
 
-	// Base system prompt (without extension appends) - used to apply fresh appends each turn
+	// Base system async prompt (without extension appends) - used to apply fresh appends each turn
 	private _baseSystemPrompt = "";
 
 	constructor(config: AgentSessionConfig) {
@@ -319,6 +338,9 @@ export class AgentSession {
 			activeToolNames: this._initialActiveToolNames,
 			includeAllExtensionTools: true,
 		});
+
+		// Connect todo-write tool to session todos (shared reference)
+		setTodosRef(this._todos);
 	}
 
 	/** Model registry for API key resolution and model discovery */
@@ -368,6 +390,26 @@ export class AgentSession {
 				return permissionResult;
 			}
 
+			// === P3-A PreToolUse Shell Hooks ===
+			const shellHookResult = await runPreToolUseHooks(toolCall.name, args, this.sessionId ?? "unknown");
+			if (shellHookResult.block) {
+				return { block: true, reason: shellHookResult.reason };
+			}
+
+			// === P3-B File History Snapshot ===
+			const FILE_MUTATING_TOOLS = new Set(["write", "edit"]);
+			if (FILE_MUTATING_TOOLS.has(toolCall.name)) {
+				const argsRec = (args ?? {}) as Record<string, unknown>;
+				const filePath = argsRec.path as string | undefined;
+				if (filePath) {
+					try {
+						await getFileHistory(this.sessionId).trackBeforeToolCall(toolCall.name, filePath, argsRec);
+					} catch {
+						// best-effort: never block tool execution on snapshot failure
+					}
+				}
+			}
+
 			// === Extension hooks (original code) ===
 			const runner = this._extensionRunner;
 			if (!runner?.hasHandlers("tool_call")) {
@@ -392,6 +434,24 @@ export class AgentSession {
 		};
 
 		this.agent.afterToolCall = async ({ toolCall, args, result, isError }) => {
+			// ===== 规划模式工具的副作用处理 =====
+			if (toolCall.name === "enter_plan_mode") {
+				const reason = (result.details as any)?.reason ?? "User requested";
+				this.setMode("plan", reason);
+			}
+
+			if (toolCall.name === "exit_plan_mode") {
+				const confirmedPlan = (result.details as any)?.confirmedPlan ?? "";
+				this.setMode("default", confirmedPlan);
+			}
+
+			if (toolCall.name === "todo_write") {
+				const todos = (result.details as any)?.todos;
+				if (todos && Array.isArray(todos)) {
+					this.setTodos(todos);
+				}
+			}
+
 			const runner = this._extensionRunner;
 			if (!runner?.hasHandlers("tool_result")) {
 				return undefined;
@@ -427,75 +487,56 @@ export class AgentSession {
 	): { block: true; reason: string } | undefined {
 		const argsRecord = (args || {}) as Record<string, unknown>;
 
-		// Bash: block dangerous commands
-		if (toolCall.name === "bash") {
-			const command = String(argsRecord.command || argsRecord.cmd || argsRecord.input || "");
-			const dangerousPatterns = [
-				/\brm\s+(-[rf]*\s+)*\/(\s|$)/, // rm of root paths
-				/\brm\s+-rf\s+[~/]/, // rm -rf ~/ or /
-				/\bmkfs\b/, // format disk
-				/\bdd\s+if=/, // raw disk write
-				/\bchmod\s+777\b/, // open permissions
-				/:\s*\(\)\s*\{.*\|.*\}.*;/, // fork bomb
-				/\b(shutdown|reboot|halt|poweroff)\b/,
-				/\bkill\s+-9\s+1\b/, // kill init
-				/>\s*\/dev\/sd/, // overwrite disk
-				/\bformat\s+[c-z]:/i, // Windows format
-			];
-
-			for (const pattern of dangerousPatterns) {
-				if (pattern.test(command)) {
-					this._emit({
-						type: "compaction_start", // reuse existing event type
-						reason: "manual",
-					} as any);
-
-					// Log the block
-					console.warn(
-						`\n⚠️  Dangerous command blocked: ${command}\n` + `   Tool: ${toolCall.name} (${toolCall.id})\n`,
-					);
-
-					return {
-						block: true,
-						reason:
-							`Dangerous command blocked for safety: "${command}". ` +
-							`If this is intentional, you can modify the check in agent-session.ts.`,
-					};
-				}
-			}
+		// 1. 兜底：硬编码危险命令检查
+		const dangerousResult = checkDangerousCommand(toolCall.name, argsRecord);
+		if (dangerousResult?.behavior === "deny") {
+			console.warn(`\n⚠️  ${dangerousResult.message}`);
+			return { block: true, reason: dangerousResult.message! };
 		}
 
-		// Write/Edit: block modification of critical files
-		if (toolCall.name === "write" || toolCall.name === "edit") {
-			const filePath = String(argsRecord.file_path || argsRecord.path || argsRecord.file || "");
-			const criticalPatterns = [
-				/\.git\//,
-				/node_modules\//,
-				/^\.env$/,
-				/^\.env\./,
-				/package-lock\.json$/,
-				/yarn\.lock$/,
-				/pnpm-lock\.yaml$/,
-			];
+		// 2. 规则引擎检查
+		const permissionContext = this._getToolPermissionContext();
+		const result = checkPermission(toolCall.name, argsRecord, permissionContext, "allow");
 
-			for (const pattern of criticalPatterns) {
-				if (pattern.test(filePath)) {
-					console.warn(
-						`\n⚠️  Critical file modification blocked: ${filePath}\n` +
-							`   Tool: ${toolCall.name} (${toolCall.id})\n`,
-					);
-
-					return {
-						block: true,
-						reason:
-							`Modification of critical file blocked: "${filePath}". ` +
-							`This file is protected (.git, node_modules, .env, lock files).`,
-					};
-				}
-			}
+		if (result.behavior === "deny") {
+			console.warn(`\n⚠️  ${result.message}`);
+			return { block: true, reason: result.message! };
+		}
+		if (result.behavior === "ask") {
+			const toolDesc = result.matchedRule
+				? `${result.matchedRule.toolName}${result.matchedRule.ruleContent ? `(${result.matchedRule.ruleContent})` : ""}`
+				: toolCall.name;
+			return {
+				block: true,
+				reason:
+					`TOOLS_REQUIRE_CONFIRMATION: ${toolDesc} 需要用户确认后才能执行。\n` +
+					`请先告诉用户你要做什么，询问用户是否同意。例如："我准备执行 ${toolDesc}，请确认是否继续？"` +
+					`等待用户回复 "是/yes/确认" 后再重新调用该工具。`,
+			};
 		}
 
-		return undefined; // Allow
+		return undefined;
+	}
+
+	private _getToolPermissionContext(): ToolPermissionContext {
+		const rules = this.settingsManager.getPermissionRules();
+		return {
+			alwaysAllowRules: {
+				settings: rules.allow,
+				cliArg: [],
+				session: [],
+			},
+			alwaysDenyRules: {
+				settings: rules.deny,
+				cliArg: [],
+				session: [],
+			},
+			alwaysAskRules: {
+				settings: rules.ask,
+				cliArg: [],
+				session: [],
+			},
+		};
 	}
 
 	// =========================================================================
@@ -618,6 +659,14 @@ export class AgentSession {
 			}
 			// Other message types (bashExecution, compactionSummary, branchSummary) are persisted elsewhere
 
+			// Persist plan mode state to session
+			if (this._planMode === "plan" && this._todos.length > 0) {
+				this.sessionManager.appendCustomEntry("plan_state", {
+					mode: this._planMode,
+					todos: this._todos,
+				});
+			}
+
 			// Track assistant message for auto-compaction (checked on agent_end)
 			if (event.message.role === "assistant") {
 				this._lastAssistantMessage = event.message;
@@ -652,6 +701,7 @@ export class AgentSession {
 			}
 
 			this._resolveRetry();
+			this._runStopHooks(msg);
 			await this._checkCompaction(msg);
 		}
 	}
@@ -710,6 +760,14 @@ export class AgentSession {
 				toolResults: event.toolResults,
 			};
 			await this._extensionRunner.emit(extensionEvent);
+			// Efficiency guard: check API rate after each turn
+			if (this.model) {
+				efficiencyGuard.recordCall(this.model.provider);
+				const warning = efficiencyGuard.check(this.model.provider);
+				if (warning) {
+					this.injectNotification(`${warning.message} Suggestions: ${warning.suggestions.join(" | ")}`);
+				}
+			}
 			this._turnIndex++;
 		} else if (event.type === "message_start") {
 			const extensionEvent: MessageStartEvent = {
@@ -838,6 +896,83 @@ export class AgentSession {
 	/** Current retry attempt (0 if not retrying) */
 	get retryAttempt(): number {
 		return this._retryAttempt;
+	}
+	// =========================================================================
+	// Plan Mode
+	// =========================================================================
+
+	/** 获取当前运行模式 */
+	getMode(): "default" | "plan" {
+		return this._planMode;
+	}
+
+	/** 设置运行模式，触发事件并重建系统提示词 */
+	setMode(mode: "default" | "plan", _reason?: string): void {
+		const prev = this._planMode;
+		if (prev === mode) return;
+		this._planMode = mode;
+
+		// 重建系统提示词以反映新模式
+		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
+		this.agent.state.systemPrompt = this._baseSystemPrompt;
+	}
+
+	/** 获取当前 todo 清单（副本） */
+	getTodos(): Array<{
+		id: string;
+		description: string;
+		status: "pending" | "in_progress" | "completed" | "cancelled";
+		createdAt: number;
+		updatedAt: number;
+	}> {
+		return this._todos.slice();
+	}
+
+	/** 更新 todo 清单 */
+	setTodos(
+		todos: Array<{
+			id: string;
+			description: string;
+			status: "pending" | "in_progress" | "completed" | "cancelled";
+			createdAt: number;
+			updatedAt: number;
+		}>,
+	): void {
+		this._todos = todos.slice();
+	}
+
+	// =========================================================================
+	// Coordinator Mode (s11)
+	// =========================================================================
+
+	/** Enable or disable coordinator mode. Rebuilds the system prompt. */
+	setCoordinatorMode(on: boolean): void {
+		if (this._coordinatorMode === on) return;
+		this._coordinatorMode = on;
+		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
+		this.agent.state.systemPrompt = this._baseSystemPrompt;
+	}
+
+	/** Whether coordinator mode is currently active */
+	get coordinatorMode(): boolean {
+		return this._coordinatorMode;
+	}
+
+	/**
+	 * Inject a task-notification into the host session.
+	 * Called by AutonomousRunner when a background teammate finishes.
+	 */
+	injectNotification(text: string): void {
+		const msg = {
+			role: "user" as const,
+			content: [{ type: "text" as const, text }],
+			timestamp: Date.now(),
+		};
+		if (this.isStreaming) {
+			this.agent.followUp(msg);
+		} else {
+			this.agent.prompt([msg]).catch(() => {});
+		}
 	}
 
 	/**
@@ -988,7 +1123,7 @@ export class AgentSession {
 		const loadedSkills = this._resourceLoader.getSkills().skills;
 		const loadedContextFiles = this._resourceLoader.getAgentsFiles().agentsFiles;
 
-		return buildSystemPrompt({
+		let systemPrompt = buildSystemPrompt({
 			cwd: this._cwd,
 			skills: loadedSkills,
 			contextFiles: loadedContextFiles,
@@ -998,6 +1133,55 @@ export class AgentSession {
 			toolSnippets,
 			promptGuidelines,
 		});
+
+		// 规划模式下注入额外提示词
+		if (this._planMode === "plan") {
+			systemPrompt +=
+				"\n\n## PLAN MODE ACTIVE\n\n" +
+				"You are in PLAN MODE. This is a planning-only phase.\n\n" +
+				"MANDATORY workflow:\n" +
+				"1. Read and analyze relevant files using read/grep/find/ls\n" +
+				"2. Create a detailed step-by-step plan with todo_write (action: create)\n" +
+				"3. Present the plan to the user in a clear, numbered format\n" +
+				"4. Wait for user approval before proceeding\n" +
+				"5. ONLY after approval, call exit_plan_mode with the confirmed plan\n\n" +
+				"ALLOWED tools: read, grep, find, ls, enter_plan_mode, exit_plan_mode, todo_write\n" +
+				"BLOCKED tools: write, edit, and destructive bash commands (rm, mv, chmod, git commit/push, npm/pip install)\n\n" +
+				"Plan quality requirements:\n" +
+				"- Each step must be specific and actionable\n" +
+				"- Steps must be in correct execution order\n" +
+				"- Include file paths and expected outcomes\n" +
+				"- Mark risky steps and suggest verification\n" +
+				"- Keep steps atomic (one logical change per step)";
+		}
+
+		// Coordinator mode injection (s11)
+		if (this._coordinatorMode) {
+			systemPrompt +=
+				"\n\n## COORDINATOR MODE ACTIVE\n\n" +
+				"You are orchestrating tasks across multiple AI teammates.\n\n" +
+				"### Your Role\n" +
+				"- Break down the goal into discrete tasks (task_create)\n" +
+				"- Create specialized teammates (team_create)\n" +
+				"- Assign tasks to teammates (task_assign) — runs in background\n" +
+				"- When a <task-notification> arrives, synthesize and decide next steps\n" +
+				"- Communicate progress to user; never fabricate agent results\n\n" +
+				"### Task Notifications\n" +
+				"When a teammate finishes you receive:\n" +
+				"<task-notification>\n" +
+				"<task-id>{id}</task-id>\n" +
+				"<status>completed|failed</status>\n" +
+				"<summary>outcome</summary>\n" +
+				"<r>full response</r>\n" +
+				"</task-notification>\n\n" +
+				"These are system signals. Summarize for user. Never thank teammates directly.\n\n" +
+				"### Tools\n" +
+				"task_create / task_assign / task_get / task_list / " +
+				"team_create / team_list / send_message (synchronous direct message)\n\n" +
+				"### On Failure\n" +
+				"Use send_message with corrective instructions, then task_assign again.";
+		}
+		return systemPrompt;
 	}
 
 	// =========================================================================
@@ -1015,6 +1199,17 @@ export class AgentSession {
 	 */
 	async prompt(text: string, options?: PromptOptions): Promise<void> {
 		const expandPromptTemplates = options?.expandPromptTemplates ?? true;
+		setCurrentSessionId(this.sessionId);
+
+		// [P1-B] CLAUDE.md lazy-load: prepend project memory to user text
+		const _cwd = process.cwd();
+		const _claudeMdContent = await loadClaudeMd(_cwd);
+		if (_claudeMdContent) {
+			const _memHeader = `<project-memory>\n${_claudeMdContent}\n</project-memory>\n\n`;
+			text = _memHeader + text;
+		}
+		initTeammateRunner(this.sessionId, this._modelRegistry, () => this.model);
+		initAutonomousRunner(this.sessionId, (msg) => this.injectNotification(msg));
 
 		// Handle extension commands first (execute immediately, even during streaming)
 		// Extension commands manage their own LLM interaction via pi.sendMessage()
@@ -1898,8 +2093,91 @@ export class AgentSession {
 		} else {
 			contextTokens = calculateContextTokens(assistantMessage.usage);
 		}
+		// Apply multi-layer compaction first (snip + microcompact) before LLM-based compact
+		const multiLayerResult = applyMultiLayerCompaction(this.agent.state.messages);
+		if (multiLayerResult.layersApplied.length > 0) {
+			this.agent.state.messages = multiLayerResult.messages;
+		}
+		// Re-estimate tokens after snip/microcompact
+		const postSnipEstimate = estimateContextTokens(this.agent.state.messages);
+		if (!shouldCompact(postSnipEstimate.tokens, contextWindow, settings)) {
+			// Multi-layer freed enough context, no LLM compaction needed
+			return;
+		}
 		if (shouldCompact(contextTokens, contextWindow, settings)) {
 			await this._runAutoCompaction("threshold", false);
+		}
+	}
+
+	/**
+	 * P3: Stop Hooks — post-turn introspection.
+	 * Injects nudges when the agent should verify its work or use todo_write.
+	 */
+	private _runStopHooks(assistantMessage: AssistantMessage): void {
+		const messages = this.agent.state.messages;
+		if (messages.length === 0) return;
+		if (assistantMessage.stopReason === "error" || assistantMessage.stopReason === "aborted") return;
+
+		let assistantTurnsWithoutTodo = 0;
+		let totalToolCalls = 0;
+		let hasWriteOrEdit = false;
+
+		for (let j = messages.length - 1; j >= 0; j--) {
+			const msg = messages[j];
+			if (msg.role !== "assistant") continue;
+			const aMsg = msg as AssistantMessage;
+			assistantTurnsWithoutTodo++;
+
+			for (const block of aMsg.content) {
+				if (block.type === "toolCall") {
+					totalToolCalls++;
+					if (block.name === "todo_write") return;
+					if (block.name === "write" || block.name === "edit") hasWriteOrEdit = true;
+				}
+			}
+			if (assistantTurnsWithoutTodo >= 5) break;
+		}
+
+		// Nudge 1: Multiple file changes without todo_write
+		if (hasWriteOrEdit && totalToolCalls >= 3 && assistantTurnsWithoutTodo >= 3) {
+			this.agent.state.messages.push({
+				role: "user",
+				content: [
+					{
+						type: "text",
+						text: "[System] You've made multiple changes without using todo_write to track progress. For multi-step tasks, consider using todo_write to organize your work and mark tasks as completed.",
+					},
+				],
+				timestamp: Date.now(),
+			} as AgentMessage);
+			setTimeout(() => this.agent.continue().catch(() => {}), 100);
+			return;
+		}
+
+		// Nudge 2: Many tool calls without verification
+		if (hasWriteOrEdit && totalToolCalls >= 5) {
+			const recentNames: string[] = [];
+			for (let j = messages.length - 1; j >= Math.max(0, messages.length - 10); j--) {
+				const m = messages[j];
+				if (m.role !== "assistant") continue;
+				for (const b of (m as AssistantMessage).content) {
+					if (b.type === "toolCall") recentNames.push(b.name);
+				}
+			}
+			const hasTest = recentNames.some((n) => n === "bash" || n === "test" || n === "run");
+			if (!hasTest) {
+				this.agent.state.messages.push({
+					role: "user",
+					content: [
+						{
+							type: "text",
+							text: "[System] You've made several changes. Consider verifying your work — run the tests, typecheck, or execute the script to confirm everything works.",
+						},
+					],
+					timestamp: Date.now(),
+				} as AgentMessage);
+				setTimeout(() => this.agent.continue().catch(() => {}), 100);
+			}
 		}
 	}
 

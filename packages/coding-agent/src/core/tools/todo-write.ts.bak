@@ -1,0 +1,116 @@
+import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { Type } from "@sinclair/typebox";
+import type { ToolDefinition } from "../extensions/types.js";
+import { wrapToolDefinition } from "./tool-definition-wrapper.js";
+
+interface TodoItem {
+	id: string;
+	description: string;
+	status: "pending" | "in_progress" | "completed" | "cancelled";
+	createdAt: number;
+	updatedAt: number;
+}
+
+const schema = Type.Object({
+	action: Type.String({
+		description:
+			'Operation: "create" (new list), "update" (change status), "add" (append items), "list" (show current)',
+	}),
+	items: Type.Optional(
+		Type.Array(Type.String(), { description: 'For "create" and "add": list of step descriptions' }),
+	),
+	updates: Type.Optional(
+		Type.Array(
+			Type.Object({
+				id: Type.String(),
+				status: Type.String(),
+			}),
+			{ description: 'For "update": list of {id, status} changes' },
+		),
+	),
+});
+
+// Shared state — set externally by AgentSession via setTodosRef()
+let currentTodos: TodoItem[] = [];
+
+export function setTodosRef(ref: TodoItem[]): void {
+	currentTodos = ref;
+}
+
+export function getCurrentTodos(): TodoItem[] {
+	return currentTodos.slice();
+}
+
+export function setCurrentTodos(todos: TodoItem[]): void {
+	currentTodos = todos.slice();
+}
+
+function formatTodos(todos: TodoItem[]): string {
+	const statusIcon: Record<string, string> = {
+		pending: "[ ]",
+		in_progress: "[~]",
+		completed: "[x]",
+		cancelled: "[-]",
+	};
+	return todos.map((t) => `${statusIcon[t.status]} ${t.id}. ${t.description}`).join("\n");
+}
+
+export const todoWriteToolDefinition: ToolDefinition<typeof schema> = {
+	name: "todo_write",
+	label: "Todo",
+	description: "Create and manage a task list for tracking multi-step work. " + "Use create/update/add/list actions.",
+	promptSnippet: "Manage a task list (create, update, add, list)",
+	parameters: schema,
+
+	async execute(_toolCallId, params, signal, onUpdate, ctx) {
+		const now = Date.now();
+
+		switch (params.action) {
+			case "create": {
+				const newTodos = (params.items ?? []).map((desc, i) => ({
+					id: String(i + 1),
+					description: desc,
+					status: "pending" as const,
+					createdAt: now,
+					updatedAt: now,
+				}));
+				currentTodos.length = 0;
+				currentTodos.push(...newTodos);
+				break;
+			}
+			case "add": {
+				const startId = currentTodos.length + 1;
+				const newItems = (params.items ?? []).map((desc, i) => ({
+					id: String(startId + i),
+					description: desc,
+					status: "pending" as const,
+					createdAt: now,
+					updatedAt: now,
+				}));
+				currentTodos.push(...newItems);
+				break;
+			}
+			case "update": {
+				for (const update of params.updates ?? []) {
+					const item = currentTodos.find((t) => t.id === update.id);
+					if (item) {
+						item.status = update.status as TodoItem["status"];
+						item.updatedAt = now;
+					}
+				}
+				break;
+			}
+			case "list":
+				break;
+		}
+
+		const formatted = formatTodos(currentTodos);
+
+		return {
+			content: [{ type: "text", text: `Current plan:\n\n${formatted}` }],
+			details: { action: params.action, todos: currentTodos.slice() },
+		};
+	},
+};
+
+export const todoWriteTool: AgentTool<typeof schema> = wrapToolDefinition(todoWriteToolDefinition);

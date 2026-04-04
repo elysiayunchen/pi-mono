@@ -98,7 +98,7 @@ export function snipDeadMessages(messages: AgentMessage[]): AgentMessage[] {
 // Layer 2: Microcompact
 function trimContent(content: string, maxChars: number): string {
 	if (content.length <= maxChars) return content;
-	return content.slice(0, maxChars) + "\n\n[... truncated " + (content.length - maxChars) + " characters ...]";
+	return `${content.slice(0, maxChars)}\n\n[... truncated ${content.length - maxChars} characters ...]`;
 }
 
 export function microcompact(messages: AgentMessage[], maxToolResultChars: number = 50000): AgentMessage[] {
@@ -144,7 +144,8 @@ export function applyMultiLayerCompaction(
 	const config = { ...DEFAULT_CONFIG, ...userConfig };
 	const originalTokens = messages.reduce((sum, msg) => sum + estimateTokens(msg), 0);
 
-	if (originalTokens < config.maxTokens) {
+	// Proactive: trigger snip+microcompact at autoCompactThreshold (90k), not maxTokens (100k)
+	if (originalTokens <= config.autoCompactThreshold) {
 		return { messages, tokensFreed: 0, layersApplied: [], needsAutocompact: false };
 	}
 

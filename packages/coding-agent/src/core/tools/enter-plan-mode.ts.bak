@@ -1,0 +1,46 @@
+import type { AgentTool } from "@mariozechner/pi-agent-core";
+import { Type } from "@sinclair/typebox";
+import type { ToolDefinition } from "../extensions/types.js";
+import { analyzeTask, formatAnalysisForPrompt } from "../task-analyzer.js";
+import { wrapToolDefinition } from "./tool-definition-wrapper.js";
+
+const schema = Type.Object({
+	reason: Type.String({ description: "Why you are entering plan mode — what you plan to figure out" }),
+});
+
+export const enterPlanModeToolDefinition: ToolDefinition<typeof schema> = {
+	name: "enter_plan_mode",
+	label: "Plan",
+	description:
+		"Enter plan mode. In this mode you MUST create a detailed plan with todo_write before making any changes. " +
+		"Read-only tools (read, grep, find, ls) are available. " +
+		"Present your plan to the user, then call exit_plan_mode after approval.",
+	promptSnippet: "Enter plan mode — plan before executing",
+	parameters: schema,
+
+	async execute(_toolCallId, params, signal, onUpdate, ctx) {
+		// Phase 2: Pre-analyze task complexity
+		const analysis = analyzeTask(params.reason);
+		const analysisBlock = formatAnalysisForPrompt(analysis);
+		return {
+			content: [
+				{
+					type: "text",
+					text:
+						"Plan mode activated. Reason: " + params.reason + "\n\n" +
+						analysisBlock + "\n\n" +
+						"RULES IN PLAN MODE:\n" +
+						"- You MUST use todo_write to create a step-by-step plan\n" +
+						"- You CANNOT use write, edit, or destructive bash commands\n" +
+						"- Read-only tools (read, grep, find, ls) are available\n" +
+						"- Present your plan to the user and ask for confirmation\n" +
+						"- Use exit_plan_mode when the user approves",
+				},
+			],
+			details: { action: "enter_plan_mode", reason: params.reason },
+		};
+	},
+};
+
+export const enterPlanModeTool: AgentTool<typeof schema> = wrapToolDefinition(enterPlanModeToolDefinition);
+
