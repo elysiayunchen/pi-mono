@@ -47,3 +47,4 @@ fix_session.py
 test-our-changes.ts
 deploy.sh
 HANDOFF.md
+packages/ai/src/models.generated.ts
