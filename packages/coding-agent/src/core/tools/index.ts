@@ -146,6 +146,7 @@ export { teamCreateTool, teamCreateToolDefinition } from "./team-create.js";
 export { teamDeleteTool, teamDeleteToolDefinition } from "./team-delete.js";
 export { teamListTool, teamListToolDefinition } from "./team-list.js";
 export { undoActionTool, undoActionToolDefinition } from "./undo-action.js";
+export { webFetchTool, webFetchToolDefinition } from "./web-fetch.js";
 
 import { enterWorktreeTool, enterWorktreeToolDefinition } from "./enter-worktree.js";
 import { exitWorktreeTool, exitWorktreeToolDefinition } from "./exit-worktree.js";
@@ -161,6 +162,7 @@ import { teamDeleteTool, teamDeleteToolDefinition } from "./team-delete.js";
 import { teamListTool, teamListToolDefinition } from "./team-list.js";
 import { todoWriteTool, todoWriteToolDefinition } from "./todo-write.js";
 import { undoActionTool, undoActionToolDefinition } from "./undo-action.js";
+import { webFetchTool, webFetchToolDefinition } from "./web-fetch.js";
 import { createWriteTool, createWriteToolDefinition, writeTool, writeToolDefinition } from "./write.js";
 
 export type Tool = AgentTool<any>;
@@ -198,6 +200,7 @@ export const allTools = {
 	enter_worktree: enterWorktreeTool,
 	exit_worktree: exitWorktreeTool,
 	model_speed_probe: modelSpeedProbeTool,
+	web_fetch: webFetchTool,
 };
 
 export const allToolDefinitions = {
@@ -229,6 +232,7 @@ export const allToolDefinitions = {
 	enter_worktree: enterWorktreeToolDefinition,
 	exit_worktree: exitWorktreeToolDefinition,
 	model_speed_probe: modelSpeedProbeToolDefinition,
+	web_fetch: webFetchToolDefinition,
 };
 
 export type ToolName = keyof typeof allTools;
@@ -286,6 +290,7 @@ export function createAllToolDefinitions(cwd: string, options?: ToolsOptions): R
 		enter_worktree: enterWorktreeToolDefinition,
 		exit_worktree: exitWorktreeToolDefinition,
 		model_speed_probe: modelSpeedProbeToolDefinition,
+		web_fetch: webFetchToolDefinition,
 	};
 }
 
@@ -332,5 +337,6 @@ export function createAllTools(cwd: string, options?: ToolsOptions): Record<stri
 		enter_worktree: enterWorktreeTool,
 		exit_worktree: exitWorktreeTool,
 		model_speed_probe: modelSpeedProbeTool,
+		web_fetch: webFetchTool,
 	};
 }
