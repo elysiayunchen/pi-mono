@@ -1223,7 +1223,7 @@ export class AgentSession {
 				"- Project-level skills and CLAUDE.md are available\n" +
 				"- Focus purely on the coding task at hand\n" +
 				"- Call exit_code_mode when finished to return to normal mode";
-	}
+		}
 
 		return systemPrompt;
 	}
@@ -1403,14 +1403,17 @@ export class AgentSession {
 		// Built-in /code command: enter code mode directly
 		if (commandName === "code") {
 			this.setCodeMode(true);
-			this._emit({ type: "message_end", message: {
-				role: "custom",
-				customType: "code_mode",
-				content: "Code Mode activated. Use /exit to return to normal mode.",
-				display: "always",
-				details: { action: "enter_code_mode" },
-				timestamp: Date.now(),
-			} as any });
+			this._emit({
+				type: "message_end",
+				message: {
+					role: "custom",
+					customType: "code_mode",
+					content: "Code Mode activated. Use /exit to return to normal mode.",
+					display: "always",
+					details: { action: "enter_code_mode" },
+					timestamp: Date.now(),
+				} as any,
+			});
 			return true;
 		}
 
@@ -1418,14 +1421,17 @@ export class AgentSession {
 		if (commandName === "exit") {
 			if (this.getCodeMode()) {
 				this.setCodeMode(false);
-				this._emit({ type: "message_end", message: {
-					role: "custom",
-					customType: "code_mode",
-					content: "Exited Code Mode. Returned to normal assistant mode.",
-					display: "always",
-					details: { action: "exit_code_mode" },
-					timestamp: Date.now(),
-				} as any });
+				this._emit({
+					type: "message_end",
+					message: {
+						role: "custom",
+						customType: "code_mode",
+						content: "Exited Code Mode. Returned to normal assistant mode.",
+						display: "always",
+						details: { action: "exit_code_mode" },
+						timestamp: Date.now(),
+					} as any,
+				});
 				return true;
 			}
 			// If not in code mode, fall through to extension commands

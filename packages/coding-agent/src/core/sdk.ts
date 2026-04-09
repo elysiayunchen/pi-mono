@@ -15,7 +15,6 @@ import { findInitialModel } from "./model-resolver.js";
 import { rateLimitScheduler } from "./rate-limit-scheduler.js";
 import type { ResourceLoader } from "./resource-loader.js";
 import { DefaultResourceLoader } from "./resource-loader.js";
-import { getCodeSessionDir } from "./code-session-dir.js";
 import { getDefaultSessionDir, SessionManager } from "./session-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { time } from "./timings.js";

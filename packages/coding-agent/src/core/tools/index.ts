@@ -22,21 +22,21 @@ export {
 	editToolDefinition,
 } from "./edit.js";
 export {
-	enterPlanModeTool,
-	enterPlanModeToolDefinition,
-} from "./enter-plan-mode.js";
-export {
-	exitPlanModeTool,
-	exitPlanModeToolDefinition,
-} from "./exit-plan-mode.js";
-export {
 	enterCodeModeTool,
 	enterCodeModeToolDefinition,
 } from "./enter-code-mode.js";
 export {
+	enterPlanModeTool,
+	enterPlanModeToolDefinition,
+} from "./enter-plan-mode.js";
+export {
 	exitCodeModeTool,
 	exitCodeModeToolDefinition,
 } from "./exit-code-mode.js";
+export {
+	exitPlanModeTool,
+	exitPlanModeToolDefinition,
+} from "./exit-plan-mode.js";
 export { withFileMutationQueue } from "./file-mutation-queue.js";
 export {
 	createFindTool,
@@ -116,10 +116,10 @@ import {
 	createBashToolDefinition,
 } from "./bash.js";
 import { createEditTool, createEditToolDefinition, editTool, editToolDefinition } from "./edit.js";
-import { enterPlanModeTool, enterPlanModeToolDefinition } from "./enter-plan-mode.js";
-import { exitPlanModeTool, exitPlanModeToolDefinition } from "./exit-plan-mode.js";
 import { enterCodeModeTool, enterCodeModeToolDefinition } from "./enter-code-mode.js";
+import { enterPlanModeTool, enterPlanModeToolDefinition } from "./enter-plan-mode.js";
 import { exitCodeModeTool, exitCodeModeToolDefinition } from "./exit-code-mode.js";
+import { exitPlanModeTool, exitPlanModeToolDefinition } from "./exit-plan-mode.js";
 import { createFindTool, createFindToolDefinition, findTool, findToolDefinition } from "./find.js";
 import { createGrepTool, createGrepToolDefinition, grepTool, grepToolDefinition } from "./grep.js";
 import { createLsTool, createLsToolDefinition, lsTool, lsToolDefinition } from "./ls.js";
@@ -147,7 +147,10 @@ export { teamDeleteTool, teamDeleteToolDefinition } from "./team-delete.js";
 export { teamListTool, teamListToolDefinition } from "./team-list.js";
 export { undoActionTool, undoActionToolDefinition } from "./undo-action.js";
 
+import { enterWorktreeTool, enterWorktreeToolDefinition } from "./enter-worktree.js";
+import { exitWorktreeTool, exitWorktreeToolDefinition } from "./exit-worktree.js";
 import { fileHistoryListTool, fileHistoryListToolDefinition } from "./file-history-list.js";
+import { modelSpeedProbeTool, modelSpeedProbeToolDefinition } from "./model-speed-probe.js";
 import { sendMessageTool, sendMessageToolDefinition } from "./send-message.js";
 import { taskAssignTool, taskAssignToolDefinition } from "./task-assign.js";
 import { taskListTool, taskListToolDefinition } from "./task-list.js";
@@ -159,10 +162,6 @@ import { teamListTool, teamListToolDefinition } from "./team-list.js";
 import { todoWriteTool, todoWriteToolDefinition } from "./todo-write.js";
 import { undoActionTool, undoActionToolDefinition } from "./undo-action.js";
 import { createWriteTool, createWriteToolDefinition, writeTool, writeToolDefinition } from "./write.js";
-import { enterWorktreeTool, enterWorktreeToolDefinition } from "./enter-worktree.js";
-import { exitWorktreeTool, exitWorktreeToolDefinition } from "./exit-worktree.js";
-import { modelSpeedProbeTool, modelSpeedProbeToolDefinition } from "./model-speed-probe.js";
-import { webFetchTool, webFetchToolDefinition } from "./web-fetch.js";
 
 export type Tool = AgentTool<any>;
 export type ToolDef = ToolDefinition<any, any>;
@@ -335,4 +334,3 @@ export function createAllTools(cwd: string, options?: ToolsOptions): Record<stri
 		model_speed_probe: modelSpeedProbeTool,
 	};
 }
-

@@ -1,6 +1,6 @@
-import { fetch } from "undici";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
+import { fetch } from "undici";
 import type { ToolDefinition } from "../extensions/types.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 
@@ -21,7 +21,7 @@ const webFetchSchema = Type.Object({
 	),
 	maxChars: Type.Optional(
 		Type.Number({
-			description: "Maximum characters to return (default " + DEFAULT_MAX_CHARS + ").",
+			description: `Maximum characters to return (default ${DEFAULT_MAX_CHARS}).`,
 			minimum: 100,
 		}),
 	),
@@ -56,7 +56,10 @@ function htmlToText(html: string): { title?: string; content: string } {
 		.replace(/&gt;/g, ">")
 		.replace(/&quot;/g, '"')
 		.replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)));
-	text = text.replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+	text = text
+		.replace(/[ \t]+/g, " ")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
 
 	return { title, content: text };
 }
@@ -68,7 +71,7 @@ async function doFetch(input: WebFetchInput): Promise<AgentToolResult<undefined>
 	try {
 		parsed = new URL(url);
 	} catch {
-		return err('Error: Invalid URL "' + url + '".');
+		return err(`Error: Invalid URL "${url}".`);
 	}
 	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
 		return err("Error: Only HTTP/HTTPS URLs are supported.");
@@ -87,13 +90,13 @@ async function doFetch(input: WebFetchInput): Promise<AgentToolResult<undefined>
 		clearTimeout(timer);
 		contentType = res.headers.get("content-type") ?? "";
 		if (!res.ok) {
-			return err("Error: HTTP " + res.status + " " + res.statusText + " for " + url);
+			return err(`Error: HTTP ${res.status} ${res.statusText} for ${url}`);
 		}
 		rawText = await res.text();
 	} catch (e: unknown) {
 		clearTimeout(timer);
 		const msg = e instanceof Error ? e.message : String(e);
-		return err("Error fetching " + url + ": " + msg);
+		return err(`Error fetching ${url}: ${msg}`);
 	}
 
 	let title: string | undefined;
@@ -107,14 +110,14 @@ async function doFetch(input: WebFetchInput): Promise<AgentToolResult<undefined>
 	}
 
 	if (content.length > maxChars) {
-		content = content.slice(0, maxChars) + "\n\n[... truncated at " + maxChars + " chars]";
+		content = `${content.slice(0, maxChars)}\n\n[... truncated at ${maxChars} chars]`;
 	}
 
-	const headerParts: string[] = ["URL: " + url];
-	if (title) headerParts.push("Title: " + title);
-	if (prompt) headerParts.push("Query: " + prompt);
+	const headerParts: string[] = [`URL: ${url}`];
+	if (title) headerParts.push(`Title: ${title}`);
+	if (prompt) headerParts.push(`Query: ${prompt}`);
 	headerParts.push("---");
-	return ok(headerParts.join("\n") + "\n\n" + content);
+	return ok(`${headerParts.join("\n")}\n\n${content}`);
 }
 
 const webFetchDefinition: ToolDefinition<typeof webFetchSchema, undefined> = {
@@ -133,7 +136,6 @@ const webFetchDefinition: ToolDefinition<typeof webFetchSchema, undefined> = {
 	},
 };
 
-export const webFetchToolDefinition: ToolDefinition<typeof webFetchSchema, undefined> =
-	webFetchDefinition;
+export const webFetchToolDefinition: ToolDefinition<typeof webFetchSchema, undefined> = webFetchDefinition;
 
 export const webFetchTool: AgentTool<typeof webFetchSchema> = wrapToolDefinition(webFetchDefinition);

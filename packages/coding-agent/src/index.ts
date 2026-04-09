@@ -260,22 +260,24 @@ export {
 	type EditToolOptions,
 	editTool,
 	editToolDefinition,
-	enterPlanModeTool,
-	enterPlanModeToolDefinition,
 	enterCodeModeTool,
 	enterCodeModeToolDefinition,
+	enterPlanModeTool,
+	enterPlanModeToolDefinition,
 	enterWorktreeTool,
 	enterWorktreeToolDefinition,
-	exitPlanModeTool,
-	exitPlanModeToolDefinition,
 	exitCodeModeTool,
 	exitCodeModeToolDefinition,
+	exitPlanModeTool,
+	exitPlanModeToolDefinition,
 	exitWorktreeTool,
 	exitWorktreeToolDefinition,
 	type FindOperations,
 	type FindToolDetails,
 	type FindToolInput,
 	type FindToolOptions,
+	fileHistoryListTool,
+	fileHistoryListToolDefinition,
 	findTool,
 	findToolDefinition,
 	formatSize,
@@ -291,6 +293,8 @@ export {
 	type LsToolOptions,
 	lsTool,
 	lsToolDefinition,
+	modelSpeedProbeTool,
+	modelSpeedProbeToolDefinition,
 	type ReadOperations,
 	type ReadToolDetails,
 	type ReadToolInput,
@@ -324,15 +328,11 @@ export {
 	teamListToolDefinition,
 	todoWriteTool,
 	todoWriteToolDefinition,
-	undoActionTool,
-	undoActionToolDefinition,
-	fileHistoryListTool,
-	fileHistoryListToolDefinition,
-	modelSpeedProbeTool,
-	modelSpeedProbeToolDefinition,
 	truncateHead,
 	truncateLine,
 	truncateTail,
+	undoActionTool,
+	undoActionToolDefinition,
 	type WriteOperations,
 	type WriteToolInput,
 	type WriteToolOptions,
@@ -340,6 +340,7 @@ export {
 	writeTool,
 	writeToolDefinition,
 } from "./core/tools/index.js";
+export { webFetchTool, webFetchToolDefinition } from "./core/tools/web-fetch.js";
 // Main entry point
 export { main } from "./main.js";
 // Run modes for programmatic SDK usage
@@ -405,4 +406,3 @@ export { copyToClipboard } from "./utils/clipboard.js";
 export { parseFrontmatter, stripFrontmatter } from "./utils/frontmatter.js";
 // Shell utilities
 export { getShellConfig } from "./utils/shell.js";
-export { webFetchTool, webFetchToolDefinition } from "./core/tools/web-fetch.js";
