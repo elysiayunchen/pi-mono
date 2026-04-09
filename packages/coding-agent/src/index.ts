@@ -152,7 +152,7 @@ export { type FileBackup, type FileSnapshot, getFileHistory } from "./core/file-
 export type { ReadonlyFooterDataProvider } from "./core/footer-data-provider.js";
 export { convertToLlm } from "./core/messages.js";
 export { ModelRegistry } from "./core/model-registry.js";
-export { ModelRouterOptions, ModelRoutingDecision, selectOptimalModel } from "./core/model-router.js";
+export { type ModelRouterOptions, type ModelRoutingDecision, selectOptimalModel } from "./core/model-router.js";
 export type {
 	PackageManager,
 	PathMetadata,
@@ -191,7 +191,7 @@ export {
 	// Pre-built tools (use process.cwd())
 	readOnlyTools,
 } from "./core/sdk.js";
-export { getSessionLearner, LearningData, SessionLearner, TaskPattern } from "./core/session-learner.js";
+export { getSessionLearner, type LearningData, SessionLearner, type TaskPattern } from "./core/session-learner.js";
 export {
 	type BranchSummaryEntry,
 	buildSessionContext,

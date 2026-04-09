@@ -1245,12 +1245,15 @@ export class AgentSession {
 		const expandPromptTemplates = options?.expandPromptTemplates ?? true;
 		setCurrentSessionId(this.sessionId);
 
-		// [P1-B] CLAUDE.md lazy-load: prepend project memory to user text
-		const _cwd = process.cwd();
-		const _claudeMdContent = await loadClaudeMd(_cwd);
-		if (_claudeMdContent) {
-			const _memHeader = `<project-memory>\n${_claudeMdContent}\n</project-memory>\n\n`;
-			text = _memHeader + text;
+		// Skip for extension-origin messages
+		if (options?.source !== "extension") {
+			// [P1-B] CLAUDE.md lazy-load: prepend project memory to user text
+			const _cwd = process.cwd();
+			const _claudeMdContent = await loadClaudeMd(_cwd);
+			if (_claudeMdContent) {
+				const _memHeader = `<project-memory>\n${_claudeMdContent}\n</project-memory>\n\n`;
+				text = _memHeader + text;
+			}
 		}
 		initTeammateRunner(this.sessionId, this._modelRegistry, () => this.model);
 		initAutonomousRunner(this.sessionId, (msg) => this.injectNotification(msg));

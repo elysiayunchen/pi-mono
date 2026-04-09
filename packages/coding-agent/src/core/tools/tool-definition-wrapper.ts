@@ -14,6 +14,18 @@ export function wrapToolDefinition<TDetails = unknown>(
 		prepareArguments: definition.prepareArguments,
 		execute: (toolCallId, params, signal, onUpdate) =>
 			definition.execute(toolCallId, params, signal, onUpdate, ctxFactory?.() as ExtensionContext),
+	} as AgentTool<any, TDetails> & {
+		isEnabled: () => boolean;
+		isConcurrencySafe: (input: any) => boolean;
+		isReadOnly: (input: any) => boolean;
+		isDestructive: (input: any) => boolean;
+		checkPermissions: (input: any, ctx: any) => Promise<any>;
+		validateInput: (input: any, ctx: any) => Promise<any>;
+		getPath: (input: any) => string | undefined;
+		preparePermissionMatcher: (input: any) => Promise<(pattern: string) => boolean>;
+		getToolUseSummary: (input: any) => string | null;
+		getActivityDescription: (input: any) => string | null;
+		toAutoClassifierInput: (input: any) => unknown;
 	};
 }
 

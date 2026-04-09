@@ -47,6 +47,7 @@ import type { ReadonlyFooterDataProvider } from "../footer-data-provider.js";
 import type { KeybindingsManager } from "../keybindings.js";
 import type { CustomMessage } from "../messages.js";
 import type { ModelRegistry } from "../model-registry.js";
+import type { PermissionResult } from "../permissions/rule-engine.js";
 import type {
 	BranchSummaryEntry,
 	CompactionEntry,
@@ -402,6 +403,42 @@ export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = un
 		theme: Theme,
 		context: ToolRenderContext<TState, Static<TParams>>,
 	) => Component;
+
+	/** Dynamic enable/disable. Defaults to true. */
+	isEnabled?: () => boolean;
+
+	/** Parallel-safe? Defaults to false. */
+	isConcurrencySafe?: (input: Static<TParams>) => boolean;
+
+	/** Read-only? Defaults to false. */
+	isReadOnly?: (input: Static<TParams>) => boolean;
+
+	/** Destructive? Defaults to false. */
+	isDestructive?: (input: Static<TParams>) => boolean;
+
+	/** Permission check. Defaults to allow. */
+	checkPermissions?: (input: Static<TParams>, ctx: ExtensionContext) => Promise<PermissionResult>;
+
+	/** Input validation. */
+	validateInput?: (
+		input: Static<TParams>,
+		ctx: ExtensionContext,
+	) => Promise<{ valid: boolean; error?: string } | undefined>;
+
+	/** Extract file path for permission matching. */
+	getPath?: (input: Static<TParams>) => string;
+
+	/** Hook pattern matcher. */
+	preparePermissionMatcher?: (input: Static<TParams>) => Promise<(pattern: string) => boolean>;
+
+	/** Compact summary. */
+	getToolUseSummary?: (input: Partial<Static<TParams>>) => string | null;
+
+	/** Spinner activity text. */
+	getActivityDescription?: (input: Partial<Static<TParams>>) => string | null;
+
+	/** Security classifier input. */
+	toAutoClassifierInput?: (input: Static<TParams>) => unknown;
 }
 
 // ============================================================================
