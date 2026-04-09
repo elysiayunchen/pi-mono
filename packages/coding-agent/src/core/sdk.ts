@@ -15,6 +15,7 @@ import { findInitialModel } from "./model-resolver.js";
 import { rateLimitScheduler } from "./rate-limit-scheduler.js";
 import type { ResourceLoader } from "./resource-loader.js";
 import { DefaultResourceLoader } from "./resource-loader.js";
+import { getCodeSessionDir } from "./code-session-dir.js";
 import { getDefaultSessionDir, SessionManager } from "./session-manager.js";
 import { SettingsManager } from "./settings-manager.js";
 import { time } from "./timings.js";
@@ -94,6 +95,10 @@ export interface CreateAgentSessionOptions {
 	 * Equivalent to openclaw --continue.
 	 */
 	continueRecent?: boolean;
+	/**
+	 * Enter Code Mode: isolated session directory, no user memory loaded.
+	 */
+	codeMode?: boolean;
 	/**
 	 * Open a specific session file by path.
 	 * Takes precedence over continueRecent.
@@ -215,8 +220,8 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		if (options.sessionPath) {
 			// Resume specific session by file path
 			sessionManager = SessionManager.open(options.sessionPath);
-		} else if (options.continueRecent) {
-			// Continue most recent session for this cwd
+		} else if (options.continueRecent && !options.codeMode) {
+			// Continue most recent session for this cwd (not in code mode)
 			sessionManager = SessionManager.continueRecent(cwd, getDefaultSessionDir(cwd, agentDir));
 		} else {
 			// Default: new session
@@ -293,6 +298,8 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		"write",
 		"enter_plan_mode",
 		"exit_plan_mode",
+		"enter_code_mode",
+		"exit_code_mode",
 		"todo_write",
 		"task_create",
 		"task_get",

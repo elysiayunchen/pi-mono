@@ -19,7 +19,7 @@
 
 ElysiaClaw **is not** the upstream OpenClaw. It is a personal AI assistant platform built on top of the pi-mono agent SDK, with extensive custom extensions implementing the full 12-layer Claude Code-inspired agent architecture.
 
-**Code Mode**: An independent Claude Code-style coding mode. Users switch in via `/code`, with full 12-layer mechanism replication and environment isolation (no user memory, global skills, or global hooks). Type `/exit` to return to normal mode.
+**Code Mode**: An independent Claude Code-style coding mode. Users switch in via `/code`, with full 12-layer mechanism replication and environment isolation (no user memory, global skills, or global hooks). Type `/exit` to return to normal mode. Phase 0 minimum viable patch implemented in `attempt.ts` (2026-04-05).
 
 ---
 
@@ -42,7 +42,47 @@ Source is available locally for reference — no SSH to Windows needed.
 
 ---
 
-## 3. Deployment Architecture
+## 3. Project Architecture — Two-Project Structure
+
+elysiaclaw = 房子（应用层），pi-coding-agent = 地基（底层框架）
+
+elysiaclaw 自己实现的：
+- 渠道适配：Telegram, WhatsApp, Discord, Slack
+- 应用层工具：exec, process, web_fetch, web_search, browser, canvas, nodes, cron, message, memory, image, tts, sessions
+- Gateway 控制平面 + 配置系统 + 安全策略
+
+pi-coding-agent 提供的：
+- Agent 核心循环 + Session 管理 + LLM API 统一接口 + 上下文压缩
+- 基础工具：read, write, edit, bash, grep, find, ls
+- 12 层扩展：Team, Task, Worktree, Background, Autonomous, Plan Mode, Code Mode
+- P 系列补丁：RateLimitScheduler, FileHistory, PreToolUse Hooks
+
+Tool Registration 四层：
+Layer 1: pi-coding-agent 定义 allTools
+Layer 2: elysiaclaw 导入 pi-tools.ts
+Layer 3: elysiaclaw 可见 tool-catalog.ts
+Layer 4: 配置允许 tools.allow
+
+Current Tool Gap — 已全部修复 (2026-04-09, PITFALLS.md #56)：
+- grep, find, ls ✅
+- enter_plan_mode, exit_plan_mode ✅
+- enter_code_mode, exit_code_mode ✅
+- todo_write ✅
+- enter_worktree, exit_worktree ✅
+- undo_last_action, file_history_list ✅
+- model_speed_probe ✅
+- task_assign ✅
+- web_search ✅
+
+Where to Develop：
+- 应用层工具 → elysiaclaw
+- 补全工具注册 → elysiaclaw
+- 修改 Agent 循环/压缩/调度 → pi-coding-agent
+- 新增消息渠道 → elysiaclaw
+
+---
+
+## 4. Deployment Architecture
 
 ```
 Telegram (@ElysiaClaw_Bot)
@@ -82,11 +122,11 @@ Gateway (ws://100.111.4.5:18789, bind=lan, mode=local)
 | `~/.pi/agent/learning/patterns.json` | SessionLearner output |
 | `~/.pi/agent/hooks/` | PreToolUse shell hooks |
 | `~/.pi/agent/costs.json` | TUI cost tracking |
-| `~/.pi/agent/code-sessions/` | Code Mode session files (isolated from user sessions) |
+| `~/.pi/agent/code-sessions/` | Code Mode session files (planned, not yet implemented) |
 
 ---
 
-## 4. Agents & Providers
+## 5. Agents & Providers
 
 | Agent | Role | Default Model |
 |---|---|---|
@@ -104,7 +144,7 @@ Gateway (ws://100.111.4.5:18789, bind=lan, mode=local)
 
 ---
 
-## 5. Build & Deploy
+## 6. Build & Deploy
 
 ### Build
 ```bash
@@ -136,23 +176,21 @@ cd ~/pi-mono && ./deploy.sh
 
 ---
 
-## 6. Working Rules for AI Assistants
+## 7. Working Rules for AI Assistants
 
-1. **Read source before writing** — always `cat` / `grep` the actual file before patching
-2. **Write files via Python scripts** — never heredoc in bash (truncation risk, see Pitfall #1)
-3. **Use `str.replace()` not `sed`** — sed has 3-layer escaping hell in bash (Pitfall #2)
-4. **Check exports after adding tools** — every new tool needs explicit entry in `packages/coding-agent/src/index.ts` (Pitfall #16, #23)
-5. **Distinguish TUI vs Bot paths** — TUI uses `createPiCodingTools`, Bot uses `createElysiaClawCodingTools` (Pitfall #17)
-6. **PowerShell: always `curl.exe`**, never `curl` — aliased differently on Windows
-7. **YAML config is indent-sensitive** — wrong indentation silently breaks gateway (Pitfall #30)
-8. **After `deploy.sh`, verify gateway responds** — `elysiaclaw status` / check Telegram
-9. **Code Mode tools — no feature cuts** — replicate all Claude Code mechanisms, only isolate environment
-10. **Code Mode sessions — separate directory** — `~/.pi/agent/code-sessions/`, never mix with user sessions
-11. **Bot/TUI dual path** — Code Mode tools must be registered in both `createPiCodingTools` and `createElysiaClawCodingTools`
+1. Read source before writing — cat/grep first
+2. Write files via Python — never heredoc (Pitfall #1)
+3. Use str.replace() not sed (Pitfall #2)
+4. Tool registration: four layers must match (Pitfall #51)
+5. Bot vs TUI: different tool paths (Pitfall #17/#54)
+6. YAML indent-sensitive (Pitfall #30)
+7. After deploy verify gateway (Pitfall #22b)
+8. pnpm=elysiaclaw, npm=pi-mono, never mix (Pitfall #49/#52)
+9. elysiaclaw build needs manual deploy to global (Pitfall #53)
 
 ---
 
-## 7. Key Source File Index
+## 8. Key Source File Index
 
 | File | Role |
 |---|---|
@@ -180,7 +218,7 @@ cd ~/pi-mono && ./deploy.sh
 
 ---
 
-## 8. Version Compatibility Matrix
+## 9. Version Compatibility Matrix
 
 | Package | Version | Status |
 |---|---|---|
@@ -193,7 +231,7 @@ cd ~/pi-mono && ./deploy.sh
 
 ---
 
-## 9. Test Baselines
+## 10. Test Baselines
 
 | Package | Result |
 |---|---|
@@ -205,7 +243,24 @@ Any regression below these numbers in a PR/sprint is a blocker.
 
 ---
 
-## 10. Writing Convention (Long-Term Default)
+## 11. Documentation File Paths
+
+All AI handoff documents live in a single directory:
+
+~/pi-mono/elysiaclaw_engine/
+├── ARCHITECTURE.md
+├── CLAUD-CODE-COMPARISON.md
+├── PITFALLS.md
+├── README.md
+├── ROADMAP.md
+├── SPRINT.md
+└── SYSTEM.md ← you are here
+
+**Important**: This directory is NOT at the project root (`~/pi-mono/`). It is inside `elysiaclaw_engine/`. Always use this path when reading or updating documentation.
+
+---
+
+## 12. Writing Convention (Long-Term Default)
 
 - **Documentation / explanatory text**: Chinese (中文)
 - **Code, rules, instructions, checklists, configs**: English
@@ -213,4 +268,4 @@ Any regression below these numbers in a PR/sprint is a blocker.
 
 ---
 
-*Last updated: 2026-04-07. Code Mode architecture planning added. Next update trigger: new sprint completion or architecture change.*
+*Last updated: 2026-04-05. Architecture optimization sprint completed — 4 BUG fixes, deploy guards, doc normalization. Code Mode Phase 0 MVP in place. Next: Code Mode full framework or P3-C ScheduleCronTool.*

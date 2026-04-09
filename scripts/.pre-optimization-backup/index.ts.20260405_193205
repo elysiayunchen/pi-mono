@@ -324,12 +324,6 @@ export {
 	teamListToolDefinition,
 	todoWriteTool,
 	todoWriteToolDefinition,
-	undoActionTool,
-	undoActionToolDefinition,
-	fileHistoryListTool,
-	fileHistoryListToolDefinition,
-	modelSpeedProbeTool,
-	modelSpeedProbeToolDefinition,
 	truncateHead,
 	truncateLine,
 	truncateTail,
@@ -405,4 +399,3 @@ export { copyToClipboard } from "./utils/clipboard.js";
 export { parseFrontmatter, stripFrontmatter } from "./utils/frontmatter.js";
 // Shell utilities
 export { getShellConfig } from "./utils/shell.js";
-export { webFetchTool, webFetchToolDefinition } from "./core/tools/web-fetch.js";

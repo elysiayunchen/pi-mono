@@ -5,6 +5,11 @@
 
 ---
 
+## 文档位置
+
+~/pi-mono/elysiaclaw_engine/ ← 所有文档在此目录下
+
+
 ## 文档导航
 
 | 文档 | 用途 | 更新频率 |
@@ -32,7 +37,7 @@
 
 ## 项目一句话描述
 
-ElysiaClaw = **pi-mono** (agent 底层) + **OpenClaw** (多渠道 Gateway) + **12 层 Claude Code 风格 Agent 框架**（ElysiaClaw 自研扩展）
+ElysiaClaw = **elysiaclaw**（应用层 + 渠道 + Gateway）+ **pi-coding-agent**（底层 Agent 框架 + 12 层扩展）
 
 运行在 `elysiaserver` (Ubuntu 24.04)，通过 Tailscale + Telegram bot `@ElysiaClaw_Bot` 与用户交互。
 
@@ -40,19 +45,19 @@ ElysiaClaw = **pi-mono** (agent 底层) + **OpenClaw** (多渠道 Gateway) + **1
 
 ## 两个上游项目简介
 
-### pi-mono（底层框架）
-- 作者：Mario Zechner (badlogic)
-- GitHub: https://github.com/badlogic/pi-mono
-- 定位：极简主义 AI agent toolkit，核心理念 "One loop & Bash is all you need"
-- 提供：agent loop、统一 LLM API (20+ 提供商)、TUI 框架、SDK
-- ElysiaClaw 使用其 SDK 层 (`@mariozechner/pi-coding-agent`) 并在其上扩展
+### elysiaclaw（主项目，开发目标）
+- 位置：~/pi-mono/elysiaclaw/
+- 定位：多渠道个人 AI 助手平台
+- 提供：Telegram/WhatsApp/Discord 等 20+ 渠道、web_fetch/web_search/cron/browser 等应用层工具、Gateway 控制平面
+- 构建：cd ~/pi-mono/elysiaclaw && pnpm build
+- 部署：cp -r dist/* ~/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw/dist/
 
-### OpenClaw（应用层框架）
-- 作者：Peter Steinberger 及社区
-- GitHub: https://github.com/openclaw/openclaw
-- 定位：基于 pi-mono 的多渠道个人 AI 助手（Telegram/WhatsApp/Slack/Discord 等 20+ 渠道）
-- 核心：Gateway 控制平面（WS :18789）+ 渠道适配器
-- ElysiaClaw 从 v2026.3.13 fork，之后独立维护，不同步上游
+### pi-coding-agent（底层框架）
+- 位置：~/pi-mono/packages/coding-agent/
+- 定位：极简主义 AI agent toolkit，核心理念 "One loop & Bash is all you need"
+- 提供：Agent 循环、统一 LLM API (20+ 提供商)、工具框架、12 层扩展
+- 构建：cd ~/pi-mono && npm run build
+- 部署：cd ~/pi-mono && ./deploy.sh
 
 ---
 
@@ -60,11 +65,16 @@ ElysiaClaw = **pi-mono** (agent 底层) + **OpenClaw** (多渠道 Gateway) + **1
 
 1. 写文件 → Python 脚本，不用 heredoc
 2. 字符串替换 → Python str.replace()，不用 sed
-3. 新增工具 → 检查 `src/index.ts` 导出
+3. 新增工具 → 检查 `src/index.ts` 导出 + `tools/index.ts` allTools + deploy.sh Guard 3
 4. deploy 后 → 验证 gateway 响应
 5. 修改 YAML → 用 Python 验证缩进
 6. 读代码再写代码 → cat/grep 先行
+7. Code Mode 工具不裁剪 → 复刻全部 Claude Code 机制
+8. Code Mode session → `~/.pi/agent/code-sessions/`，不混用
+9. Bot/TUI 双路径 → Code Mode 工具必须两处都注册
+
+完整规则见 [SYSTEM.md §6](./SYSTEM.md)
 
 ---
 
-*文档版本：2026-04-07*
+*文档版本：2026-04-09（架构审计后）*

@@ -1,0 +1,12 @@
+channels:
+  telegram:
+    enabled: true
+    botToken: "8724502364:AAGtJ3g5OVrojBpD_IFRYT21JH4ClNEsmXc"
+    dmPolicy: "pairing"
+    groupPolicy: "open"
+
+workspace:
+  path: "/home/elysia/.elysiaclaw/workspace"
+
+gateway:
+  mode: lan

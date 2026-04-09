@@ -267,38 +267,181 @@ with open(path, "w") as f:
 
 ---
 
+
+### #37 — Python 补丁脚本重复应用
+**现象**: Python 脚本的 `str.replace()` marker 匹配了两次（第一次是旧补丁残留，第二次是新补丁），导致代码块重复出现，`const CODE_MODE_PROMPT` 被声明两次，TypeScript 编译报错
+**根因**: 旧补丁没有完全清理干净，marker 仍然存在于文件中，第二次替换又匹配了一次
+**解决**: `git checkout` 恢复文件后重新用 Python 干净应用补丁
+**预防**: 补丁脚本应该在替换前检查目标是否已经被替换过（如检查 `CODE_MODE_PROMPT` 是否已存在）
+
+---
+
+### #38 — DTS 类型错误阻塞完整构建
+**现象**: `pnpm build` 在 `build:plugin-sdk:dts` 阶段报 4 个 TS 错误（compaction.ts / compaction-safeguard.ts / model-discovery.ts / skills/config.ts），导致整个构建失败
+**根因**: 这些是 elysiaclaw 与 pi-mono 0.64 API 的预存类型不匹配，不是我们引入的
+**解决**: 绕过 `pnpm build`，直接运行 `node scripts/tsdown-build.mjs` + 手动跑剩余构建步骤
+**预防**: 考虑修复这 4 个类型错误，或在 `build:plugin-sdk:dts` 增加 `--skipLibCheck`
+
+---
+
+### #39 — elysiaclaw 自建 system prompt 不使用 agent-session 的 _buildSystemPrompt
+**现象**: 在 agent-session.ts 的 `_buildSystemPrompt` 里注入 CODE MODE ACTIVE 段，但 Bot 模式下 LLM 仍然以普通模式回复
+**根因**: elysiaclaw 的 `attempt.ts` 自己通过 `createSystemPromptOverride()` 构建 system prompt，然后用 `applySystemPromptOverrideToSession()` 覆盖 agent session 的 system prompt。agent session 的 `_buildSystemPrompt` 返回值被覆盖掉了
+**解决**: 在 `attempt.ts` 里直接检测 `/code` 和 `/exit`，注入 code mode system prompt 到 `systemPromptText`，同时改变 `effectivePrompt` 为友好消息
+**关键文件**: `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`
+**预防**: 理解 Bot 模式和 TUI 模式的 system prompt 构建路径不同（Pitfall #25 的延伸）
+
+---
+
+### #40 — OpenRouter→阿里云路由劫持
+**现象**: OpenRouter 免费模型请求被静默路由到阿里云 Bailian 端点，响应头显示 provider 不一致，部分工具调用格式不兼容
+**根因**: OpenRouter 对某些免费模型启用了透明代理，实际执行模型与请求模型不同
+**解决**: 临时规避——在 `elysiaclaw.json` 中对受影响模型添加 `baseUrl` 直连阿里云，绕过 OpenRouter 路由层
+**状态**: 根因未修，规避方案稳定运行中
+**影响文件**: `~/.elysiaclaw/elysiaclaw.json`（agents 段 baseUrl 配置）
+
+---
+
+### #41 — config.yaml 结构性损坏导致 gateway 启动报错
+**现象**: gateway 启动时报 schema 校验错误，字段缺失或类型不匹配
+**根因**: 手动编辑 config.yaml 时引入了结构错误（嵌套层级错误或非法字段值）
+**解决**: 用 `python3 -c "import yaml; print(yaml.safe_load(open('/home/elysia/.elysiaclaw/config.yaml').read()))"` 验证，对照错误信息逐字段修正
+**预防**: deploy.sh Guard 1 已加入 config.yaml 校验；修改 YAML 后必须先验证再重启
+
+---
+
+### #42 — Telegram inline keyboard / 富文本渲染限制
+**现象**: 某些 Markdown 格式（如嵌套列表、代码块内特殊字符）在 Telegram 消息中渲染异常或被截断
+**根因**: Telegram Bot API 的 MarkdownV2 模式对特殊字符（`_`, `*`, `[`, `]` 等）要求严格转义，未转义时消息发送失败
+**解决**: 使用 HTML 模式替代 MarkdownV2，或在发送前对特殊字符做完整转义
+**影响**: 影响 Bot 模式下所有富文本回复的格式化逻辑
+
+---
+
+### #49 — pnpm install 污染 npm workspace 依赖树
+**现象**: 在 pi-mono 根目录运行 `pnpm install` 后，`npm run build` 报大量 `@mariozechner/pi-agent-core@0.30.2` 相关类型错误，而正确版本是 0.64.0
+**根因**: pnpm 从 registry 拉取了旧版本放进 `node_modules/.pnpm/`，pods 包的 TypeScript 解析器找到了错误版本
+**解决**: `rm -rf node_modules && npm install` — 清掉 pnpm 引入的垃圾，恢复 npm workspace
+**预防**: pi-mono 的包管理器是 npm，**永远不要在根目录运行 pnpm install**；新增依赖用 `npm install --workspace=packages/coding-agent <pkg>`
+
+---
+### #43 — pi-coding-agent package.json 版本号未同步（原 #37 重编号）
+**现象**: deploy.sh 替换了 dist 目录但未更新 package.json，导致 package.json 仍显示 0.58.0
+**解决**: 2026-04-07 手动更新 package.json 版本号为 0.64.0
+**预防**: 考虑在 deploy.sh 中增加同步 package.json 版本号的步骤
+
+---
+
+### #44 — elysiaclaw status 显示 Tailscale off 但实际运行中（原 #38 重编号）
+**现象**: `elysiaclaw status` 显示 "Tailscale off"，但 `tailscale status` 确认 Tailscale active (IP 100.111.4.5)
+**原因**: elysiaclaw status 的 Tailscale 检测逻辑可能未正确识别运行状态
+**影响**: 文档记录需以 `tailscale status` 实际输出为准
+
+---
+
+### #45 — Session 文件存储在 tmp-pi-runtime-events 子目录（原 #39 重编号）
+**现象**: `~/.pi/agent/sessions/` 下的 .jsonl 文件位于 `--tmp-pi-runtime-events-*` 子目录中
+**说明**: 这是 pi-mono 的正常行为，session 文件按运行时事件目录组织
+**影响**: 查找 session 文件时需要递归搜索 `find ~/.pi/agent/sessions/ -name "*.jsonl"`
+
+---
+
+### #46 — allTools/createAllTools 缺少 worktree 和 model_speed_probe 工具
+**现象**: `tools/index.ts` 中 `enterWorktreeTool`、`exitWorktreeTool`、`modelSpeedProbeTool` 有 re-export 但从未加入 `allTools` 对象和 `createAllTools()` 返回值。`createAllTools()` 还额外缺少 `undoActionTool` 和 `fileHistoryListTool`。
+**影响**: 这些工具在 TUI 模式下通过 `allTools` 调用时不可用；通过 `createAllTools(cwd)` 创建的工具集不完整
+**根因**: 坑 #16/#23 的翻版 — 手动维护工具注册列表遗漏
+**解决**: 2026-04-05 架构优化 Sprint 中修复，allTools +3、createAllTools +5
+**预防**: deploy.sh 已加装 Guard 3（工具注册一致性检查）
+
+---
+
+### #47 — src/index.ts 缺少 undoAction/fileHistoryList/modelSpeedProbe re-export
+**现象**: `tools/index.ts` 已导出 `modelSpeedProbeTool/Definition`、`undoActionTool/Definition`、`fileHistoryListTool/Definition`，但 `src/index.ts`（Master tool export）未 re-export
+**影响**: 外部消费者（如 elysiaclaw.mjs bundle）无法通过 `@mariozechner/pi-coding-agent` 包导入这三对工具
+**解决**: 2026-04-05 架构优化 Sprint 中在 src/index.ts 追加 6 个 re-export
+**预防**: 同 #46
+
+---
+
+### #48 — config.yaml gateway.mode 仍为非法值 "lan"
+**现象**: 坑 #31 已明确记录 `gateway.mode` 只允许 `local` 或 `remote`，但 config.yaml 实际仍为 `lan`
+**影响**: gateway 行为可能不可预期
+**解决**: 2026-04-05 架构优化 Sprint 中修正为 `local`
+**预防**: deploy.sh Guard 1 已加入 config.yaml mode 值校验
+
+---
+
 ## 快速查找索引
 
 | 关键词 | 坑号 |
 |---|---|
 | heredoc / 文件写入 | #1, #20 |
 | sed / 字符串替换 | #2 |
-| TypeScript 类型错误 | #24 |
-| index.ts 导出 | #16, #23 |
-| bot 模式 / bundle | #25, #17 |
-| YAML 配置 | #30, #31, #32 |
-| patch / deploy | #11, #22b, #29, #36 |
+| TypeScript 类型错误 | #24, #38 |
+| index.ts 导出 | #16, #23, #46, #47 |
+| bot 模式 / bundle | #25, #17, #39 |
+| YAML 配置 | #30, #31, #32, #48 |
+| patch / deploy | #11, #22b, #29, #36, #37 |
 | symlink | #29, #35 |
 | 字段名猜测 | #26, #27 |
 | 包名迁移 | #29, #33, #34, #35, #36 |
+| system prompt 构建 | #39 |
+| code mode | #39 |
+| 版本号 / 一致性 | #43 |
+| Tailscale 状态 | #44 |
+| session 文件路径 | #45 |
+| 工具注册遗漏 | #46, #47 |
+| pnpm/npm 混用 | #49, #52 |
+| 工具注册四层遗漏 | #51 |
+| elysiaclaw 构建部署 | #53 |
+| Bot/TUI 工具路径 | #54 |
+| web_search API 密钥 | #55 |
+| 新工具 ToolDefinition 接口 | #50 |
+| pnpm/npm 混用 | #49, #52 |
+| 工具注册四层遗漏 | #51 |
+| elysiaclaw 构建部署 | #53 |
+| Bot/TUI 工具路径 | #54 |
+| web_search API 密钥 | #55 |
+| OpenRouter 路由 | #40 |
+| 配置文件损坏 | #41 |
+| Telegram UI | #42 |
 
 ---
 
-*记录截至 2026-04-07，坑 #36。下次遇到新坑从 #37 开始追加。*
+*记录截至 2026-04-09，坑 #55。下次遇到新坑从 #56 开始追加。*
 
+### #49 — Context Entropy in Dialog-based Coding
+**Phenomenon**: Frequent "Modify-Generate" cycles lead to hidden state accumulation in the context window.
+**Root Cause**: AI referencing outdated variable names or logic patterns from previous turns.
+**Prevention**: Every 5-10 turns, perform a "Context Reset" by summarizing progress and starting a fresh session.
 
-### #37 — pi-coding-agent package.json 版本号未同步
-**现象**: deploy.sh 替换了 dist 目录但未更新 package.json，导致 package.json 仍显示 0.58.0
-**解决**: 2026-04-07 手动更新 package.json 版本号为 0.64.0
-**预防**: 考虑在 deploy.sh 中增加同步 package.json 版本号的步骤
+### #50 — The "Vibe" vs. "Environment" Discrepancy
+**Phenomenon**: Code that works in Claude Artifacts/WebContainers fails in the real `elysiaserver`.
+**Root Cause**: Permission gates, environment variables, or specific Python async loops (OpenClaw) not being simulated in the browser.
+**Prevention**: Always treat Web-based output as "Prototype Only". Final validation must happen via `npm run build` and `deploy.sh`.
 
-### #38 — elysiaclaw status 显示 Tailscale off 但实际运行中
-**现象**: `elysiaclaw status` 显示 "Tailscale off"，但 `tailscale status` 确认 Tailscale active (IP 100.111.4.5)
-**原因**: elysiaclaw status 的 Tailscale 检测逻辑可能未正确识别运行状态
-**影响**: 文档记录需以 `tailscale status` 实际输出为准
-**解决**: 更新 SYSTEM.md 记录 Tailscale 为 active 状态
+### #51 — elysiaclaw tool registration four-layer gap
+**Phenomenon**: pi-coding-agent tools not available in Bot mode
+**Root Cause**: Tool needs four layers correct: pi-coding-agent define, pi-tools.ts import, tool-catalog.ts define, tools.allow
+**Missing**: grep, find, ls, plan_mode, code_mode, todo_write, worktree, file_history, model_speed_probe
+**Fix**: Check all four layers when adding tools
 
-### #39 — Session 文件存储在 tmp-pi-runtime-events 子目录
-**现象**: `~/.pi/agent/sessions/` 下的 .jsonl 文件位于 `--tmp-pi-runtime-events-*` 子目录中
-**说明**: 这是 pi-mono 的正常行为，session 文件按运行时事件目录组织
-**影响**: 查找 session 文件时需要递归搜索 `find ~/.pi/agent/sessions/ -name "*.jsonl"`
+### #52 — pnpm/npm mix causes dependency pollution
+**Phenomenon**: Running pnpm install in pi-mono root corrupts npm workspace
+**Fix**: rm -rf node_modules && npm install
+**Prevention**: pi-mono uses npm, elysiaclaw uses pnpm, never mix
+
+### #53 — elysiaclaw build needs manual deploy
+**Phenomenon**: pnpm build in elysiaclaw does not update global install
+**Fix**: cp -r dist/* to ~/.nvm/.../elysiaclaw/dist/
+**Prevention**: deploy.sh only handles pi-coding-agent
+
+### #54 — Bot vs TUI tool path difference
+**Phenomenon**: Tools available in TUI but not Bot (or vice versa)
+**Root Cause**: TUI uses createPiCodingTools, Bot uses createElysiaClawCodingTools
+**Fix**: Check both paths when adding tools
+
+### #55 — web_search needs API key
+**Phenomenon**: web_search registered but fails with missing API key
+**Fix**: Add BRAVE_API_KEY to ~/.elysiaclaw/.env or use OPENROUTER_API_KEY
+

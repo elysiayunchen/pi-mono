@@ -277,6 +277,7 @@ export class AgentSession {
 	// 规划模式状态
 	private _planMode: "default" | "plan" = "default";
 	private _coordinatorMode = false;
+	private _codeMode = false;
 	private _todos: Array<{
 		id: string;
 		description: string;
@@ -443,6 +444,14 @@ export class AgentSession {
 			if (toolCall.name === "exit_plan_mode") {
 				const confirmedPlan = (result.details as any)?.confirmedPlan ?? "";
 				this.setMode("default", confirmedPlan);
+			}
+
+			if (toolCall.name === "enter_code_mode") {
+				this.setCodeMode(true);
+			}
+
+			if (toolCall.name === "exit_code_mode") {
+				this.setCodeMode(false);
 			}
 
 			if (toolCall.name === "todo_write") {
@@ -958,6 +967,23 @@ export class AgentSession {
 		return this._coordinatorMode;
 	}
 
+	// =========================================================================
+	// Code Mode
+	// =========================================================================
+
+	/** Enable or disable code mode. Rebuilds the system prompt. */
+	setCodeMode(on: boolean): void {
+		if (this._codeMode === on) return;
+		this._codeMode = on;
+		this._baseSystemPrompt = this._rebuildSystemPrompt(this.getActiveToolNames());
+		this.agent.state.systemPrompt = this._baseSystemPrompt;
+	}
+
+	/** Whether code mode is currently active */
+	getCodeMode(): boolean {
+		return this._codeMode;
+	}
+
 	/**
 	 * Inject a task-notification into the host session.
 	 * Called by AutonomousRunner when a background teammate finishes.
@@ -1181,6 +1207,24 @@ export class AgentSession {
 				"### On Failure\n" +
 				"Use send_message with corrective instructions, then task_assign again.";
 		}
+		// Code mode injection
+		if (this._codeMode) {
+			systemPrompt +=
+				"\n\n## CODE MODE ACTIVE\n\n" +
+				"You are a focused coding assistant in Code Mode.\n\n" +
+				"### Your Role\n" +
+				"- Write clean, well-tested, production-quality code\n" +
+				"- Follow existing project patterns and conventions\n" +
+				"- Use read/write/edit/bash/grep/find/ls tools\n" +
+				"- Use todo_write to track multi-step work\n" +
+				"- Use enter_plan_mode for complex tasks before coding\n\n" +
+				"### Constraints\n" +
+				"- No user memory or chat history is loaded\n" +
+				"- Project-level skills and CLAUDE.md are available\n" +
+				"- Focus purely on the coding task at hand\n" +
+				"- Call exit_code_mode when finished to return to normal mode";
+	}
+
 		return systemPrompt;
 	}
 
@@ -1351,12 +1395,43 @@ export class AgentSession {
 	 * Try to execute an extension command. Returns true if command was found and executed.
 	 */
 	private async _tryExecuteExtensionCommand(text: string): Promise<boolean> {
-		if (!this._extensionRunner) return false;
-
 		// Parse command name and args
 		const spaceIndex = text.indexOf(" ");
 		const commandName = spaceIndex === -1 ? text.slice(1) : text.slice(1, spaceIndex);
 		const args = spaceIndex === -1 ? "" : text.slice(spaceIndex + 1);
+
+		// Built-in /code command: enter code mode directly
+		if (commandName === "code") {
+			this.setCodeMode(true);
+			this._emit({ type: "message_end", message: {
+				role: "custom",
+				customType: "code_mode",
+				content: "Code Mode activated. Use /exit to return to normal mode.",
+				display: "always",
+				details: { action: "enter_code_mode" },
+				timestamp: Date.now(),
+			} as any });
+			return true;
+		}
+
+		// Built-in /exit command: exit code mode directly
+		if (commandName === "exit") {
+			if (this.getCodeMode()) {
+				this.setCodeMode(false);
+				this._emit({ type: "message_end", message: {
+					role: "custom",
+					customType: "code_mode",
+					content: "Exited Code Mode. Returned to normal assistant mode.",
+					display: "always",
+					details: { action: "exit_code_mode" },
+					timestamp: Date.now(),
+				} as any });
+				return true;
+			}
+			// If not in code mode, fall through to extension commands
+		}
+
+		if (!this._extensionRunner) return false;
 
 		const command = this._extensionRunner.getCommand(commandName);
 		if (!command) return false;

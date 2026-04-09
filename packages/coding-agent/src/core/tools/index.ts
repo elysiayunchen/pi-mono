@@ -29,6 +29,14 @@ export {
 	exitPlanModeTool,
 	exitPlanModeToolDefinition,
 } from "./exit-plan-mode.js";
+export {
+	enterCodeModeTool,
+	enterCodeModeToolDefinition,
+} from "./enter-code-mode.js";
+export {
+	exitCodeModeTool,
+	exitCodeModeToolDefinition,
+} from "./exit-code-mode.js";
 export { withFileMutationQueue } from "./file-mutation-queue.js";
 export {
 	createFindTool,
@@ -110,6 +118,8 @@ import {
 import { createEditTool, createEditToolDefinition, editTool, editToolDefinition } from "./edit.js";
 import { enterPlanModeTool, enterPlanModeToolDefinition } from "./enter-plan-mode.js";
 import { exitPlanModeTool, exitPlanModeToolDefinition } from "./exit-plan-mode.js";
+import { enterCodeModeTool, enterCodeModeToolDefinition } from "./enter-code-mode.js";
+import { exitCodeModeTool, exitCodeModeToolDefinition } from "./exit-code-mode.js";
 import { createFindTool, createFindToolDefinition, findTool, findToolDefinition } from "./find.js";
 import { createGrepTool, createGrepToolDefinition, grepTool, grepToolDefinition } from "./grep.js";
 import { createLsTool, createLsToolDefinition, lsTool, lsToolDefinition } from "./ls.js";
@@ -149,6 +159,10 @@ import { teamListTool, teamListToolDefinition } from "./team-list.js";
 import { todoWriteTool, todoWriteToolDefinition } from "./todo-write.js";
 import { undoActionTool, undoActionToolDefinition } from "./undo-action.js";
 import { createWriteTool, createWriteToolDefinition, writeTool, writeToolDefinition } from "./write.js";
+import { enterWorktreeTool, enterWorktreeToolDefinition } from "./enter-worktree.js";
+import { exitWorktreeTool, exitWorktreeToolDefinition } from "./exit-worktree.js";
+import { modelSpeedProbeTool, modelSpeedProbeToolDefinition } from "./model-speed-probe.js";
+import { webFetchTool, webFetchToolDefinition } from "./web-fetch.js";
 
 export type Tool = AgentTool<any>;
 export type ToolDef = ToolDefinition<any, any>;
@@ -166,6 +180,8 @@ export const allTools = {
 	ls: lsTool,
 	enter_plan_mode: enterPlanModeTool,
 	exit_plan_mode: exitPlanModeTool,
+	enter_code_mode: enterCodeModeTool,
+	exit_code_mode: exitCodeModeTool,
 	todo_write: todoWriteTool,
 	task_create: taskCreateTool,
 	task_get: taskGetTool,
@@ -180,6 +196,9 @@ export const allTools = {
 	task_assign: taskAssignTool,
 	undo_last_action: undoActionTool,
 	file_history_list: fileHistoryListTool,
+	enter_worktree: enterWorktreeTool,
+	exit_worktree: exitWorktreeTool,
+	model_speed_probe: modelSpeedProbeTool,
 };
 
 export const allToolDefinitions = {
@@ -192,6 +211,8 @@ export const allToolDefinitions = {
 	ls: lsToolDefinition,
 	enter_plan_mode: enterPlanModeToolDefinition,
 	exit_plan_mode: exitPlanModeToolDefinition,
+	enter_code_mode: enterCodeModeToolDefinition,
+	exit_code_mode: exitCodeModeToolDefinition,
 	todo_write: todoWriteToolDefinition,
 	task_create: taskCreateToolDefinition,
 	task_get: taskGetToolDefinition,
@@ -206,6 +227,9 @@ export const allToolDefinitions = {
 	task_assign: taskAssignToolDefinition,
 	undo_last_action: undoActionToolDefinition,
 	file_history_list: fileHistoryListToolDefinition,
+	enter_worktree: enterWorktreeToolDefinition,
+	exit_worktree: exitWorktreeToolDefinition,
+	model_speed_probe: modelSpeedProbeToolDefinition,
 };
 
 export type ToolName = keyof typeof allTools;
@@ -244,6 +268,8 @@ export function createAllToolDefinitions(cwd: string, options?: ToolsOptions): R
 		ls: createLsToolDefinition(cwd),
 		enter_plan_mode: enterPlanModeToolDefinition,
 		exit_plan_mode: exitPlanModeToolDefinition,
+		enter_code_mode: enterCodeModeToolDefinition,
+		exit_code_mode: exitCodeModeToolDefinition,
 		todo_write: todoWriteToolDefinition,
 		task_create: taskCreateToolDefinition,
 		task_get: taskGetToolDefinition,
@@ -258,6 +284,9 @@ export function createAllToolDefinitions(cwd: string, options?: ToolsOptions): R
 		task_assign: taskAssignToolDefinition,
 		undo_last_action: undoActionToolDefinition,
 		file_history_list: fileHistoryListToolDefinition,
+		enter_worktree: enterWorktreeToolDefinition,
+		exit_worktree: exitWorktreeToolDefinition,
+		model_speed_probe: modelSpeedProbeToolDefinition,
 	};
 }
 
@@ -285,6 +314,8 @@ export function createAllTools(cwd: string, options?: ToolsOptions): Record<stri
 		ls: createLsTool(cwd),
 		enter_plan_mode: enterPlanModeTool,
 		exit_plan_mode: exitPlanModeTool,
+		enter_code_mode: enterCodeModeTool,
+		exit_code_mode: exitCodeModeTool,
 		todo_write: todoWriteTool,
 		task_create: taskCreateTool,
 		task_get: taskGetTool,
@@ -297,5 +328,11 @@ export function createAllTools(cwd: string, options?: ToolsOptions): Record<stri
 		team_list: teamListTool,
 		send_message: sendMessageTool,
 		task_assign: taskAssignTool,
+		undo_last_action: undoActionTool,
+		file_history_list: fileHistoryListTool,
+		enter_worktree: enterWorktreeTool,
+		exit_worktree: exitWorktreeTool,
+		model_speed_probe: modelSpeedProbeTool,
 	};
 }
+

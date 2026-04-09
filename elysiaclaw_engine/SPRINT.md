@@ -96,12 +96,59 @@ Step 7: 文档更新
 
 ---
 
+## Architecture Audit Sprint (2026-04-09)
+
+Goal: Map elysiaclaw vs pi-coding-agent architecture, find tool gap.
+
+Findings:
+1. Tool registration needs four layers (define, import, catalog, allow)
+2. 12-layer tools not imported by elysiaclaw (grep, ls, plan_mode, todo, worktree, etc.)
+3. web_search imported but not in tools.allow
+4. task_imported but not in catalog/allow
+5. elysiaclaw build needs manual deploy to global
+
+Docs updated: SYSTEM.md, ARCHITECTURE.md, PITFALLS.md
+
+Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
+
+---
+
 ## Sprint 结果记录
 
-**实际完成时间**: TBD
-**测试结果**: TBD
-**新增踩坑**（坑号追加到 PITFALLS.md）: TBD
-**遗留问题**: TBD
+**实际完成时间**: 2026-04-05
+**测试结果**: 构建通过（绕过 DTS 类型检查），gateway 重启成功
+**新增踩坑**: #37 (Python 补丁重复应用), #38 (DTS 类型错误阻塞构建), #39 (elysiaclaw 自建 system prompt)
+
+### 完成的工作
+
+#### Code Mode Phase 0 — 最小可行补丁（attempt.ts 路径）
+- 发现 elysiaclaw 的 `attempt.ts` 自己构建 system prompt，不使用 agent-session 的 `_buildSystemPrompt`
+- 在 `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` 加 `/code` 和 `/exit` 检测补丁
+- 补丁逻辑：
+  - `/code`: 调用 `session.setCodeMode(true)`，注入 CODE MODE ACTIVE system prompt，`effectivePrompt` 改为友好消息
+  - `/exit`: 调用 `session.setCodeMode(false)`
+  - 普通消息 + code mode 已激活: 重新注入 code mode prompt（跨 turn 持久化）
+
+#### 补丁应用过程
+1. 第一次尝试用 sed → 破坏文件结构（坑 #2延伸）
+2. 第二次用 Python → marker 匹配两次导致重复（坑 #37）
+3. `git checkout` 恢复文件（elysiaclaw 有独立 git 仓库）
+4. 第三次用 Python 干净应用 → 成功
+
+#### 构建过程
+- `pnpm build` 在 `build:plugin-sdk:dts` 阶段失败（4 个预存类型错误，坑 #38）
+- 绕过：直接 `node scripts/tsdown-build.mjs` + 手动跑剩余步骤
+- 构建成功，gateway 重启
+
+#### 文件改动
+| 文件 | 操作 |
+|---|---|
+| `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` | 修改：加 code mode 检测补丁 |
+
+### 遗留问题
+- `/code` 已注入 system prompt，但 LLM 是否真正以 code mode 身份回复需要实际测试验证
+- DTS 类型错误（4 个）仍未修复，后续 Sprint 需要处理
+- Code Mode 的完整框架（独立 session 目录、独立配置等）尚未实现，当前只是最小可行补丁
 
 ---
 
@@ -175,4 +222,48 @@ grep -n "setSystemPrompt\\|replaceMessages" \\
 
 ---
 
-*模板版本：2026-04-07*
+## 架构优化 Sprint 结果
+
+**Sprint 目标**: 冻结新功能，部署验证 + 架构审计 + 局部重构  
+**开始时间**: 2026-04-05  
+**完成时间**: 2026-04-05  
+**测试结果**: 构建通过，部署成功，Telegram 端对端验证通过
+
+### 发现并修复的 BUG
+
+| 编号 | 问题 | 影响 | 修复方式 |
+|------|------|------|----------|
+| BUG-1 | tools/index.ts allTools 缺少 3 个工具 | enter_worktree/exit_worktree/model_speed_probe TUI 不可用 | 添加 import + 加入 allTools |
+| BUG-2 | createAllTools() 缺少 5 个工具 | 动态创建的工具集不完整 | 补全 createAllTools/createAllToolDefinitions |
+| BUG-3 | src/index.ts 缺少 3 对 re-export | Bot bundle 无法导入 modelSpeedProbe/undoAction/fileHistoryList | 追加 6 个 re-export |
+| BUG-4 | config.yaml gateway.mode = "lan" | 非法值，gateway 行为不可预期 | lan → local |
+
+### 技术债处理
+
+| 项目 | 处理方式 |
+|------|----------|
+| 4 个 .bak 文件（127KB） | 移动到 scripts/.pre-optimization-backup/ |
+| deploy.sh 无守卫 | 加装 3 道守卫（配置校验 + patch 验证 + 工具一致性） |
+| patch-agent.cjs 无 smoke test | 注入后自动验证语法 + 方法存在性 |
+| PITFALLS.md 坑号 #37-#39 重复 | 第二批重编号为 #43-#45，索引合并去重 |
+| ROADMAP.md "技术债归零" 不实 | 更新为实际残余债务列表 |
+
+### 新增坑号
+#43 (package.json 版本), #44 (Tailscale 状态), #45 (session 路径),
+#46 (allTools 遗漏), #47 (re-export 遗漏), #48 (config.yaml mode)
+
+### 文件改动清单
+
+| 文件 | 操作 |
+|------|------|
+| packages/coding-agent/src/core/tools/index.ts | 修改: +3 import, allTools +3, allToolDefinitions +3, createAllTools +5, createAllToolDefinitions +3 |
+| packages/coding-agent/src/index.ts | 修改: +6 re-export |
+| ~/.elysiaclaw/config.yaml | 修改: gateway.mode lan → local |
+| deploy.sh | 替换: 加装 3 道守卫 |
+| scripts/patch-agent.cjs | 替换: 加装 smoke test |
+| 4 个 .bak 文件 | 移动到备份目录 |
+| elysiaclaw_engine/*.md | 更新: 5 份文档全部同步 |
+
+---
+
+*模板版本：2026-04-05*

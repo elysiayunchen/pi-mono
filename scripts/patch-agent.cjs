@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // scripts/patch-agent.cjs
 // Updated for pi-mono 0.64 (anchor: subscribe method)
+// Added: post-injection smoke test (Guard)
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
@@ -35,6 +36,8 @@ const hasCleanReplaceMessages = /\n\s{4}replaceMessages\(ms\)\s*\{/.test(src);
 
 if (hasCleanSetSystemPrompt && hasCleanReplaceMessages) {
   console.log('[patch-agent] Both methods exist, nothing to do.');
+  // Still run smoke test to confirm they work
+  runSmokeTest();
   process.exit(0);
 }
 
@@ -72,6 +75,7 @@ if (hasCleanReplaceMessages === false) {
 
 if (parts.length === 0) {
   console.log('[patch-agent] Nothing to inject.');
+  runSmokeTest();
   process.exit(0);
 }
 
@@ -80,6 +84,7 @@ const anchorPos = src.indexOf(ANCHOR);
 const afterAnchor = src.substring(anchorPos + ANCHOR.length, anchorPos + ANCHOR.length + 300);
 if (afterAnchor.includes('setSystemPrompt') || afterAnchor.includes('replaceMessages')) {
   console.log('[patch-agent] Anchor already has patch content, skipping.');
+  runSmokeTest();
   process.exit(0);
 }
 
@@ -89,3 +94,41 @@ fs.writeFileSync(AGENT_JS, patched, 'utf8');
 console.log('[patch-agent] Patch applied.');
 if (hasCleanSetSystemPrompt === false) console.log('[patch-agent]   + setSystemPrompt');
 if (hasCleanReplaceMessages === false) console.log('[patch-agent]   + replaceMessages');
+
+// Step 4: Smoke test — verify the patched file is valid
+runSmokeTest();
+
+function runSmokeTest() {
+  console.log('[patch-agent] Running smoke test...');
+  
+  // Test 1: Syntax check
+  try {
+    require('node:child_process').execSync(
+      `node -c "${AGENT_JS}"`,
+      { stdio: 'pipe' }
+    );
+    console.log('[patch-agent]   ✓ Syntax valid');
+  } catch (e) {
+    console.error('[patch-agent]   ✗ SYNTAX ERROR in agent.js!');
+    console.error('[patch-agent]   This is a critical failure (Pitfall #22b).');
+    process.exit(1);
+  }
+  
+  // Test 2: Verify methods exist in source text
+  const finalSrc = fs.readFileSync(AGENT_JS, 'utf8');
+  const hasSSP = /setSystemPrompt\s*\(/.test(finalSrc);
+  const hasRM = /replaceMessages\s*\(/.test(finalSrc);
+  
+  if (!hasSSP) {
+    console.error('[patch-agent]   ✗ setSystemPrompt NOT FOUND after patch!');
+    process.exit(1);
+  }
+  if (!hasRM) {
+    console.error('[patch-agent]   ✗ replaceMessages NOT FOUND after patch!');
+    process.exit(1);
+  }
+  
+  console.log('[patch-agent]   ✓ setSystemPrompt present');
+  console.log('[patch-agent]   ✓ replaceMessages present');
+  console.log('[patch-agent] Smoke test passed.');
+}

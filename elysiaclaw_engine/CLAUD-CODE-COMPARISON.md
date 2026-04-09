@@ -509,4 +509,4 @@ Claude Code 没有对应的"补丁"概念，这些是 ElysiaClaw 在 pi-mono 基
 
 ---
 
-*文档版本: 2026-04-07。基于 Claude Code v2.1.88 源码分析与 ElysiaClaw 0.64 架构。*
+*文档版本: 2026-04-05。基于 Claude Code v2.1.88 源码分析与 ElysiaClaw 0.64 架构。Code Mode Phase 0 补丁路径已实现（attempt.ts）。*

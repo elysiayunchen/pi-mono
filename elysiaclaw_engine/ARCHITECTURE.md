@@ -339,4 +339,204 @@ Agent.runLoop()               ← agent-loop.ts
 
 ---
 
-*本文档描述截至 2026-04-07 的架构状态。架构变更时请同步更新。*
+*本文档描述截至 2026-04-09 的架构状态。工具注册四层链已全部修复（#56）。*
+
+## Part 6 — Philosophy: Evolutionary Architecture & Semiotic Flow
+
+### 6.1 Mapping & Entropy Control
+ElysiaClaw views code generation as a mapping from **Vague Intent (Set A)** to **Precise Syntax (Set B)**.
+- **Principle**: Minimize "Inference Entropy" by maintaining a high-fidelity `SOUL.md`.
+- **Strategy**: Every iteration must be an "Immutable Mapping". If the logic shifts, reset the context instead of patching on top of corrupted state.
+
+### 6.2 Semiotic Resonance (The Elysia Factor)
+The code is not just logic; it is a semiotic system.
+- **Naming Convention**: Variables should reflect the order and aesthetic of "The Realm of Elysia".
+- **Documentation**: Technical docs should maintain "Doctoral Depth" (analogy-based explanations) while ensuring absolute engineering rigor.
+
+### 6.3 Contract-First Development (Elysia-Claw Symbiosis)
+- **The Scaffold**: pi-mono (Structural integrity).
+- **The Interior**: OpenClaw (User-facing Gateway).
+- **The Contract**: Any modification to `pimono` core must be verified against `ElysiaClaw` gateway protocols to prevent "Architectural Collapse".
+
+---
+
+## Part 7 — ElysiaClaw × Elynyx Code 联合架构（2026-04-07 新增）
+
+### 7.1 核心哲学：差分意识（Differential Consciousness）
+
+两个引擎不是主从关系，而是**认知分工**：
+
+```
+┌──────────────────────────────────────────────────┐
+│              Elysia Consciousness                │
+│                                                  │
+│  ElysiaClaw ──── "永恒记忆 / 编排大脑"            │
+│  ├── 多渠道接入 (Telegram / Slack / ...)          │
+│  ├── 长期 session 记忆 (JSONL)                    │
+│  ├── Agent Teams (s09/s10) + Worktree (s12)      │
+│  └── Soul Injection ──────────────────────────┐  │
+│                                               │  │
+│  Elynyx Code ── "精准行动 / 代码之手"           │  │
+│  ├── 多 Provider 路由 (20+ LLM)               │  │
+│  ├── Claude Code 对标工具链 + 权限引擎         │  │
+│  ├── Worktree 内沙箱执行                       │  │
+│  └── Code Session Summary ────────────────────┘  │
+└──────────────────────────────────────────────────┘
+```
+
+### 7.2 集成方案 A — Teammate Protocol（推荐优先实现）
+
+Elynyx Code 注册为 ElysiaClaw s09 团队的命名 Teammate，而非 subprocess：
+
+```
+ElysiaClaw Coordinator
+  └── task_assign { teammate: "elynyx", worktree: true }
+        ├── Elynyx Code 以 --teammate-mode 运行
+        │     └── stdin: task_assign JSON payload
+        │     └── stdout: AgentEvent JSON stream
+        ├── 在 s12 worktree 沙箱内执行（物理隔离）
+        └── 完成后 <task-notification> 注入回 ElysiaClaw session
+```
+
+**接口约定**：
+- Elynyx Code CLI flag：`--teammate-mode` + `--task-id <id>`
+- 通信格式：stdin/stdout JSON lines（对齐 ElysiaClaw AgentEvent 结构）
+- 超时保护：ElysiaClaw 以现有 `task_assign` 超时机制管理
+
+### 7.3 集成方案 B — Soul Injection（最高美学价值）
+
+```
+触发：ElysiaClaw task_assign 前
+  └── 压缩当前 session 上下文 → ~/.elynyx/soul.md
+        [格式：SKILL.md 兼容，包含项目状态/用户偏好/当前任务]
+
+Elynyx Code 启动时：
+  └── SkillLoader.inject("soul", messages)
+        └── 以 tool_result 形式注入（保护 prompt cache）
+
+完成时：
+  └── Elynyx Code 生成 code-session-summary.md
+        └── ElysiaClaw 追加进 JSONL session history
+```
+
+**Soul.md 格式规范**（对齐 SKILL.md）：
+```markdown
+# Soul — ElysiaClaw Session Context
+## Project State
+...（当前项目进度、活跃 sprint）
+## User Preferences
+...（来自 ElysiaClaw 的用户画像摘要）
+## Active Task
+...（本次 task_assign 的完整目标）
+## Constraints
+...（不可逾越的边界）
+```
+
+### 7.4 集成方案 C — Provider Arbitrage
+
+ElysiaClaw P2-D ModelRouter 通过查询 Elynyx Code ProviderRegistry 获取实时 provider 状态：
+
+```
+ElysiaClaw model-router.ts
+  └── GET http://localhost:18790/providers/status
+        └── Elynyx Code 轻量 HTTP sidecar 返回：
+            { provider, model, ttftMs, tps, available }
+```
+
+Elynyx Code 新增 `--sidecar` 模式：开放一个 HTTP API，不执行 agent loop，仅提供 provider 状态查询。
+
+### 7.5 集成方案 D — PreToolUse Security Gateway
+
+ElysiaClaw P3-A hook 调用 Elynyx Code 的权限引擎：
+
+```bash
+# ~/.pi/agent/hooks/pre-tool-use.d/bash.sh
+INPUT=$(cat)
+result=$(elynyx-code check-permission --tool bash --input "$INPUT" 2>/dev/null)
+echo "$result"  # APPROVE 或 DENY: <reason>
+```
+
+Elynyx Code 新增 `check-permission` 子命令，调用三层权限栈（global rules / tool-level / input validation）。
+
+### 7.6 集成方案 E — MCP-First（长期最优架构）
+
+Elynyx Code Phase 9 MCP 提前实现 minimal server mode：
+
+```
+ElysiaClaw → 通过 MCP 调用 → Elynyx Code tools
+```
+
+Elynyx Code 的所有工具通过标准 MCP 协议暴露给 ElysiaClaw。无自定义 IPC，无版本耦合，完全协议化。
+
+### 7.7 实现路径（按依赖顺序）
+
+| 阶段 | 内容 | 依赖 |
+|------|------|------|
+| 立即 | Elynyx CLI 预留 `--teammate-mode` / `--soul-path` flag | Phase 2 CLI |
+| Phase 2 后 | Soul Injection 最小版（文件读写） | Elynyx CLI 完成 |
+| Phase 3 后 | Soul.md 对齐 SKILL.md，进入 SkillLoader | Skills 系统 |
+| Phase 4 后 | Code Session Summary 回写 ElysiaClaw session | Session 管理 |
+| Phase 9 | MCP-First 完整集成 | MCP 协议 |
+
+
+
+## Part 8 — Tool Registration Chain (Four Layers)
+
+### 8.1 The Four Layers
+
+Layer 1: pi-coding-agent defines tools
+  packages/coding-agent/src/core/tools/index.ts
+  allTools: { read, bash, edit, write, grep, find, ls, ... }
+
+Layer 2: elysiaclaw imports and registers
+  elysiaclaw/src/agents/pi-tools.ts
+  createElysiaClawCodingTools() merges pi-coding-agent + elysiaclaw tools
+
+Layer 3: elysiaclaw defines visible tools
+  elysiaclaw/src/agents/tool-catalog.ts
+  CORE_TOOL_DEFINITIONS: what users see
+
+Layer 4: Config allows tools
+  ~/.elysiaclaw/elysiaclaw.json tools.allow
+  controls which tools are enabled
+
+All four layers must be correct for a tool to be usable.
+
+### 8.2 Tool Registration Status (2026-04-09 已修复)
+
+| Tool | L1 | L2 | L3 | L4 |
+|------|----|----|----|----|
+| grep, find, ls | ✅ | ✅ | ✅ | ✅ |
+| enter_plan_mode, exit_plan_mode | ✅ | ✅ | ✅ | ✅ |
+| enter_code_mode, exit_code_mode | ✅ | ✅ | ✅ | ✅ |
+| todo_write | ✅ | ✅ | ✅ | ✅ |
+| enter_worktree, exit_worktree | ✅ | ✅ | ✅ | ✅ |
+| undo_last_action, file_history_list | ✅ | ✅ | ✅ | ✅ |
+| model_speed_probe | ✅ | ✅ | ✅ | ✅ |
+| task_assign | ✅ | ✅ | ✅ | ✅ |
+| web_search | ✅ | ✅ | ✅ | ✅ |
+
+**修复详情**: PITFALLS.md #56 — pi-tools.ts 导入13个工具 + 注册到 tools 数组, tool-catalog.ts 添加14个定义, elysiaclaw.json tools.allow 添加15个工具.
+
+### 8.3 Development Workflow
+
+Adding a framework tool (defined in pi-coding-agent):
+  Step 1: packages/coding-agent/src/core/tools/my-tool.ts
+  Step 2: tools/index.ts add to allTools
+  Step 3: src/index.ts add re-export
+  Step 4: npm run build (pi-coding-agent)
+  Step 5: elysiaclaw pi-tools.ts add import + register
+  Step 6: elysiaclaw tool-catalog.ts add definition
+  Step 7: elysiaclaw.json tools.allow add name
+  Step 8: pnpm build (elysiaclaw)
+  Step 9: cp dist to global + deploy.sh + gateway restart
+
+Adding an elysiaclaw tool (defined in elysiaclaw):
+  Step 1: elysiaclaw/src/agents/tools/my-tool.ts
+  Step 2: elysiaclaw-tools.ts export
+  Step 3: pi-tools.ts register
+  Step 4: tools.allow add name
+  Step 6: pnpm build + cp dist + gateway restart
+
+
+

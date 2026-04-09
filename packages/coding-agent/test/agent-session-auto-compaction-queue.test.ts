@@ -51,6 +51,7 @@ vi.mock("../src/core/compaction/index.js", () => ({
 		contextWindow: number,
 		settings: { enabled: boolean; reserveTokens: number },
 	) => settings.enabled && contextTokens > contextWindow - settings.reserveTokens,
+	applyMultiLayerCompaction: (messages: any[]) => ({ messages, layersApplied: [] }),
 }));
 
 describe("AgentSession auto-compaction queue resume", () => {

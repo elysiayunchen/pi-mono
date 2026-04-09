@@ -6,12 +6,18 @@
 
 ---
 
-## 当前状态快照（2026-04-07）
+## 当前状态快照（2026-04-05）
 
 **12 层 Agent 框架**：全部竣工（s01-s12.1）  
-**P 系列补丁**：P1-A/B/C + P2-A/B/D (Phase 1+2+3) + P3-A/B 全部完成
+**P 系列补丁**：P1-A/B/C + P2-A/B/D (Phase 1+2+3) + P3-A/B 全部完成  
+**Code Mode Phase 0**：MVP 补丁已实现（attempt.ts 路径），完整框架待建  
 **pi-mono 统一版本**：0.64.0（pi-agent-core / pi-ai / pi-tui / pi-coding-agent 全部统一）  
-**总技术债**：已归零（所有已知欠债已修复）
+**架构优化 Sprint**：工具注册 BUG 修复、deploy 守卫、文档归一化完成  
+**工具注册四层修复 (2026-04-09)**：全部12层工具已正确注册到 elysiaclaw（L2-L4）  
+**残余技术债**：
+- ~~DTS 类型错误~~ — **已自然消失（2026-04-06 确认）**，`pnpm build` 全链路干净
+- OpenRouter→阿里云路由劫持（坑 #40）— 临时规避，根因未修
+- Code Mode 完整框架（独立 session 目录、CodeModeManager 类）— Phase 0 后的下一步
 
 ---
 
@@ -128,34 +134,7 @@ exit_worktree (keep=true)
 
 ---
 
-### [P3-C] ScheduleCronTool
-**优先级**: 🔥 高（推荐次选）  
-**目标**: 让 LLM 能注册定时任务，`node-cron` 触发后调用 `claimAndRun()`
-
-**实现思路**:
-```typescript
-// 新工具：schedule_cron
-// 参数：{ cron: "0 9 * * *", task: "...", sessionId?: string }
-// 底层：node-cron + autonomous-runner.ts 的 claimAndRun()
-
-schedule_cron({ cron: "0 9 * * *", task: "检查邮件并汇报" })
-    └── cron-scheduler.ts (新单例)
-          └── nodeCron.schedule("0 9 * * *", () => {
-                claimAndRun(task, { sessionId })
-              })
-```
-
-**文件改动预估**:
-- 新增 `core/cron-scheduler.ts` — 单例，管理所有 cron jobs
-- 新增 `tools/schedule-cron.ts` — schedule_cron 工具
-- 新增 `tools/cron-list.ts` — 查看已注册的 cron jobs
-- 新增 `tools/cron-cancel.ts` — 取消 cron job
-- `src/index.ts` — 导出三个新工具
-
-**注意事项**:
-- Cron jobs 需要持久化（服务重启后恢复）→ 存 `~/.pi/agent/crons.json`
-- 时区处理：elysiaserver 时区确认
-- node-cron 需要 `npm install node-cron`
+> ~~[P3-C] ScheduleCronTool~~ **已废弃（2026-04-06）**：上游 ElysiaClaw 已内置完整工业级 cron 系统（`elysiaclaw/src/cron/` + `agents/tools/cron-tool.ts`），接口为 `action: status|list|add|update|remove|run|runs|wake` 的统一工具，并有独立 CLI（`elysiaclaw cron`）。无需自研。
 
 ---
 
@@ -226,7 +205,7 @@ task_assign (worktree: true)
 | 项目 | 风险 | 状态 |
 |---|---|---|
 | pi-agent-core monkey-patch | 每次 `npm install` 可能被覆盖 | ✅ P1-A 已保护 |
-| Bot/TUI 工具路径双轨 | 新增工具需同时注册两处 | ⚠️ 人工检查 |
+| Bot/TUI 工具路径双轨 | 新增工具需同时注册两处 | ✅ deploy.sh Guard 3 自动检查 |
 | pi-coding-agent 版本号不一致 | package.json 显示 0.58.0 但功能是 0.64.0 | ✅ 已修复 (2026-04-07) |
 | ModelSpeedCache TTL=1h | 长时间运行后可能用到过期数据 | 低风险 |
 | Session JSONL 无限增长 | 磁盘可能慢慢满 | 低风险，有自动 compact |
@@ -242,6 +221,7 @@ task_assign (worktree: true)
 | 2026-04-04 | s09 首次修复, s12 worktree 残留修复 | Bug fixes |
 | 2026-04-07 | s09 二次修复, P1-A 修复, P1-C, P2-D(Ph1+2), P3-B | 补全 + 新功能 |
 | 2026-04-07 | OpenClaw → ElysiaClaw 包名迁移 | 品牌迁移 |
+| 2026-04-05 | 架构优化 Sprint | BUG-1~4 修复、deploy 守卫、文档归一化、.bak 清理 |
 
 ---
 
@@ -251,9 +231,10 @@ task_assign (worktree: true)
 2. 读 `ARCHITECTURE.md` → 理解架构
 3. 读 `PITFALLS.md` → 避开已知坑
 4. 读本文档 → 选择下一个 sprint
-5. **推荐首先实现**: `[P3-C] ScheduleCronTool`（自包含，风险低，实用价值高）
-6. **或者**: `[P2-C] Worktree → Auto PR/Merge`（依赖 GitHub 认证，但价值更高）
+5. **推荐首先实现**: `[WebFetch/WebSearch]`（Phase 3，无前置依赖，填补 s02 关键缺口）
+6. **或者**: `[P2-C] Worktree → Auto PR/Merge`（需先 `sudo apt install gh && gh auth login`）
+7. ~~P3-C ScheduleCronTool~~ — 上游已内置，已废弃
 
 ---
 
-*最后更新：2026-04-07*
+*最后更新：2026-04-09*
