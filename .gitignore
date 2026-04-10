@@ -48,3 +48,7 @@ test-our-changes.ts
 deploy.sh
 HANDOFF.md
 packages/ai/src/models.generated.ts
+0
+=
+*.bak
+*.bak2
