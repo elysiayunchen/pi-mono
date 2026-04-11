@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { createWriteStream, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +11,9 @@ import { truncateToVisualLines } from "../../modes/interactive/components/visual
 import { theme } from "../../modes/interactive/theme/theme.js";
 import { waitForChildProcess } from "../../utils/child-process.js";
 import { getShellConfig, getShellEnv, killProcessTree } from "../../utils/shell.js";
+import { spawnBackground } from "../background-runner.js";
 import type { ToolDefinition, ToolRenderResultOptions } from "../extensions/types.js";
+import { getCurrentSessionId } from "../tasks/task-store.js";
 import { getTextOutput, invalidArgText, str } from "./render-utils.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, type TruncationResult, truncateTail } from "./truncate.js";
@@ -27,6 +29,14 @@ function getTempFilePath(): string {
 const bashSchema = Type.Object({
 	command: Type.String({ description: "Bash command to execute" }),
 	timeout: Type.Optional(Type.Number({ description: "Timeout in seconds (optional, no default timeout)" })),
+	run_in_background: Type.Optional(
+		Type.Boolean({
+			description:
+				"Run command in background (non-blocking). " +
+				"You will be notified when it completes. " +
+				"Do not use & at the end when using this parameter.",
+		}),
+	),
 });
 
 export type BashToolInput = Static<typeof bashSchema>;
@@ -274,12 +284,29 @@ export function createBashToolDefinition(
 		parameters: bashSchema,
 		async execute(
 			_toolCallId,
-			{ command, timeout }: { command: string; timeout?: number },
+			{ command, timeout, run_in_background }: { command: string; timeout?: number; run_in_background?: boolean },
 			signal?: AbortSignal,
 			onUpdate?,
 			_ctx?,
 		) {
 			const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;
+
+			// ── Background execution (s08) ──────────────────────────────────
+			if (run_in_background) {
+				const taskId = randomUUID();
+				const sessionId = getCurrentSessionId();
+				await spawnBackground(sessionId, taskId, resolvedCommand, cwd);
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Task started in background (taskId: ${taskId}). Use task_output to read results while it runs.`,
+						},
+					],
+					details: { fullOutputPath: undefined, truncation: undefined },
+				};
+			}
+
 			const spawnContext = resolveSpawnContext(resolvedCommand, cwd, spawnHook);
 			if (onUpdate) {
 				onUpdate({ content: [], details: undefined });
@@ -418,6 +445,37 @@ export function createBashToolDefinition(
 			);
 			component.invalidate();
 			return component;
+		},
+
+		// ── Capability declarations (Task 0 + Task 2) ──────────────────────
+		isConcurrencySafe: () => false,
+		isReadOnly: () => false,
+		isDestructive: () => true,
+
+		// ── UI enhancements ─────────────────────────────────────────────────
+		getToolUseSummary: (input) => {
+			const cmd = input?.command || "";
+			return cmd.length > 50 ? cmd.substring(0, 47) + "..." : cmd;
+		},
+		getActivityDescription: (input) => {
+			const firstWord = (input?.command || "").split(/\s+/)[0] || "command";
+			return "Running: " + firstWord;
+		},
+
+		// ── Security classification ──────────────────────────────────────────
+		toAutoClassifierInput: (input) => ({
+			tool: "bash",
+			command: input?.command || "",
+		}),
+
+		// ── Permission matching ──────────────────────────────────────────────
+		preparePermissionMatcher: async (input) => {
+			const cmd = input?.command || "";
+			return (pattern) => {
+				const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+				const regex = new RegExp("^" + escaped.replace(/\*/g, ".*") + "$");
+				return regex.test(cmd);
+			};
 		},
 	};
 }

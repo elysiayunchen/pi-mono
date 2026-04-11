@@ -374,10 +374,9 @@ export function createGrepToolDefinition(
 								}
 							}
 
-							const slicedOutput =
-								effectiveHeadLimit > 0
-									? outputLines.slice(effectiveOffset, effectiveOffset + effectiveHeadLimit)
-									: outputLines.slice(effectiveOffset);
+							// Don't limit output lines by head_limit — matches are already limited in rl.on("line").
+							// DEFAULT_MAX_BYTES (50KB) serves as the safety net for total output size.
+							const slicedOutput = effectiveOffset > 0 ? outputLines.slice(effectiveOffset) : outputLines;
 							let rawOutput = slicedOutput.join("\n");
 							if (mode === "count" && slicedOutput.length > 0) {
 								let totalMatches = 0;
@@ -410,7 +409,7 @@ export function createGrepToolDefinition(
 							const notices: string[] = [];
 							if (matchLimitReached) {
 								notices.push(
-									`${effectiveHeadLimit} matches limit reached. Use head_limit=${effectiveHeadLimit * 2} for more, or refine pattern`,
+									`${effectiveHeadLimit} matches limit reached. Use limit=${effectiveHeadLimit * 2} for more, or refine pattern`,
 								);
 								details.matchLimitReached = effectiveHeadLimit;
 							}
