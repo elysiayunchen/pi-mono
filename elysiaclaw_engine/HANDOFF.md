@@ -95,7 +95,12 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 
 ## 下个窗口的起步清单
 
-delegate_code_task 已完成实施。下一步见 SPRINT.md，当前优先事项:
+**当前主线（2026-06-06）：超级计算机管理员 Agent / 记忆架构**
+- 总架构：`SUPERADMIN-AGENT-DESIGN.md`（记忆四类 + 状态机 + World Model + TS 优越性）
+- 执行手册：`MEMORY-ACTIVATION-RUNBOOK.md`（阶段1「激活记忆引擎」T1-T6 逐任务 SOP，给执行 agent）
+- 关键实测：线上 TS 记忆引擎 **0 chunks 空置**，Python session_search 是当前唯一可用会话检索 → 先激活+验证，后切换+删除（次序不可逆）
+
+其余待办（见 SPRINT.md）：
 - Telegram 端到端验证
 - DTS 类型错误修复 ×6
 - Tool Parity 剩余 13 个 Task

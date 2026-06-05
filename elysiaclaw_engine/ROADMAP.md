@@ -58,8 +58,12 @@
 
 ## 🟡 短期（下一 Sprint）
 
-
-## 🟡 短期（下一 Sprint）
+### [Memory] 记忆引擎激活 🔥 推荐首选
+**优先级**: 🔥 最高
+**目标**: 激活线上 0 chunks 空置的 TS 记忆引擎，取代 Python session_search 旁路，并接入 agent 认知（RECALL 注入）
+**执行手册**: `MEMORY-ACTIVATION-RUNBOOK.md`（T1-T6 逐任务 SOP，给执行 agent）
+**总架构**: `SUPERADMIN-AGENT-DESIGN.md`（超级计算机管理员 Agent / 记忆四类 / 状态机 / World Model / TS 优越性）
+**关键约束**: config.yaml 是 Sacred File（snapshot→改→validate）；T4 质量门通过前**不删** Python session_search
 
 ### [P2-C] Worktree → Auto PR/Merge
 **优先级**: 🔥 高（推荐首选）  
