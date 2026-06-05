@@ -25,6 +25,11 @@
 - Task 2 (BashTool 能力声明): ✅ 已完成
 - Task 3-16: 待执行
 
+**跨会话记忆**：✅ 已完成 (2026-06-06)
+  - `scripts/session-indexer.py` — 增量索引 JSONL → SQLite，支持中英文搜索
+  - `session_search` 工具 — 四层注册完整，系统提示注入 MANDATORY 指引
+  - 覆盖 70 个真实 Telegram 会话，agent 现在可以检索历史对话
+
 **残余技术债**：
 - DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，绕过方式：`node scripts/tsdown-build.mjs`（PITFALLS #38）
 - OpenRouter→阿里云路由劫持（坑 #40）— 临时规避，根因未修

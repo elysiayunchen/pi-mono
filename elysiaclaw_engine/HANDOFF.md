@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-06
+> 最后更新: 2026-06-06 (session_search 跨会话记忆系统)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -37,12 +37,18 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - **配置**: tools.subagents.tools.deny 已添加写操作禁止列表
 - **Telegram 端到端验证** — 受阻于主模型不可用（openrouter/owl-alpha 返回 400）
 
-- **Telegram 流式输出** — 🔧 进行中 (2026-06-06)
+- **Telegram 流式输出** — ✅ 完成 (2026-06-06)
   - ✅ Tool lane 创建（复用 draft-stream，坑 #70 防抖修复）
   - ✅ Tool result phase 路由（`agent-runner-execution.ts` 处理 phase "result"，携带 meta/isError）
   - ✅ Tool lane 显示命令摘要（`onToolStart` phase="result" → `"📖 Read: /path/file"`）
   - 🔧 Thinking 流式：需 session `reasoningLevel: "stream"` 配置
   - 🔧 完整 stdout 输出：需 `verboseLevel: "full"`
+
+- **跨会话记忆系统** — ✅ 完成 (2026-06-06)
+  - `scripts/session-indexer.py` — SQLite FTS，索引 70 个真实 Telegram 会话
+  - `session_search` 工具 — 四层注册，attempt.ts MANDATORY 指引
+  - DB: `~/.elysiaclaw/session-index.db`
+  - 解决：agent 无法跨会话记忆、不记得使用 skill 的问题
 
 - 下一步: 确认可用模型 → Telegram 端到端验证 → DTS 错误修复 × 6 → Tool Parity Task 3-16
 
@@ -53,7 +59,6 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 
 ### 残余技术债
 - DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，需绕过（坑 #38/#63）
-- OpenRouter/owl-alpha 不可用 — 默认模型需更换
 - delegate_code_task Telegram 端到端验证未完成 — 需可用模型
 - Telegram 完整 stdout 输出 — 需 `verboseLevel: "full"` 机制改造
 - Tool Parity 剩余 13 个 Task 待执行

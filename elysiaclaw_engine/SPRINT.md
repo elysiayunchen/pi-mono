@@ -338,6 +338,50 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 
 ---
 
+## Sprint: 跨会话记忆系统 (2026-06-06) ✅ 已完成
+
+**Sprint 目标**: 解决 ElysiaClaw agent 上下文管理差劲、没有跨会话记忆的问题
+**开始时间**: 2026-06-06
+**完成时间**: 2026-06-06
+**状态**: ✅ 已完成，已部署，gateway 重启验证通过
+
+### 背景
+
+问题：
+1. 上下文管理差劲 — 当前会话只能看到当前会话内容
+2. 没有跨会话记忆 — 70 个真实 Telegram 对话 JSONL 对 agent 不可见
+3. 经常不记得自主使用 skill — 系统提示未强制引导
+4. 自我迭代能力弱 — 无法从历史对话学习
+
+根因：`~/.elysiaclaw/agents/main/sessions/*.jsonl` 未被索引，没有检索工具。
+
+### 已完成
+
+| 改动 | 文件 | 说明 |
+|------|------|------|
+| Session 全文索引器 | `scripts/session-indexer.py` | 增量索引所有 JSONL → SQLite LIKE 搜索，支持中英文，索引 70 个会话 |
+| `session_search` 工具 | `src/agents/tools/session-search-tool.ts` | 调用 indexer，返回匹配会话（日期/摘要/snippet） |
+| 四层注册 | `elysiaclaw-tools.ts` + `tool-catalog.ts` + `tools.allow` | session_search 完整注册 |
+| 系统提示注入 | `attempt.ts: SESSION_SEARCH_GUIDANCE` | MANDATORY 指引：触发条件（"之前"/"上次"/"记得吗"）+ 使用规则 |
+
+### 技术细节
+
+- SQLite 存储：`~/.elysiaclaw/session-index.db`
+- 搜索策略：LIKE 全表扫描（70 条记录，< 5ms），支持多词 OR 语义
+- 增量索引：检测文件 mtime 变化，只处理新/改变的文件
+- 去噪：跳过 CLAUDE.md `<project-memory>` 注入内容，只索引真实用户消息
+- Indexer 路径：`dist/../scripts/session-indexer.py` → fallback 到绝对路径
+
+### 验证
+
+- `python3 scripts/session-indexer.py stats` → 70 个会话已索引 ✅
+- `session_search "流式"` → 找到 Telegram 流式测试会话 ✅
+- `session_search "cron"` → 找到 3 个 cron 相关会话 ✅
+- 构建通过（exit 0），dist bundle 包含 session_search ✅
+- Gateway 重启 pid 944704，reachable 113ms ✅
+
+---
+
 ## 后续 Sprint 规划
 
 | Sprint | 内容 | 依赖 |
