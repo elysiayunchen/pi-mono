@@ -39,14 +39,11 @@ claude-code-source-code-main/*.bak
 *.bak_*
 *.bak_p*
 elysiaclaw/
-elysiaclaw_engine/
 patches/
 patch_worktree_cleanup.py
 fix.py
 fix_session.py
 test-our-changes.ts
-deploy.sh
-HANDOFF.md
 packages/ai/src/models.generated.ts
 0
 =
