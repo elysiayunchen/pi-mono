@@ -299,6 +299,45 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 
 ---
 
+## Sprint: Telegram 工具调用流式输出 (2026-06-06) 🔧 进行中
+
+**Sprint 目标**: Telegram 中实时流式显示工具调用名称和执行进度
+**开始时间**: 2026-06-06
+**状态**: 🔧 部分完成 — tool lane 已实现，待端到端验证和 thinking 流式联动
+
+### 已完成
+
+| 改动 | 文件 | 说明 |
+|------|------|------|
+| LaneName 扩展 | `lane-delivery-text-deliverer.ts:40` | 新增 `"tool"` lane 类型 |
+| onToolResult 恢复 | `provider-dispatcher.ts:18,34` | 移除 Omit 排除，使 tool result 可传入 Telegram dispatch |
+| Tool lane 创建 | `bot-message-dispatch.ts` | 新增 tool lane（复用 draft-stream），formatToolLabel 格式化工具名，onToolStart 增强推送文本，onToolResult wiring，生命周期管理 |
+| minInitialChars 修复 | `bot-message-dispatch.ts` | Tool lane 禁用 30 字符防抖（坑 #70），短标签即时发送 |
+| 测试更新 | `lane-delivery.test.ts` | 补全 tool 键 |
+
+### 已完成（2026-06-06 追加）
+
+| 改动 | 文件 | 说明 |
+|------|------|------|
+| onToolStart payload 扩展 | `auto-reply/types.ts` | 新增 `meta` / `isError` 字段到 onToolStart 回调 |
+| phase "result" 路由 | `agent-runner-execution.ts` | tool stream 事件的 "result" phase 现在也触发 onToolStart，携带 meta/isError |
+| Tool lane 结果显示 | `bot-message-dispatch.ts` | onToolStart 处理 phase "result" 时以 `label: meta` 格式更新 tool lane |
+
+**效果**: 工具开始时显示 "📖 Read"，完成时更新为 "📖 Read: /path/to/file"，命令摘要从 meta 取
+
+### 已发现的剩余问题
+
+1. **Thinking/Reasoning 未流式输出**: `resolveTelegramReasoningLevel` 依赖 session store 中的 `reasoningLevel` 配置，默认为 `"off"`。用户 session 需显式开启 `reasoningLevel: "stream"` 才能看到 think 过程
+2. **Tool 完整输出（verboseLevel full）**: `emitToolOutput` 仍需 `shouldEmitToolOutput()` 为 true（verboseLevel="full"），完整 stdout 暂不输出到 tool lane
+3. **Tool lane 并发覆盖**: 同一 agent turn 内多个并发工具会覆盖 tool lane 内容（暂可接受）
+
+### 不做的
+
+- 不新增配置 schema（后续迭代加 `toolStreaming` / `reasoningLevel` 开关）
+- 不改动 reasoning-lane-coordinator（thinking 流式已正确接线，只是 session 配置未开）
+
+---
+
 ## 后续 Sprint 规划
 
 | Sprint | 内容 | 依赖 |

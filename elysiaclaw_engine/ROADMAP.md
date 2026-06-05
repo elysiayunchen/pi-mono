@@ -6,16 +6,17 @@
 
 ---
 
-## 当前状态快照（2026-06-05）
+## 当前状态快照（2026-06-06）
 
 **12 层 Agent 框架**：全部竣工（s01-s12.1）  
 **P 系列补丁**：P1-A/B/C + P2-A/B/D (Phase 1+2+3) + P3-A/B 全部完成  
 **Code Mode**：已废弃，由 `delegate_code_task` 子代理分发替代  
-**delegate_code_task**：✅ 已完成实施（2026-06-05），Telegram 端到端验证进行中
-  - 工具注册已修复（坑 #65: createDelegateCodeTaskTool 未加入 tools 数组）
-  - 新增 `model` 可选参数（坑 #67: 子代理模型独立配置）
-  - 子代理 deny list 已配置（tools.subagents.tools.deny: write/edit 等写操作）
-  - 已知问题：免费模型超时/不可用时子代理会失败  
+**delegate_code_task**：✅ 已完成实施（2026-06-05），Telegram 端到端验证受阻于模型不可用
+**Telegram 流式输出**：🔧 进行中 (2026-06-06)
+  - Tool lane 流式显示：✅ 已实施（坑 #70: minInitialChars 防抖修复）
+  - Tool result phase 路由：✅ 已修复 — onToolStart 现在处理 phase "result"，tool lane 显示 "📖 Read: /path"
+  - Thinking/Reasoning 流式：已接线，需 session `reasoningLevel: "stream"` 配置
+  - Tool 完整 stdout 输出：需 verboseLevel="full"（下一 Sprint）
 **pi-mono 统一版本**：0.64.0  
 **packages/ 精简**：mom/web-ui/pods 已删除（只剩 tui/ai/agent/coding-agent 4 个包）  
 **Tool Parity 进度**：3/16 = 18.75%

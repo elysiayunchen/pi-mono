@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-05
+> 最后更新: 2026-06-06
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -33,16 +33,18 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - 四层注册: elysiaclaw-tools.ts + tool-catalog.ts + elysiaclaw.json tools.allow
   - 策略指引: attempt.ts 中注入 MANDATORY delegate_code_task 指引
   - Code Mode 检测块已移除
-  - elysiaclaw dist 已构建并部署到全局目录
-  - **修复 #65**: createDelegateCodeTaskTool 未注册到 tools 数组 — 已修复
-  - **新增**: `model` 可选参数（子代理可指定独立模型）（坑 #67）
+  - **修复 #65/#66/#67/#68**: 工具注册链完整
   - **配置**: tools.subagents.tools.deny 已添加写操作禁止列表
-- **Telegram 端到端验证** — 进行中，受阻于主模型不可用
-  - 工具注册已确认正常（无 "unknown entries" 警告）
-  - 子代理 spawn 正常（announce 链路可见）
-  - 子代理 LLM 调用失败（主模型 openrouter/owl-alpha 返回 400）
-  - 下一步：用可用模型重新测试
-- 下一步: 确认可用模型 → 重新端到端验证 → DTS 错误修复 → Tool Parity 剩余 Task
+- **Telegram 端到端验证** — 受阻于主模型不可用（openrouter/owl-alpha 返回 400）
+
+- **Telegram 流式输出** — 🔧 进行中 (2026-06-06)
+  - ✅ Tool lane 创建（复用 draft-stream，坑 #70 防抖修复）
+  - ✅ Tool result phase 路由（`agent-runner-execution.ts` 处理 phase "result"，携带 meta/isError）
+  - ✅ Tool lane 显示命令摘要（`onToolStart` phase="result" → `"📖 Read: /path/file"`）
+  - 🔧 Thinking 流式：需 session `reasoningLevel: "stream"` 配置
+  - 🔧 完整 stdout 输出：需 `verboseLevel: "full"`
+
+- 下一步: 确认可用模型 → Telegram 端到端验证 → DTS 错误修复 × 6 → Tool Parity Task 3-16
 
 ### 路径修正 (2026-06-05)
 - 项目根目录: `~/projects/pi-mono/` (此前文档记载为 `~/pi-mono/`)
@@ -50,10 +52,10 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - 数据目录 `~/.pi/agent/`、配置目录 `~/.elysiaclaw/` 不变
 
 ### 残余技术债
-- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，需绕过
-- OpenRouter→阿里云路由劫持 — 临时规避，根因未修
+- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，需绕过（坑 #38/#63）
 - OpenRouter/owl-alpha 不可用 — 默认模型需更换
-- delegate_code_task 端到端验证未完成 — 需可用模型
+- delegate_code_task Telegram 端到端验证未完成 — 需可用模型
+- Telegram 完整 stdout 输出 — 需 `verboseLevel: "full"` 机制改造
 - Tool Parity 剩余 13 个 Task 待执行
 
 ---
