@@ -1,15 +1,5 @@
 # @mariozechner/pi-coding-agent — ElysiaClaw Agent SDK
 
-<p align="center">
-  <a href="https://shittycodingagent.ai">
-    <img src="https://shittycodingagent.ai/logo.svg" alt="pi logo" width="128">
-  </a>
-</p>
-<p align="center">
-  <a href="https://www.npmjs.com/package/@mariozechner/pi-coding-agent"><img alt="npm" src="https://img.shields.io/npm/v/@mariozechner/pi-coding-agent?style=flat-square" /></a>
-  <a href="https://github.com/elysiayunchen/pi-mono"><img alt="GitHub" src="https://img.shields.io/badge/repo-elysiayunchen%2Fpi--mono-333?style=flat-square&logo=github" /></a>
-</p>
-
 > pi-coding-agent 是 ElysiaClaw 平台的 Agent SDK 层。在 pi-mono 原版基础上实现了对标 Claude Code 的完整 12 层 Agent 架构。
 
 ### ElysiaClaw 扩展能力
@@ -55,7 +45,7 @@ Pi 是一个极简的终端编程工具。让 Pi 适应你的工作流，而不�
 
 Pi 开箱即用，拥有强大的默认配置，但刻意省略了子代理（sub agent）和计划模式（plan mode）等功能。你可以让 Pi 为你构建所需的功能，或者安装第三方 Pi 包来匹配你的工作流。
 
-Pi 有四种运行模式：交互模式、打印/JSON 模式、RPC 模式（用于进程集成）以及 SDK 模式（嵌入到你自己的应用中）。参见 [openclaw/openclaw](https://github.com/openclaw/openclaw) 了解真实的 SDK 集成案例。
+Pi 有四种运行模式：交互模式、打印/JSON 模式、RPC 模式（用于进程集成）以及 SDK 模式（嵌入到你自己的应用中）。
 
 ## 目录
 
@@ -367,7 +357,7 @@ export default function (pi: ExtensionAPI) {
 
 ### Pi 包
 
-通过 npm 或 git 打包和分享扩展、技能、提示词和主题。在 [npmjs.com](https://www.npmjs.com/search?q=keywords%3Api-package) 或 [Discord](https://discord.com/channels/1456806362351669492/1457744485428629628) 上查找包。
+通过 npm 或 git 打包和分享扩展、技能、提示词和主题。
 
 > **安全提示：** Pi 包拥有完整的系统访问权限。扩展可执行任意代码，技能可指示模型执行任何操作，包括运行可执行文件。安装第三方包前请审查源代码。
 
@@ -452,7 +442,7 @@ RPC 模式使用严格的 LF 分隔 JSONL 帧。客户端必须仅在 `\n` 处�
 
 Pi 强调可扩展性，因此它不需要规定你的工作流。其他工具内置的功能可以通过[扩展](#扩展)、[技能](#技能)或第三方 [Pi 包](#pi-包)来构建。这保持了核心的精简，同时让你可以按需塑造 Pi。
 
-**不内置 MCP。** 用 CLI 工具加 README 即可（参见[技能](#技能)），或者构建一个添加 MCP 支持的扩展。[为什么？](https://mariozechner.at/posts/2025-11-02-what-if-you-dont-need-mcp/)
+**不内置 MCP。** 用 CLI 工具加 README 即可（参见[技能](#技能)），或者构建一个添加 MCP 支持的扩展。
 
 **不内置子代理。** 实现方式多种多样。通过 tmux 启动 Pi 实例，或用[扩展](#扩展)构建自己的方案，或安装一个符合你需求的包。
 
@@ -464,7 +454,7 @@ Pi 强调可扩展性，因此它不需要规定你的工作流。其他工具�
 
 **不内置后台 Bash。** 使用 tmux。完全可见，直接交互。
 
-阅读[博客文章](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)了解完整理由。
+这便是 pi-mono 的核心设计哲学。
 
 > **ElysiaClaw 实现说明**：上述哲学正是 ElysiaClaw 扩展层的设计基础。pi-mono 说"不内置子代理、计划模式、后台 Bash"，而 ElysiaClaw 正是通过 Extension/Tool/Skill 体系把这些能力作为扩展实现——这正是 pi-mono 期望的方式。"原语，而非功能" = 框架给你钩子，你在钩子上构建你需要的功能。
 
@@ -622,8 +612,3 @@ pi --thinking high "解决这个复杂问题"
 
 MIT
 
-## 另见
-
-- [@mariozechner/pi-ai](https://www.npmjs.com/package/@mariozechner/pi-ai)：核心 LLM 工具包
-- [@mariozechner/pi-agent](https://www.npmjs.com/package/@mariozechner/pi-agent)：代理框架
-- [@mariozechner/pi-tui](https://www.npmjs.com/package/@mariozechner/pi-tui)：终端 UI 组件

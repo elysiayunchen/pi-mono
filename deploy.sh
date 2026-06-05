@@ -1,9 +1,10 @@
 #!/bin/bash
 set -e
 
-OPENCLAW="$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw"
-NM="$OPENCLAW/node_modules/@mariozechner"
+ELYSIACLAW="$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw"
+NM="$ELYSIACLAW/node_modules/@mariozechner"
 AGENT_JS="$NM/pi-agent-core/dist/agent.js"
+ELYSIACLAW_DIST="$HOME/projects/pi-mono/elysiaclaw/dist"
 
 echo "==========================================="
 echo "  ElysiaClaw Deploy (with guards)"
@@ -53,34 +54,35 @@ else:
     print('  config.yaml not found')
 " || exit 1
 
+# ── Phase A: pi-mono framework layer ──
 echo ""
-echo "=== Step 1: Build ==="
-cd ~/pi-mono
+echo "=== Step 1: Build pi-mono framework ==="
+cd ~/projects/pi-mono
 npm run build
 
 echo ""
 echo "=== Step 2: Deploy pi-agent-core (0.64) ==="
-rm -rf "$NM/pi-agent-core/dist" && cp -r ~/pi-mono/packages/agent/dist "$NM/pi-agent-core/dist"
+rm -rf "$NM/pi-agent-core/dist" && cp -r ~/projects/pi-mono/packages/agent/dist "$NM/pi-agent-core/dist"
 echo "[OK] pi-agent-core deployed"
 
 echo ""
 echo "=== Step 3: Deploy pi-ai (0.64) ==="
-rm -rf "$NM/pi-ai/dist" && cp -r ~/pi-mono/packages/ai/dist "$NM/pi-ai/dist"
+rm -rf "$NM/pi-ai/dist" && cp -r ~/projects/pi-mono/packages/ai/dist "$NM/pi-ai/dist"
 echo "[OK] pi-ai deployed"
 
 echo ""
 echo "=== Step 4: Deploy pi-tui (0.64) ==="
-rm -rf "$NM/pi-tui/dist" && cp -r ~/pi-mono/packages/tui/dist "$NM/pi-tui/dist"
+rm -rf "$NM/pi-tui/dist" && cp -r ~/projects/pi-mono/packages/tui/dist "$NM/pi-tui/dist"
 echo "[OK] pi-tui deployed"
 
 echo ""
 echo "=== Step 5: Deploy pi-coding-agent (0.64) ==="
-rm -rf "$NM/pi-coding-agent/dist" && cp -r ~/pi-mono/packages/coding-agent/dist "$NM/pi-coding-agent/dist"
+rm -rf "$NM/pi-coding-agent/dist" && cp -r ~/projects/pi-mono/packages/coding-agent/dist "$NM/pi-coding-agent/dist"
 echo "[OK] pi-coding-agent deployed"
 
 echo ""
 echo "=== Step 6: Re-apply agent.js patch (0.64 anchor) ==="
-node ~/pi-mono/scripts/patch-agent.cjs
+node ~/projects/pi-mono/scripts/patch-agent.cjs
 
 # ── Post-patch Guard 2: Verify patch injection ──
 echo ""
@@ -108,20 +110,47 @@ else
     echo "  WARNING: agent.js not found at $AGENT_JS"
 fi
 
+# ── Phase B: elysiaclaw application layer ──
 echo ""
-echo "=== Step 7: Sync postinstall script ==="
-cp ~/pi-mono/scripts/patch-agent.cjs "$OPENCLAW/scripts-patch/patch-agent.cjs"
+echo "=== Step 7: Build elysiaclaw application ==="
+cd ~/projects/pi-mono/elysiaclaw
+
+# tsdown main build (skips DTS errors - Pitfall #38)
+node scripts/tsdown-build.mjs
+node scripts/copy-plugin-sdk-root-alias.mjs
+# Optional post-build steps (non-fatal)
+node --import tsx scripts/write-plugin-sdk-entry-dts.ts 2>/dev/null || true
+node --import tsx scripts/canvas-a2ui-copy.ts 2>/dev/null || true
+node --import tsx scripts/copy-hook-metadata.ts 2>/dev/null || true
+node --import tsx scripts/copy-export-html-templates.ts 2>/dev/null || true
+node --import tsx scripts/write-build-info.ts 2>/dev/null || true
+node --import tsx scripts/write-cli-startup-metadata.ts 2>/dev/null || true
+node --import tsx scripts/write-cli-compat.ts 2>/dev/null || true
+echo "[OK] elysiaclaw built"
+
+echo ""
+echo "=== Step 8: Deploy elysiaclaw dist ==="
+if [ -d "$ELYSIACLAW_DIST" ]; then
+    cp -r "$ELYSIACLAW_DIST"/* "$ELYSIACLAW/dist/"
+    echo "[OK] elysiaclaw dist deployed to $ELYSIACLAW/dist/"
+else
+    echo "  ERROR: elysiaclaw dist not found at $ELYSIACLAW_DIST"
+    exit 1
+fi
+
+# ── Phase C: Post-deploy ──
+echo ""
+echo "=== Step 9: Sync postinstall script ==="
+cp ~/projects/pi-mono/scripts/patch-agent.cjs "$ELYSIACLAW/scripts-patch/patch-agent.cjs"
 echo "[OK] postinstall script synced"
 
 # ── Post-deploy Guard 3: Tool registration parity ──
 echo ""
 echo "[Guard 3] Checking tool registration parity..."
-TOOLS_SRC="$HOME/pi-mono/packages/coding-agent/src/core/tools/index.ts"
-MASTER_SRC="$HOME/pi-mono/packages/coding-agent/src/index.ts"
+TOOLS_SRC="$HOME/projects/pi-mono/packages/coding-agent/src/core/tools/index.ts"
+MASTER_SRC="$HOME/projects/pi-mono/packages/coding-agent/src/index.ts"
 if [ -f "$TOOLS_SRC" ] && [ -f "$MASTER_SRC" ]; then
-    # Count tools in allTools object (lines with colon before the closing brace)
     TOOLS_COUNT=$(grep -A999 "^export const allTools" "$TOOLS_SRC" | sed '/^};$/q' | grep -c "Tool," || echo 0)
-    # Count tool-related exports in master index
     MASTER_EXPORTS=$(grep -c "ToolDefinition\|toolDefinition" "$MASTER_SRC" || echo 0)
     echo "  allTools entries: ~$TOOLS_COUNT"
     echo "  Master index tool exports: ~$MASTER_EXPORTS"
@@ -131,12 +160,12 @@ if [ -f "$TOOLS_SRC" ] && [ -f "$MASTER_SRC" ]; then
 fi
 
 echo ""
-echo "=== Step 8: Restart gateway ==="
+echo "=== Step 10: Restart gateway ==="
 ~/.nvm/versions/node/v22.22.1/bin/elysiaclaw gateway restart
 echo "[OK] Gateway restarted"
 
 echo ""
-echo "=== Step 9: Verify ==="
+echo "=== Step 11: Verify ==="
 sleep 2
 ~/.nvm/versions/node/v22.22.1/bin/elysiaclaw status
 echo ""

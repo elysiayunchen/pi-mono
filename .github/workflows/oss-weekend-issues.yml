@@ -74,13 +74,12 @@ jobs:
             }
 
             const reopenDate = weekendState.reopensOnText || weekendState.reopensOn || 'after the weekend';
-            const discordUrl = weekendState.discordUrl || 'https://discord.com/invite/3cU7Bz4UPx';
             const message = [
               `Hi @${issueAuthor}, thanks for opening an issue.`,
               '',
               `OSS weekend is active until ${reopenDate}, so new issues are being auto-closed for now.`,
               '',
-              `Please reopen or submit this issue again after ${reopenDate}. For support, join [Discord](${discordUrl}).`,
+              `Please reopen or submit this issue again after ${reopenDate}.`,
             ].join('\n');
 
             await github.rest.issues.createComment({

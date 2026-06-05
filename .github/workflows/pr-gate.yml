@@ -94,7 +94,6 @@ jobs:
               console.log(`${prAuthor} is approved, but OSS weekend is active`);
 
               const reopenDate = weekendState.reopensOnText || weekendState.reopensOn || 'after the weekend';
-              const discordUrl = weekendState.discordUrl || 'https://discord.com/invite/3cU7Bz4UPx';
               const message = [
                 `Hi @${prAuthor}, thanks for the PR.`,
                 '',
