@@ -170,16 +170,24 @@ echo "=== Step 9: Deploy extensions ==="
 EXTS_SRC="$HOME/projects/pi-mono/elysiaclaw/extensions"
 EXTS_DST="$ELYSIACLAW/extensions"
 if [ -d "$EXTS_SRC" ]; then
-    # Sync only bundled extensions (keep package.json, index.ts, .plugin.json)
     for ext_dir in "$EXTS_SRC"/*/; do
         ext_name=$(basename "$ext_dir")
         if [ -f "$ext_dir/index.ts" ]; then
             rm -rf "$EXTS_DST/$ext_name"
             mkdir -p "$EXTS_DST/$ext_name"
-            # Copy only source files, not node_modules
+            # Copy top-level source files (exclude node_modules, .gitignore)
             find "$ext_dir" -maxdepth 1 -type f \
               -not -name '.gitignore' \
               -exec cp {} "$EXTS_DST/$ext_name/" \;
+            # Copy subdirectories (e.g. telegram/src/) — exclude node_modules/skills/dist
+            # Pitfall #76: -maxdepth 1 drops src/ subdirs, breaking plugins that import from ./src/
+            for sub_dir in "$ext_dir"*/; do
+                sub_name=$(basename "$sub_dir")
+                if [ "$sub_name" = "node_modules" ] || [ "$sub_name" = "skills" ] || [ "$sub_name" = "dist" ]; then
+                    continue
+                fi
+                cp -r "$sub_dir" "$EXTS_DST/$ext_name/$sub_name"
+            done
             echo "  [OK] synced extension: $ext_name"
         fi
     done

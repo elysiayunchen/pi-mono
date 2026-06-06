@@ -585,5 +585,42 @@ with open(path, "w") as f:
 **影响**: Cosmetic only — 不影响功能。`memory_search` 和 `memory_get` 工具正常注册并可用。
 **状态**: 未修复，归类为 resolution order 问题。暂不处理。
 
-*记录截至 2026-06-06，坑 #72。下次遇到新坑从 #73 开始追加。*
+### #73 — 用户画像 identity 空对象恒触发 changed（污染 + 无谓写库）
+**现象**: 序 1-7 测试加固时，针对纯闲聊消息（如"嗯嗯好的"，无任何可提取信息）断言 `updateUserModel` 返回 `changed=false`，实际返回 `changed=true`。
+**根因**: `heuristicExtract()` 初始化恒返回 `identity: {}`（空对象）。`updateUserModel` 的 identity 合并判定用 `JSON.stringify(newIdentity) !== JSON.stringify(model.identity)`——新用户 `model.identity` 为 `undefined`，`JSON.stringify({})` = `"{}"`，`JSON.stringify(undefined)` = `undefined`，`"{}" !== undefined` **恒为真** → 每条无信息消息都把 `identity` 从 `undefined` 写成 `{}` 并标记 `changed=true`。
+**影响**: 运行时持续危害——① 每条闲聊触发 `saveModel` 无谓写 `user-model.db`；② `identity` 字段被污染成空对象 `{}`，破坏"未知身份"语义。
+**解决**: identity 合并前加 `Object.keys(newIdentity).length > 0` 守卫（`user-model-updater.ts`），覆盖 heuristic 和 LLM 两条路径。空对象不再触发变更。
+**预防**: 任何"读旧值 → 合并 → diff 判变更"逻辑，diff 前必须排除"语义为空但结构非空"的中间态（`{}`、`[]`、`{k:undefined}`）。`stringify` diff 对 `{}` vs `undefined` 不安全。
+**测试**: `src/user-model/user-model.test.ts` 锁定 `changed=false` 闲聊路径。
+
+### #74 — L0 工具结果驱逐摘要：非文本 block 第 3 个同类型重复计数
+**现象**: `buildToolResultSummary` 对含 3 个同类型非文本 block（如 3 张 image）的工具结果，摘要产出 `+image×2,image` 而非 `+image×3`。
+**根因**: 旧逻辑用数组 + `includes(tag)` 判存在：第 1 次 push `image`；第 2 次命中 else → `image×2`；第 3 次 `includes("image")` 因数组里是 `"image×2"` 返回 false → 错误地再次 push `image`，产生重复条目。
+**影响**: 仅摘要标签不准（cosmetic），不影响驱逐功能与 token 释放。
+**解决**: 改用 `Map<string,number>` 计数，最后 `n>1 ? tag×n : tag` 格式化（`multi-layer.ts`）。
+**预防**: "去重 + 计数"场景直接用 `Map`，不要在同一数组里混存裸 tag 和 `tag×n` 两种形态。
+**测试**: `packages/coding-agent/test/multi-layer.test.ts` 加回归断言 `+image×3` 且 `not.toContain("image×2,image")`。
+
+### #75 — 输入分类器技术词检测误用字符集（`[词|词]`）
+**现象**: 群聊短消息技术词检测 `/[代码|编译|配置|...|命令]/.test(text)`，对"任务完成"（含"务"）、"密码忘了"（含"码"）等闲聊误判为"含技术词"，压制了 chat 判定。
+**根因**: `[...]` 是**字符集**不是分组——匹配方括号内任意单个字符，`|` 被当字面量。`[代码|编译]` 等价于"匹配 代/码/编/译/| 任一字符"，远比预期宽松。
+**影响**: 群聊短闲聊被错误地排除出 chat 轨，落入 task（方向与"偏向 task"设计一致，故此前未暴露，危害低但语义错误）。
+**解决**: 改为 alternation `/代码|编译|配置|...|命令/`（`input-classifier.ts:201`）。
+**预防**: 正则里"任一词组"用 `(a|b|c)` 或裸 alternation `a|b|c`，绝不用 `[a|b|c]`。中文场景尤其隐蔽——字符集恰好能匹配单字，碰巧"半对"，掩盖 bug。
+**测试**: `src/context-engine/input-classifier.test.ts` BUG #2 regression 块。
+
+**未修待定**: `input-classifier.ts:224` 路径检测 `/[./]\w{2,}/` 中 `\w` 不匹配中文，且 `text.includes("/")` 让"和/或"误判 task。over-broad 但方向与设计一致，已写测试锁定当前行为，未改（收紧需产品决策）。
+
+### #76 — deploy.sh Step 9 extensions 同步丢弃子目录，且旧版 manifest 名未适配
+**现象**: deploy.sh 运行后 `elysiaclaw gateway restart` 失败：① `plugin manifest not found: extensions/acpx/elysiaclaw.plugin.json`（40 个 plugin 全部报错）；② telegram plugin 加载失败 `Cannot find module './src/channel.js'`
+**根因 A — manifest 命名**: 各 extension 源目录中 manifest 文件名为 `openclaw.plugin.json`（继承自 OpenClaw 上游），但 gateway 校验器期望 `elysiaclaw.plugin.json`。deploy.sh Step 9 原样同步，旧名跟着来，gateway 找不到。
+**根因 B — 子目录丢弃**: Step 9 用 `find "$ext_dir" -maxdepth 1 -type f` 只复制顶层文件，忽略子目录。telegram extension 的 `src/channel.ts` 在 `telegram/src/` 子目录下，未同步到全局，jiti 加载时找不到 `./src/channel.js`。
+**影响**: 所有 plugin 加载失败，gateway 无法启动（config invalid）。
+**解决**:
+1. 源目录批量 `cp openclaw.plugin.json elysiaclaw.plugin.json`（40 个 extension）
+2. 手动 `cp -r elysiaclaw/extensions/telegram/src $GLOBAL/extensions/telegram/src`
+3. deploy.sh Step 9 修复：① 增加子目录递归复制（排除 node_modules/skills/dist）；② 自动检测并复制 `elysiaclaw.plugin.json`（当全局只有 `openclaw.plugin.json` 时）
+**预防**: extension 子目录同步必须显式处理；manifest 命名不一致是 fork 遗留历史债，在 deploy.sh 中用自动适配而非手动修。
+
+*记录截至 2026-06-07，坑 #76。下次遇到新坑从 #77 开始追加。*
 

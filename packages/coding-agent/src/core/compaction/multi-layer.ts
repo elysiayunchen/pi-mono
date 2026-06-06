@@ -95,7 +95,11 @@ function buildToolResultSummary(
 
 	let totalChars = 0;
 	let firstLine = "";
-	const nonTextBlocks: string[] = [];
+	// Count non-text blocks by type (image, resource_link, resource, etc.).
+	// A Map keeps insertion order and counts correctly regardless of how many
+	// duplicates of the same type appear (the old array approach mis-counted the
+	// 3rd+ duplicate, producing entries like `image×2, image`).
+	const nonTextCounts = new Map<string, number>();
 
 	if (Array.isArray(tr.content)) {
 		for (const block of tr.content as Array<{ type?: string; text?: string; [key: string]: unknown }>) {
@@ -105,20 +109,8 @@ function buildToolResultSummary(
 					firstLine = collapseWhitespace(block.text.slice(0, 120));
 				}
 			} else if (block?.type && block.type !== "text") {
-				// Track non-text blocks (image, resource_link, resource, etc.)
 				const tag = block.type.replace(/_/g, "-");
-				if (!nonTextBlocks.includes(tag)) {
-					nonTextBlocks.push(tag);
-				} else {
-					// Append count for duplicates of same type
-					const existingIdx = nonTextBlocks.findIndex((b) => b.startsWith(`${tag}×`));
-					if (existingIdx >= 0) {
-						const count = Number.parseInt(nonTextBlocks[existingIdx].split("×")[1] || "1", 10) + 1;
-						nonTextBlocks[existingIdx] = `${tag}×${count}`;
-					} else {
-						nonTextBlocks[nonTextBlocks.indexOf(tag)] = `${tag}×2`;
-					}
-				}
+				nonTextCounts.set(tag, (nonTextCounts.get(tag) ?? 0) + 1);
 			}
 		}
 	} else if (typeof tr.content === "string") {
@@ -144,6 +136,7 @@ function buildToolResultSummary(
 	const chars = totalChars > 0 ? ` (${totalChars} chars)` : "";
 	const path = filePath ? ` ${filePath}` : "";
 	const line = firstLine ? `: ${firstLine}` : "";
+	const nonTextBlocks = [...nonTextCounts.entries()].map(([tag, n]) => (n > 1 ? `${tag}×${n}` : tag));
 	const nonText = nonTextBlocks.length > 0 ? ` +${nonTextBlocks.join(",")}` : "";
 
 	return `${EVICTED_MARKER}[${toolName}${path}]${isError}${chars}${nonText}${line}`;

@@ -5,6 +5,40 @@
 
 ---
 
+## Sprint: 序 1-7 测试加固 + Bug 修复 (2026-06-07) ✅ 已完成
+
+**Sprint 目标**: 序 4-7 核心新模块（L0 驱逐 / 注入预算器 / 输入分类器 / 用户画像）此前零单元测试，补深度测试并修复暴露的 bug
+**开始时间**: 2026-06-07
+**完成时间**: 2026-06-07
+**测试结果**: 新增 77 用例全过；框架层 compaction 链回归 49/49 无回归
+
+### 新增测试
+
+| 文件 | 模块（序号） | 用例 |
+|------|------|------|
+| `packages/coding-agent/test/multi-layer.test.ts` | L0 工具结果驱逐（序4，框架层） | 22 |
+| `elysiaclaw/src/context-engine/input-classifier.test.ts` | 输入分类器（序6） | 27 |
+| `elysiaclaw/src/context-engine/injection-budget.test.ts` | 注入预算器（序5） | 7 |
+| `elysiaclaw/src/user-model/user-model.test.ts` | 用户画像（序7，含 SQLite 往返） | 16 |
+
+### 修复的 Bug（详见 PITFALLS #73-#75）
+
+| 坑号 | 模块 | 严重度 | 修复 |
+|------|------|--------|------|
+| #73 | `user-model-updater.ts` | **高**（持续污染 DB + 无谓写库） | identity 合并加 `Object.keys().length>0` 守卫 |
+| #74 | `multi-layer.ts` | 低（摘要标签不准） | nonTextBlocks 改 `Map` 计数 |
+| #75 | `input-classifier.ts` | 低（字符集误用，方向与设计一致） | `[词\|词]` → alternation |
+
+### 未修待定
+
+- `input-classifier.ts:224` 路径检测 `\w` 不匹中文 + `includes("/")` over-broad，已写测试锁定当前行为，收紧需产品决策
+
+### 关键发现
+
+- **BUG #73 靠测试暴露**：纯闲聊消息 `changed` 恒为 true，`JSON.stringify({}) !== JSON.stringify(undefined)` 恒真——"结构非空但语义为空"的中间态在 diff 判变更时不安全。这是本轮最高价值产出。
+
+---
+
 ## Sprint: BashTool Parity + GrepTool Regression Fix (2026-04-10) ✅ 已完成
 
 **Sprint 目标**: Task 2 — BashTool 能力声明 + run_in_background
