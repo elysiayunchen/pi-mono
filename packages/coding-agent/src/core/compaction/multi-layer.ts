@@ -113,7 +113,7 @@ function buildToolResultSummary(
 					// Append count for duplicates of same type
 					const existingIdx = nonTextBlocks.findIndex((b) => b.startsWith(`${tag}×`));
 					if (existingIdx >= 0) {
-						const count = Number.parseInt(nonTextBlocks[existingIdx].split("×")[1] || "1") + 1;
+						const count = Number.parseInt(nonTextBlocks[existingIdx].split("×")[1] || "1", 10) + 1;
 						nonTextBlocks[existingIdx] = `${tag}×${count}`;
 					} else {
 						nonTextBlocks[nonTextBlocks.indexOf(tag)] = `${tag}×2`;
