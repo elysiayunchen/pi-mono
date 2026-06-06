@@ -521,6 +521,8 @@ with open(path, "w") as f:
 | delegate_code_task / 子代理分发 | #64 |
 | tsdown tree-shake | #68 |
 | elysiaclaw dist 部署遗漏 | #69 |
+| deploy.sh extensions 未同步 | #71 |
+| plugin allowlist 时序误报 | #72 |
 
 ---
 
@@ -567,5 +569,21 @@ with open(path, "w") as f:
 **解决**: `createDraftLane` 中对 `laneName === "tool"` 设置 `minInitialChars: undefined`，禁用防抖，短标签即时发出
 **预防**: Draft lane 的新消费者应检查 minInitialChars 是否适合其内容长度
 
-*记录截至 2026-06-06，坑 #70。下次遇到新坑从 #71 开始追加。*
+### #71 — deploy.sh 未同步 extensions 导致 plugin 代码陈旧（根因级）
+**现象**: 源码中 `extensions/memory-core/index.ts` 已更新为新 API（`ElysiaClawPluginApi`），但 Agent session 中 `memory_search` 工具不可用。Gateway API `/tools/invoke` 返回 `"Tool not available: memory_search"`
+**诊断链**: 源码验证（T4-T6 代码正确）→ CLI 验证（memory status ✅）→ Gateway API（❌）→ 日志（group:memory unknown）→ session JSONL（"Tool not found"）→ plugin 加载链追踪 → **部署版本对比：全局 `node_modules/elysiaclaw/extensions/memory-core/index.ts` 仍是 4 月旧版（`OpenClawPluginApi` 类型）**
+**根因**: `deploy.sh` 只负责 pi-mono 框架层 4 个包 + elysiaclaw dist 部署，**从未同步 `extensions/` 目录**。Plugin 源码通过 jiti 直接加载 `.ts` 文件，旧版 plugin factory 使用错误的 API 类型导致 `registerTool` 回调返回 null，工具静默缺失。
+**解决**: deploy.sh 新增 Step 9 — 遍历 `elysiaclaw/extensions/*/` 下每个子目录，`rm -rf` 目标后 `cp -r` 同步到全局 `node_modules/elysiaclaw/extensions/`。同时新增 Guard 3（dist 完整性校验）和 Guard 5（E2E 验证）防止复发。
+**预防**: 
+1. 每次修改 `extensions/` 下的 plugin 源码后，必须执行 `./deploy.sh` 或手动同步 extensions
+2. deploy.sh Guard 5 的 E2E 验证会在 Gateway 重启后实际调用 `memory_search`，确保 plugin 工具可用
+3. 考虑在 Guard 3 中增加 extensions 文件 hash 对比（当前只检查 dist 内容模式）
+
+### #72 — stripPluginOnlyAllowlist 时序导致 group:memory 误报 unknown
+**现象**: Gateway 日志 `tools.allow allowlist contains unknown entries (group:memory). These entries won't match any tool unless the plugin is enabled.`
+**根因**: `stripPluginOnlyAllowlist()` 在 plugin 工具尚未注册时运行，`group:memory` 展开依赖 plugin 成功注册工具。plugin 注册成功后工具确实可用。
+**影响**: Cosmetic only — 不影响功能。`memory_search` 和 `memory_get` 工具正常注册并可用。
+**状态**: 未修复，归类为 resolution order 问题。暂不处理。
+
+*记录截至 2026-06-06，坑 #72。下次遇到新坑从 #73 开始追加。*
 

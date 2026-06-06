@@ -1,10 +1,12 @@
 # ElysiaClaw — 超级计算机管理员 Agent 设计
 
 > Super Computer Administrator Agent — Memory Architecture & World Model
-> 起草:2026-06-06 · 状态:**设计稿(未实现)** · 维护者:aoseluo(云尘 / 奈緒)
+> 起草:2026-06-06 · 状态:**Phase 1 ✅ 已完成 (2026-06-06)，Phase 2 待启动** · 维护者:aoseluo(云尘 / 奈緒)
 >
 > 本文档把"围绕超级计算机管理员打造 ElysiaClaw"的核心设计固化为定稿。
 > 范围:记忆架构诊断 + 四类记忆 + 认知循环状态机 + World Model 数字孪生。
+> **Phase 1 (记忆引擎激活)**: T1-T6 全部完成 — TS memory_search 已取代 Python session_search，RECALL 注入已激活。详见 `MEMORY-ACTIVATION-RUNBOOK.md`。
+> **Phase 2 (World Model 数字孪生)**: 待启动。
 > 标注约定:**KNOWN**=有代码/grep 证据;**PROPOSAL**=设计建议,未实现。
 > 深挖细节(probe 解析、状态机逐态、CONSOLIDATE 提炼)见文末「待深挖清单」。
 

@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-06 (T4-T6 记忆引擎激活完成)
+> 最后更新: 2026-06-06 (记忆引擎激活完成 + deploy.sh 增强)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -51,7 +51,18 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - RECALL 注入已激活（T6：每轮 system prompt 自动召回 top-5）
   - DB: `~/.elysiaclaw/memory/main.sqlite`
 
-  - 下一步: World Model 阶段 2 → Telegram 端到端验证 → DTS 修复 × 6 → Tool Parity Task 3-16
+- **deploy.sh 增强** — ✅ 完成 (2026-06-06)
+  - 修复根因：dist 从未部署 + extensions 从未同步
+  - 从 3 Guard/11 Step → 5 Guard/12 Step
+  - 新增：clean slate deploy、extensions sync、dist 完整性校验、E2E 验证
+
+- **Telegram UX × 上下文/记忆协同计划** — 📋 起草 (2026-06-06)
+  - 计划文档: `TELEGRAM-UX-CONTEXT-PLAN.md`(PROPOSAL,待启动)
+  - 诊断: 压缩/思考期对用户静默 → 误判掉线;思考链不可见;注入与压缩无预算协同
+  - WS-1 压缩可见性(typing 心跳+状态) / WS-2 全流式输出(thinking 默认流式) / WS-3 压缩即沉淀+注入预算器
+  - WS-1/WS-2 不依赖主模型,可优先做;WS-3 是 World Model 注入前的硬前置
+
+  - 下一步: **见 `ARCHITECTURE.md` Part 9.3 统一实施优先级总表** — 序 1(索引化注入+B4改造,最优单点)→ 序 2-5(压缩可见性/全流式/L1工具驱逐/注入预算器,均不依赖主模型)→ 待模型恢复后序 7-12。旧线(World Model Ph2 / Telegram E2E / DTS×6 / Tool Parity 3-16)并入该表统筹。
 ### 路径修正 (2026-06-05)
 - 项目根目录: `~/projects/pi-mono/` (此前文档记载为 `~/pi-mono/`)
 - 所有引擎文件路径已修正（7 个 .md + README.md = 8 个文件）
@@ -70,11 +81,16 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 1.本文档 (HANDOFF.md) — 你在看这个
 2.elysiaclaw_engine/SYSTEM.md — 运行环境、构建部署、文件索引
 3.elysiaclaw_engine/ARCHITECTURE.md — 架构蓝图
-4.elysiaclaw_engine/PITFALLS.md — 64 个踩坑记录（必读）
-5.elysiaclaw_engine/SUBAGENT-CODE-DELEGATION.md — 子代理代码委派技术设计
-6.elysiaclaw_engine/DELEGATE-CODE-TASK-PLAN.md — 当前任务的详细实施计划
-7.elysiaclaw_engine/ROADMAP.md — 中长期规划
-8.elysiaclaw_engine/SPRINT.md — Sprint 工作台
+4.elysiaclaw_engine/PITFALLS.md — 70 个踩坑记录（必读）
+5.elysiaclaw_engine/SUPERADMIN-AGENT-DESIGN.md — 记忆架构总设计（Phase 1 完成，Phase 2 待启动）
+6.elysiaclaw_engine/MEMORY-ACTIVATION-RUNBOOK.md — 记忆引擎激活执行手册（已完成，参考用）
+7.elysiaclaw_engine/TELEGRAM-UX-CONTEXT-PLAN.md — Telegram 输出体验 × 上下文/记忆协同计划（PROPOSAL）
+8.elysiaclaw_engine/CONTEXT-INJECTION-ARCHITECTURE.md — 分层上下文注入架构（KV-cache 优化 + 注入预算，PROPOSAL）
+9.elysiaclaw_engine/SESSION-ROTATION-CONTINUITY.md — 会话轮换与跨会话任务延续（工作记忆周期化 + Handoff 双轨延续 + §4B 任务段实时打包/三级压缩，PROPOSAL）
+10.elysiaclaw_engine/KNOWLEDGE-BASE-EVOLUTION.md — 知识库与自我进化（索引化注入 + 输入分类 + 用户画像 + 技能进化，PROPOSAL）
+11.elysiaclaw_engine/SUBAGENT-CODE-DELEGATION.md — 子代理代码委派技术设计
+8.elysiaclaw_engine/ROADMAP.md — 中长期规划
+9.elysiaclaw_engine/SPRINT.md — Sprint 工作台
 
 ---
 
@@ -95,15 +111,15 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 
 ## 下个窗口的起步清单
 
-**当前主线（2026-06-06）：超级计算机管理员 Agent / 记忆架构**
-- 总架构：`SUPERADMIN-AGENT-DESIGN.md`（记忆四类 + 状态机 + World Model + TS 优越性）
-- 执行手册：`MEMORY-ACTIVATION-RUNBOOK.md`（阶段1「激活记忆引擎」T1-T6 逐任务 SOP，给执行 agent）
-- 关键实测：线上 TS 记忆引擎 **0 chunks 空置**，Python session_search 是当前唯一可用会话检索 → 先激活+验证，后切换+删除（次序不可逆）
+**当前主线（2026-06-06）：记忆引擎已激活，下一步 World Model Phase 2**
+- 总架构：`SUPERADMIN-AGENT-DESIGN.md`（Phase 1 ✅ 完成，Phase 2 World Model 数字孪生待启动）
+- 执行手册：`MEMORY-ACTIVATION-RUNBOOK.md`（T1-T6 全部完成，保留为参考文档）
 
 其余待办（见 SPRINT.md）：
-- Telegram 端到端验证
+- Telegram delegate_code_task 端到端验证（需可用模型）
 - DTS 类型错误修复 ×6
 - Tool Parity 剩余 13 个 Task
+- World Model 数字孪生（Phase 2）
 
 
 ## 包管理规则（不可混用）

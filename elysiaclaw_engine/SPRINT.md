@@ -129,6 +129,8 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 **开始时间**: 2026-06-06
 **完成时间**: 2026-06-06
 **状态**: ✅ 已完成
+**执行手册**: `MEMORY-ACTIVATION-RUNBOOK.md`
+**总架构**: `SUPERADMIN-AGENT-DESIGN.md`
 
 ### 完成的工作
 
@@ -168,6 +170,42 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 - `elysiaclaw status`: Gateway reachable 68ms ✅
 - 搜索验证: "流式" 3 条、"代理配置" score=0.60、"gateway重启" 相关性强 ✅
 - 无 gateway 日志错误 ✅
+
+---
+
+## Sprint: deploy.sh 增强 + dist 部署根因修复 (2026-06-06) ✅ 已完成
+
+**Sprint 目标**: 修复"代码提交了但 dist 从未部署"的根因，完善 deploy 脚本防御体系
+**开始时间**: 2026-06-06
+**完成时间**: 2026-06-06
+**状态**: ✅ 已完成
+
+### 诊断链
+
+源码验证（FTS/RECALL/清理 → 全部✅）→ 运行时 CLI（memory status ✅）→ Gateway API（❌ memory_search not available）→ 日志分析（group:memory unknown）→ session 文件分析（agent 说 "Tool not found"）→ 插件加载链追踪（memory-core plugin factory 参数正确）→ **部署版本对比（extensions 是 4 月旧版）→ 根因：dist 从来就没部署过**
+
+### 缺陷与修复
+
+| # | 缺陷 | 修复 | 位置 |
+|---|------|------|------|
+| 1 | `cp -r` 叠加旧 dist → 残留 stale chunk | `rm -rf` 先清空再复制 + 文件数下限检查(≥100) | Step 8 |
+| 2 | `extensions/` 从未同步 → plugin 代码陈旧 | 遍历 `extensions/*/index.ts` 逐一同步 | **Step 9 (新)** |
+| 3 | 无 dist 内容验证 → 部署完才发现工具缺失 | grep 检查 memory_search/memory_get/memory-core/createMemorySearchTool | **Guard 3 (新)** |
+| 4 | 无 post-deploy 功能验证 | curl `POST /tools/invoke` 调用 memory_search 确认 `"ok":true` | **Guard 5 (新)** |
+
+### 新流程
+
+```
+Phase A (框架层): Step 1-6 → Guard 1,2
+Phase B (应用层): Step 7-9 → Guard 3
+Phase C (部署后): Step 10-12 → Guard 4,5
+```
+
+### 文件改动
+
+| 文件 | 操作 |
+|------|------|
+| `deploy.sh` | 重写: +2 Step, +2 Guard, extensions sync, clean-slate deploy, E2E 验证 |
 
 ---
 
@@ -386,12 +424,14 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 
 ---
 
-## Sprint: 跨会话记忆系统 (2026-06-06) ✅ 已完成
+## Sprint: 跨会话记忆系统 (2026-06-06) ✅ 已完成 → 已被 TS 记忆引擎取代
+
+> ⚠️ **注意**: 本 Sprint 产出的 Python `session_search`（session-indexer.py + SQLite LIKE）已于同日被「记忆引擎激活」Sprint 的 TS `memory_search`（sqlite-vec + FTS trigram + embeddings）取代。Python 旁路已删除。此 Sprint 记录保留为历史参考。
 
 **Sprint 目标**: 解决 ElysiaClaw agent 上下文管理差劲、没有跨会话记忆的问题
 **开始时间**: 2026-06-06
 **完成时间**: 2026-06-06
-**状态**: ✅ 已完成，已部署，gateway 重启验证通过
+**状态**: ✅ 已完成 → ⚠️ 已被取代（Python session_search 已删除，TS memory_search 为当前方案）
 
 ### 背景
 
@@ -430,17 +470,48 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 
 ---
 
+## Sprint: Telegram 输出体验 × 上下文/记忆协同 (2026-06-06 起草) 📋 待启动
+
+**Sprint 目标**: 修复 Telegram"掉线观感" + 全流式输出 + 压缩与记忆引擎闭环
+**状态**: 📋 PROPOSAL,待启动
+**计划文档**: `TELEGRAM-UX-CONTEXT-PLAN.md`
+**上位架构**: `SUPERADMIN-AGENT-DESIGN.md`(WS-3 = CONSOLIDATE 首块落地)
+
+### 背景
+
+agent 在压缩、思考两段时间对用户完全静默 → 被误判掉线("正在输入"消失);思考链不可见;大段信息直发;后续大量注入(RECALL/World Model)与压缩无预算协同。
+
+### 三个工作流
+
+| WS | 内容 | 核心坐标 | 依赖 |
+|----|------|---------|------|
+| WS-1 压缩可见性 | 压缩 start/done 状态推送 + typing 心跳续命 | `compact.ts:918` 阻塞无 emit · `typing.ts:28` TTL 2min | 无(不需模型) |
+| WS-2 全流式输出 | thinking 默认流式 + 统一 lane 契约 + 消除大段直发 | `bot-message-dispatch.ts:133` reasoning 默认 off | 无(不需模型) |
+| WS-3 压缩×记忆协同 | 压缩即沉淀回写 memory + 统一注入预算器 + 压缩感知 RECALL | `compact.ts:965` compact:after hook · `attempt.ts` RECALL 注入 | 记忆引擎✅ / 模型(提炼可降级) |
+
+### 实施顺序
+
+WS-1 / WS-2 并行(渠道层,不需主模型即可验证)→ WS-3 注入预算器(纯逻辑先做)→ CONSOLIDATE 提炼(等模型恢复,降级只存原始 episode)。
+
+### DoD
+
+- [ ] WS-1: 压缩 >2min typing 不消失;start/done 可见;TUI 不报错
+- [ ] WS-2: 思考增量可见;无超长一次性消息;`/think off` 可覆盖
+- [ ] WS-3: 压缩主题可被 RECALL 召回;注入不超预算且不自触发压缩
+- [ ] 引擎文档同步 + 新增坑号(若有)记入 PITFALLS.md
+
+---
+
 ## 后续 Sprint 规划
 
 | Sprint | 内容 | 依赖 |
 |---|---|---|
-| 端到端验证 | Telegram delegate_code_task 功能验证 | 无 |
+| Telegram UX × 上下文/记忆协同 | WS-1/2/3（见 TELEGRAM-UX-CONTEXT-PLAN.md） | WS-1/2 无依赖;WS-3 依赖记忆引擎✅ |
+| World Model Phase 2 | 数字孪生：环境感知 + 操作记忆 + 经验沉淀（见 SUPERADMIN-AGENT-DESIGN.md） | 记忆引擎已激活 |
+| 端到端验证 | Telegram delegate_code_task 功能验证 | 可用模型 |
 | DTS 修复 | 修复 6 个 DTS 类型错误 | 无 |
 | Tool Parity | Task 3-16: 继续 Tool Parity 迁移 | 无 |
-| 并行工具执行 | StreamingToolExecutor (原 Code Mode Phase 1) | 独立 |
-| Web 工具 | web_fetch + web_search (Task 12 已部分完成) | 独立 |
-| 权限系统增强 | PermissionRules 规则引擎 | 独立 |
-| MCP 协议 | MCP 协议集成 | 独立，最复杂 |
+| 部署后验证自动化 | Gateway restart 后的回归测试套件 | deploy.sh 增强完成 |
 
 ---
 

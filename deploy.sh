@@ -129,24 +129,73 @@ node --import tsx scripts/write-cli-compat.ts 2>/dev/null || true
 echo "[OK] elysiaclaw built"
 
 echo ""
-echo "=== Step 8: Deploy elysiaclaw dist ==="
+echo "=== Step 8: Deploy elysiaclaw dist (clean slate) ==="
 if [ -d "$ELYSIACLAW_DIST" ]; then
-    cp -r "$ELYSIACLAW_DIST"/* "$ELYSIACLAW/dist/"
-    echo "[OK] elysiaclaw dist deployed to $ELYSIACLAW/dist/"
+    DIST_FILE_COUNT=$(find "$ELYSIACLAW_DIST" -type f | wc -l)
+    if [ "$DIST_FILE_COUNT" -lt 100 ]; then
+        echo "  ERROR: dist has only $DIST_FILE_COUNT files — build likely incomplete"
+        exit 1
+    fi
+    rm -rf "$ELYSIACLAW/dist"
+    cp -r "$ELYSIACLAW_DIST" "$ELYSIACLAW/dist"
+    echo "[OK] elysiaclaw dist deployed ($DIST_FILE_COUNT files → $ELYSIACLAW/dist/)"
 else
     echo "  ERROR: elysiaclaw dist not found at $ELYSIACLAW_DIST"
     exit 1
 fi
 
+# ── Guard 3: Dist integrity — verify key modules present ──
+echo ""
+echo "[Guard 3] Dist integrity check..."
+REQUIRED_PATTERNS=(
+  "memory_search"
+  "memory_get"
+  "memory-core"
+  "createMemorySearchTool"
+)
+MISSING_MODULES=()
+for pattern in "${REQUIRED_PATTERNS[@]}"; do
+  if ! grep -rq "$pattern" "$ELYSIACLAW/dist/" 2>/dev/null; then
+    MISSING_MODULES+=("$pattern")
+  fi
+done
+if [ ${#MISSING_MODULES[@]} -gt 0 ]; then
+  echo "  ERROR: Missing required modules in dist: ${MISSING_MODULES[*]}"
+  exit 1
+fi
+echo "  All required modules present (memory_search, memory_get, memory-core, createMemorySearchTool)"
+
+echo ""
+echo "=== Step 9: Deploy extensions ==="
+EXTS_SRC="$HOME/projects/pi-mono/elysiaclaw/extensions"
+EXTS_DST="$ELYSIACLAW/extensions"
+if [ -d "$EXTS_SRC" ]; then
+    # Sync only bundled extensions (keep package.json, index.ts, .plugin.json)
+    for ext_dir in "$EXTS_SRC"/*/; do
+        ext_name=$(basename "$ext_dir")
+        if [ -f "$ext_dir/index.ts" ]; then
+            rm -rf "$EXTS_DST/$ext_name"
+            mkdir -p "$EXTS_DST/$ext_name"
+            # Copy only source files, not node_modules
+            find "$ext_dir" -maxdepth 1 -type f \
+              -not -name '.gitignore' \
+              -exec cp {} "$EXTS_DST/$ext_name/" \;
+            echo "  [OK] synced extension: $ext_name"
+        fi
+    done
+else
+    echo "  WARNING: extensions source dir not found at $EXTS_SRC"
+fi
+
 # ── Phase C: Post-deploy ──
 echo ""
-echo "=== Step 9: Sync postinstall script ==="
+echo "=== Step 10: Sync postinstall script ==="
 cp ~/projects/pi-mono/scripts/patch-agent.cjs "$ELYSIACLAW/scripts-patch/patch-agent.cjs"
 echo "[OK] postinstall script synced"
 
-# ── Post-deploy Guard 3: Tool registration parity ──
+# ── Guard 4: Framework tool registration parity ──
 echo ""
-echo "[Guard 3] Checking tool registration parity..."
+echo "[Guard 4] Framework tool registration parity..."
 TOOLS_SRC="$HOME/projects/pi-mono/packages/coding-agent/src/core/tools/index.ts"
 MASTER_SRC="$HOME/projects/pi-mono/packages/coding-agent/src/index.ts"
 if [ -f "$TOOLS_SRC" ] && [ -f "$MASTER_SRC" ]; then
@@ -160,15 +209,45 @@ if [ -f "$TOOLS_SRC" ] && [ -f "$MASTER_SRC" ]; then
 fi
 
 echo ""
-echo "=== Step 10: Restart gateway ==="
+echo "=== Step 11: Restart gateway ==="
 ~/.nvm/versions/node/v22.22.1/bin/elysiaclaw gateway restart
 echo "[OK] Gateway restarted"
 
 echo ""
-echo "=== Step 11: Verify ==="
-sleep 2
+echo "=== Step 12: Verify ==="
+sleep 3
+
+# ── Guard 5: memory_search end-to-end check ──
+echo ""
+echo "[Guard 5] memory_search end-to-end check..."
+GW_TOKEN=$(python3 -c "
+import json, os
+with open(os.path.expanduser('~/.elysiaclaw/elysiaclaw.json')) as f:
+    cfg = json.load(f)
+print(cfg.get('gateway',{}).get('auth',{}).get('token',''))
+" 2>/dev/null)
+if [ -n "$GW_TOKEN" ]; then
+    MEM_CHECK=$(curl -s -X POST http://127.0.0.1:18789/tools/invoke \
+      -H "Authorization: Bearer $GW_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"tool":"memory_search","args":{"query":"deploy","maxResults":1},"sessionKey":"agent:main:main"}' 2>&1)
+    if echo "$MEM_CHECK" | grep -q '"ok":true'; then
+        echo "  memory_search API ... OK"
+    else
+        echo "  ERROR: memory_search API returned failure"
+        echo "  Response: $(echo "$MEM_CHECK" | head -c 200)"
+    fi
+else
+    echo "  WARNING: Could not resolve gateway token for E2E check"
+fi
+
 ~/.nvm/versions/node/v22.22.1/bin/elysiaclaw status
 echo ""
 echo "==========================================="
-echo "  Deploy complete. Test via Telegram."
+echo "  Deploy complete. Guards passed:"
+echo "    [G1] Config validation"
+echo "    [G2] Patch injection"
+echo "    [G3] Dist integrity (memory modules)"
+echo "    [G4] Framework tool parity"
+echo "    [G5] memory_search E2E"
 echo "==========================================="

@@ -31,45 +31,78 @@
   - RECALL 注入已激活（T6: 每轮 system prompt 自动召回 top-5）
 
 **残余技术债**：
-- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞（PITFALLS #38）
+- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，绕过方式：`node scripts/tsdown-build.mjs`（PITFALLS #38）
 - OpenRouter→阿里云路由劫持（坑 #40）— 临时规避，根因未修
 - sessions chunks 47% CLAUDE.md 注入噪音 — 后续 World Model 阶段去噪
 - Tool Parity 剩余 13 个 Task 待执行
-
-**残余技术债**：
-- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，绕过方式：`node scripts/tsdown-build.mjs`（PITFALLS #38）
-- OpenRouter→阿里云路由劫持（坑 #40）— 临时规避，根因未修
-- Telegram 端到端验证 — delegate_code_task 功能测试进行中（主模型不可用导致验证受阻）
+- Telegram 端到端验证 — delegate_code_task 功能测试受阻于主模型不可用
+- stripPluginOnlyAllowlist 时序问题 — `group:memory` 在 plugin 注册前被判定为 unknown（cosmetic，不影响功能）
 
 ---
 
-## 🔴 核心目标 — delegate_code_task ✅ 已完成
+## 🔴 核心目标 — 记忆引擎激活 ✅ 已完成 (2026-06-06)
 
-> Code Mode (`/code` `/exit`) 已废弃 (2026-06-05)。
+> 执行手册: `MEMORY-ACTIVATION-RUNBOOK.md`（T1-T6，已于 2026-06-06 全部完成）
+> 总架构: `SUPERADMIN-AGENT-DESIGN.md`（Phase 1 完成，Phase 2 World Model 待启动）
+
+### 完成内容
+
+| 任务 | 内容 | 状态 |
+|------|------|------|
+| T2 | 开 config: memorySearch.sources=[memory,sessions] + experimental.sessionMemory=true | ✅ |
+| T3 | 全量回填: 121 files · 508 chunks | ✅ |
+| T4 | 并行验证: TS FTS trigram + pplx-embed-v1-4b vs Python LIKE | ✅ |
+| T4b | FTS tokenizer: unicode61 → trigram（CJK 3+ 字符搜索修复） | ✅ |
+| T4c | Embedding 模型: nvidia/llama-nemotron → perplexity/pplx-embed-v1-4b (2560d) | ✅ |
+| T5 | 切换 + 清理: 删 session-search-tool.ts + session-indexer.py + session-index.db | ✅ |
+| T6 | RECALL 注入: attempt.ts 每轮 system prompt 自动 search top-5 | ✅ |
+
+### 部署修复（同日）
+
+deploy.sh 发现并修复了导致"代码提交但 dist 未部署"的 3 个结构性缺陷（详见 SPRINT.md）：
+1. Clean slate deploy（rm -rf + cp -r，含文件数下限检查）
+2. Extensions 同步（新增 Step 9）
+3. Dist 完整性校验（新增 Guard 3）+ E2E 验证（新增 Guard 5）
+
+---
+
+## 🔴 核心目标 — Telegram 输出体验 × 上下文/记忆协同 (2026-06-06 起草,PROPOSAL)
+
+> 详细计划: `TELEGRAM-UX-CONTEXT-PLAN.md`
+> 上位架构: `SUPERADMIN-AGENT-DESIGN.md`(WS-3 是其 CONSOLIDATE 的第一块落地)
+
+**问题**:agent 在 Telegram 最忙的两段时间(压缩、思考)对用户完全静默,被误判掉线;思考链不可见;大段信息直发;后续大量注入与压缩无预算协同(反身性空转隐患)。
+
+| 工作流 | 内容 | 依赖 | 优先级 |
+|------|------|------|------|
+| WS-1 压缩可见性 | 压缩 start/done 状态 + typing 心跳续命(TTL 2min 黑洞) | 无(不需模型) | 🔥 最高 |
+| WS-2 全流式输出 | thinking 默认流式 + 统一 lane 契约 + 消除大段直发 | 无(不需模型) | 🔥 高 |
+| WS-3 压缩×记忆协同 | 压缩即沉淀(CONSOLIDATE)+ 统一注入预算 + 压缩感知 RECALL | 记忆引擎✅ / World Model(Ph2) / 模型(提炼可降级) | 🔥 高 |
+
+> **分层注入架构 `CONTEXT-INJECTION-ARCHITECTURE.md`**(2026-06-06):WS-3 的上位设计。按变化频率分 B0-B4 五带 + 消息流,钉 KV-cache 锚点,易变注入(RECALL/World Model)下沉锚点之后。**已发现严重病灶**:RECALL 被 append 进 system prompt(`attempt.ts:1781`),每轮变化致稳定前缀(base+GUIDANCE 数 k token)KV-cache 每轮全失效、重 prefill——token 白烧的根因。
+
+> **会话轮换与跨会话延续 `SESSION-ROTATION-CONTINUITY.md`**(2026-06-06):把 session 从"用户可见对话单元"解耦为"模型工作记忆周期单元"。用户单对话框无感持久对话,模型按语义边界自主轮换 session(刷新工作记忆窗口),归档 session 回写记忆引擎。**设计红线**:延续必须双轨——精确执行状态走结构化 Handoff Packet(B3),背景知识走 memory_search 召回(B4);纯靠记忆检索延续任务会准确性塌陷。三层架构 Conversation/Session/Handoff;复用 SessionEntry + resume 机制;轮换=CONSOLIDATE 时机。新增 §4B 任务段(Task Segment)实时打包:`用户指令→完成信号`为边界,带索引头(type+status+goal)实时 streaming capture,Handoff 零额外提炼;任务内三级压缩(L1 工具结果驱逐/L2 任务段归档/L3 会话轮换,颗粒度递增频率递减,消费即降权)。
+
+> **知识库与自我进化 `KNOWLEDGE-BASE-EVOLUTION.md`**(2026-06-06):上下文=信息接收系统的范式。核心①**索引化注入**:系统注入只给轻量索引信号(指针),完整内容靠 `memory_get`(KNOWN 已存在)按需取——病灶是 `attempt.ts:1781` 把 snippet 当内容注入;修正为"索引为主+强相关预取"分级,非一刀切全索引。②**输入分类**(task/chat/affective/meta,误判成本不对称→偏向 task),闲聊不进任务轨但进画像流。③**用户画像 User Model**(KNOWN 真空白,新建)。④**技能进化**(KNOWN skills 只读,episode→skill+沙箱+HITL)。⑤**自我进化闭环**:接收→分类→CONSOLIDATE→更新画像/固化技能/沉淀记忆→索引化注入回认知,内置非用户改善。阶段 1(索引化注入)ROI 最高、复用现成工具、与 CONTEXT-INJECTION B4 改造同处代码。**5 份设计已成网,亟需 ARCHITECTURE.md 总览图**。
+
+**关键诊断坐标**:`compact.ts:918`(阻塞无 emit)· `typing.ts:28`(TTL 2min)· `bot-message-dispatch.ts:133`(reasoning 默认 off)· `attempt.ts:1781`(RECALL append 进 system,毁 KV-cache 前缀)。
+**WS-1/WS-2 可并行,均为渠道层改造,不依赖主模型**。WS-3 注入预算器是 World Model 注入前的硬前置。
+
+---
+
+## 🟡 delegate_code_task ✅ 已完成 (2026-06-05)
+
+> Code Mode (`/code` `/exit`) 已废弃。
 > 新策略：代码能力内置为 agent 的手段，通过 `delegate_code_task` 分发给只读子代理，防止主 session 上下文膨胀。
-
-### 实施内容
-
-- **新工具**: `elysiaclaw/src/agents/tools/delegate-code-task.ts`，封装 `spawnSubagentDirect()`
-- **四层注册**: elysiaclaw-tools.ts + tool-catalog.ts + tools.allow
-- **策略注入**: attempt.ts 中注入分发决策流程指引
-- **Code Mode 清理**: attempt.ts 检测块已移除，各引擎文件已更新
 
 ### 残余工作
 
-- Telegram 端到端验证
+- Telegram 端到端验证 — 受阻于主模型不可用
 - 观察 agent 是否按预期分发多文件分析任务
 
 ---
 
 ## 🟡 短期（下一 Sprint）
-
-### [Memory] 记忆引擎激活 🔥 推荐首选
-**优先级**: 🔥 最高
-**目标**: 激活线上 0 chunks 空置的 TS 记忆引擎，取代 Python session_search 旁路，并接入 agent 认知（RECALL 注入）
-**执行手册**: `MEMORY-ACTIVATION-RUNBOOK.md`（T1-T6 逐任务 SOP，给执行 agent）
-**总架构**: `SUPERADMIN-AGENT-DESIGN.md`（超级计算机管理员 Agent / 记忆四类 / 状态机 / World Model / TS 优越性）
-**关键约束**: config.yaml 是 Sacred File（snapshot→改→validate）；T4 质量门通过前**不删** Python session_search
 
 ### [P2-C] Worktree → Auto PR/Merge
 **优先级**: 🔥 高（推荐首选）  
@@ -187,6 +220,8 @@ task_assign (worktree: true)
 | 2026-04-10 | System Audit + Tool Parity | 系统盘查、GrepTool 参数补全 (Task 1)、ToolDefinition 接口扩展 (Task 0)、引擎文件更新 |
 | 2026-06-05 | packages/ 精简 | 删除 mom/web-ui/pods，只剩 4 个核心包 |
 | 2026-06-05 | delegate_code_task | Code Mode 废弃，子代理分发工具实施 + 引擎文件整理 |
+| 2026-06-06 | 记忆引擎激活 (T1-T6) | TS memory_search 全面取代 Python session_search，RECALL 注入激活 |
+| 2026-06-06 | deploy.sh 增强 | 修复 dist/extensions 部署遗漏（根因），新增 2 Guard + extensions sync + E2E 验证 |
 
 ---
 
@@ -197,11 +232,12 @@ task_assign (worktree: true)
 3. 读 `ARCHITECTURE.md` → 理解架构
 4. 读 `PITFALLS.md` → 避开已知坑
 5. 读本文档 → 选择下一个 sprint
-6. **推荐首先做**: Telegram delegate_code_task 端到端验证
+6. **推荐首先做**: Telegram delegate_code_task 端到端验证（需可用模型）
 7. **然后**: 修复 6 个 DTS 类型错误（消除 pnpm build 阻塞）
 8. **再然后**: Tool Parity Task 3-16 继续推进
 9. **或者**: `[P2-C] Worktree → Auto PR/Merge`（需先 `sudo apt install gh && gh auth login`）
+10. **中期**: World Model 数字孪生（Phase 2，见 SUPERADMIN-AGENT-DESIGN.md）
 
 ---
 
-*最后更新：2026-06-05*
+*最后更新：2026-06-06*

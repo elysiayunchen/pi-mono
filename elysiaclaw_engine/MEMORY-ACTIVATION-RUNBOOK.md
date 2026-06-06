@@ -1,5 +1,8 @@
 # ElysiaClaw 记忆系统激活 — 执行手册(Runbook)
 
+> **状态: ✅ 全部完成 (2026-06-06)** — T1-T6 所有任务已执行完毕，质量门通过。
+> 本文档保留为**历史参考**。后续阶段（World Model Phase 2）见 `SUPERADMIN-AGENT-DESIGN.md`。
+>
 > **面向:执行 agent**(无需本项目历史上下文,照此即可落地)。
 > **配套:`SUPERADMIN-AGENT-DESIGN.md`**(总架构,讲"为什么")。本手册只讲"怎么做"。
 > **范围:阶段 1 —「激活记忆引擎」**。后续阶段(World Model、状态机)见设计文档,Runbook 后补。

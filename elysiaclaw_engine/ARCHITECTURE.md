@@ -3,6 +3,12 @@
 > 本文档描述 ElysiaClaw 所依赖的两个核心框架的架构蓝图，以及它们在 ElysiaClaw 中的组合方式。
 > 面向 AI 协作者和未来维护者。
 
+> **🧭 接手 agent 先读这里**:Part 1-8 是**已实现**的框架/工具架构。
+> **Part 9「认知架构演进蓝图」是 5 份关联设计文档(全部 PROPOSAL,未实施)的全景收口** ——
+> 含一张全景信息流图 + 文档定位 + **统一实施优先级总表(从哪起步)** + 概念索引 + 待修病灶清单。
+> 选下一步工作请直接看 **Part 9.3**;理解整体设计意图看 **Part 9.1**。
+> 设计文档:`KNOWLEDGE-BASE-EVOLUTION` · `CONTEXT-INJECTION-ARCHITECTURE` · `SESSION-ROTATION-CONTINUITY` · `SUPERADMIN-AGENT-DESIGN` · `TELEGRAM-UX-CONTEXT-PLAN`
+
 ---
 
 ## Part 1 — pi-mono 框架解析
@@ -336,7 +342,7 @@ Agent.runLoop()               ← agent-loop.ts
 
 ---
 
-*本文档描述截至 2026-06-05 的架构状态。工具注册四层链已全部修复（#56）。ToolDefinition 接口已扩展至 18 字段 (Task 0)。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。elysiaclaw `pnpm build` 有 DTS 错误需绕过 (PITFALLS #38)。*
+*本文档描述截至 2026-06-06 的架构状态。工具注册四层链已全部修复（#56）。ToolDefinition 接口已扩展至 18 字段 (Task 0)。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。记忆引擎已激活（T1-T6 完成，TS memory_search 取代 Python session_search）。deploy.sh 已增强至 5 Guard/12 Step（含 extensions sync + dist 完整性校验 + E2E 验证）。elysiaclaw `pnpm build` 有 DTS 错误需绕过 (PITFALLS #38)。*
 
 ## Part 6 — Philosophy: Evolutionary Architecture & Semiotic Flow
 
@@ -549,6 +555,131 @@ Adding an elysiaclaw tool (defined in elysiaclaw):
   Step 3: pi-tools.ts register
   Step 4: tools.allow add name
   Step 6: pnpm build + cp dist + gateway restart
+
+---
+
+## Part 9 — 认知架构演进蓝图（Cognitive Architecture Roadmap）
+
+> 2026-06-06 新增 · 收口 5 份关联设计文档为单一全景，供接手 agent 快速定位。
+> 状态:**全部 PROPOSAL**（设计完成，未实施）。各文档内有 KNOWN/INFERRED 细分标注。
+> 主线:把 ElysiaClaw 从"一次性 chatbot"重构为**常驻、有状态、会自我进化的信息接收主体**。
+
+### 9.1 全景信息流（一张图理解五份设计如何协作）
+
+```
+                          用户输入（Telegram 单对话框，持久无感）
+                                    │
+                    ┌───────────────▼───────────────┐
+                    │  输入分类器  input-classifier   │  【KNOWLEDGE-BASE-EVOLUTION §3】
+                    │  task / chat / affective / meta │  偏向 task（误判成本不对称）
+                    └───┬───────────────────────┬────┘
+              task →    │                        │  ← chat/affective/meta
+                        ▼                        ▼
+        ┌───────────────────────────┐   ┌──────────────────────┐
+        │ Task Segment 任务轨        │   │ 用户画像流 User Model │ 【KB-EVO §6】(真空白·新建)
+        │ 实时打包·索引头(type/状态) │   └───────────┬──────────┘
+        │ 【SESSION-ROTATION §4B】   │               │
+        │  任务内三级压缩(消费即降权)│               │
+        │   L1 工具结果驱逐(最高频)  │               │
+        └───────────┬───────────────┘               │
+                    │ 完成信号封口                    │
+                    ▼                                 │
+        ┌───────────────────────────────────────────▼────────────┐
+        │  CONSOLIDATE 沉淀闭环  【SUPERADMIN §4 / KB-EVO §7】      │
+        │  封口/轮换时:LLM 提炼(可降级) → 写三处                  │
+        └──┬───────────────┬───────────────┬─────────────────────┘
+           ▼               ▼               ▼
+     更新用户画像     固化技能         沉淀记忆 + World Model
+     (User Model)   (Skill Evol.    (memory 引擎✅ +
+                     skills只读→可写) World Model 数字孪生·Ph2)
+           └───────────────┴───────────────┘
+                           │  知识库三元组+画像（内容在库，无限增长）
+                           ▼
+        ┌─────────────────────────────────────────────────────────┐
+        │  索引化注入  【KB-EVO §5 + CONTEXT-INJECTION 全文】       │
+        │  系统只注入轻量「索引信号」(指针) → agent 按需 memory_get │
+        │  (KNOWN 已存在) 取完整内容；索引为主 + 强相关预取         │
+        │                                                           │
+        │  分层注入(按变化频率，钉 KV-cache 锚点):                 │
+        │   B0 IDENTITY → B1 CAPABILITY → B2 ENV ═CACHE ANCHOR═     │
+        │   → B3 WORKING SET(Handoff/画像summary) → B4 RECALL(索引) │
+        │   → MESSAGES(+L1工具驱逐, 尾锚)                           │
+        └──────────────────────────┬──────────────────────────────┘
+                                    ▼
+                    工作记忆窗口（单 session，会满）
+                                    │ 安全点 + 触发(task_boundary/token/topic)
+                                    ▼
+        ┌─────────────────────────────────────────────────────────┐
+        │  会话轮换 Session Rotation  【SESSION-ROTATION §3-7】     │
+        │  Conversation(持久,绑chat) → 轮换 active session         │
+        │  双轨延续:Handoff(精确,B3) + RECALL(模糊,B4)            │
+        │  归档 session → memory 索引(source:sessions✅)           │
+        └─────────────────────────────────────────────────────────┘
+                                    │
+                    ▼ 全程对用户可见（不掉线）
+        ┌─────────────────────────────────────────────────────────┐
+        │  Telegram 可见性 + HITL  【TELEGRAM-UX-CONTEXT-PLAN】     │
+        │  压缩/思考心跳(typing不消失) · 全流式 · 画像/技能纠错入口│
+        └─────────────────────────────────────────────────────────┘
+```
+
+### 9.2 五份设计文档定位（职责正交）
+
+| 文档 | 一句话职责 | 回答的问题 |
+|---|---|---|
+| `KNOWLEDGE-BASE-EVOLUTION.md` | **最上层范式**:信息接收→进化→索引化注入 | "agent 如何越用越懂用户和自己" |
+| `CONTEXT-INJECTION-ARCHITECTURE.md` | 一轮内**怎么排**(静态分层 + KV-cache) | "有限注入预算怎么花最值" |
+| `SESSION-ROTATION-CONTINUITY.md` | 跨轮/跨 session **怎么延续**(轮换 + 任务段) | "工作记忆满了怎么翻篇不丢任务" |
+| `SUPERADMIN-AGENT-DESIGN.md` | 延续靠什么**存与取**(记忆引擎 + World Model + CONSOLIDATE) | "机器现状与历史经验存哪、取哪" |
+| `TELEGRAM-UX-CONTEXT-PLAN.md` | 全程**对用户可见**(可见性 + HITL) | "重活进行时用户为何不觉得掉线" |
+
+### 9.3 统一实施优先级（跨文档总表，接手 agent 按此选起点）
+
+| 序 | 工作项 | 文档 | 依赖模型? | 独立可验证? | ROI |
+|---|---|---|---|---|---|
+| 1 | **索引化注入 + B4 改造**(RECALL snippet→索引信号,移出 system prompt) | KB-EVO §11 阶段1 / CONTEXT-INJECTION | 否 | 是 | 🔥🔥🔥 同处代码改两目标 + 修 cache 病灶 |
+| 2 | **压缩可见性 WS-1**(typing 心跳 + 状态) | TELEGRAM-UX | 否 | 是 | 🔥🔥 体验立竿见影 |
+| 3 | **全流式 WS-2**(thinking 默认流式) | TELEGRAM-UX | 否 | 是 | 🔥🔥 |
+| 4 | **L1 工具结果驱逐**(接 compaction.tool-result-details) | SESSION-ROTATION §4B | 否 | 是 | 🔥🔥 小步见效 |
+| 5 | **统一注入预算器**(注入量计入压缩阈值,防反身性) | CONTEXT-INJECTION §3.3 / WS-3 | 否 | 是 | 🔥 World Model 大注入前的硬前置 |
+| 6 | 输入分类器(task/chat/...) | KB-EVO §3 | 轻 | 是 | 🔥 |
+| 7 | 用户画像 User Model(新建) | KB-EVO §6 | 是(提炼) | 是 | 🔥 真空白 |
+| 8 | Conversation 层 + Handoff(手动 rotate 验证精度) | SESSION-ROTATION §3-4 | 是 | 是 | 中 |
+| 9 | 自动轮换(安全点 + 触发) | SESSION-ROTATION §5 | 是 | — | 中 |
+| 10 | World Model 数字孪生(Phase 2) | SUPERADMIN §6 | 部分 | 是 | 中 |
+| 11 | 技能进化 Skill Evolution(episode→skill+HITL) | KB-EVO §7 | 是 | — | 中 |
+| 12 | CONSOLIDATE 闭环(封口/轮换沉淀) | SUPERADMIN §4 / KB-EVO §7 | 是 | — | 高(但依赖前置) |
+
+**关键路径建议**:序 1-5 全部**不依赖主模型、可独立验证、ROI 高**,是无悬念的起步集群。其中**序 1 是最优单点**——它同时:① 落地"系统提示轻量化",② 修 `attempt.ts:1781` KV-cache 病灶,③ 复用现成 `memory_get`,④ 与 B4 改造同处代码。模型恢复(owl-alpha 400)前,把 1-5 做完即可显著提升效能与省钱。
+
+### 9.4 关键概念索引（术语 → 权威文档）
+
+| 概念 | 定义所在 | 一句话 |
+|---|---|---|
+| B0-B4 五带 + cache 锚点 | CONTEXT-INJECTION §3 | 注入按变化频率分层,稳定前缀锁 KV-cache |
+| 索引化注入 / memory_get 两段式 | KB-EVO §5 | 注入指针,内容按需取 |
+| 注入预算器 | CONTEXT-INJECTION §3.3 | 统筹注入量并计入压缩阈值 |
+| Task Segment / 索引头 / 实时打包 | SESSION-ROTATION §4B | 用户指令→完成信号为单元,带 type/status 索引 |
+| 任务内三级压缩(L1/L2/L3) | SESSION-ROTATION §4B.3 | 消费即降权,颗粒度递增频率递减 |
+| Handoff Packet / 双轨延续 | SESSION-ROTATION §2,§4 | 精确状态(交接)+ 背景(召回) |
+| Conversation / Session 轮换 | SESSION-ROTATION §3 | 逻辑对话持久,工作记忆窗口可轮换 |
+| 输入分类(task/chat/...) | KB-EVO §3 | 闲聊不进任务轨但喂画像 |
+| 用户画像 User Model | KB-EVO §6 | 真空白,index/detail 分离 |
+| 技能进化 Skill Evolution | KB-EVO §7 | skills 只读→可写,episode→skill |
+| CONSOLIDATE 沉淀闭环 | SUPERADMIN §4 | 封口/轮换时回写知识库 |
+| World Model 数字孪生 | SUPERADMIN §6 | 机器结构化当前态(7 probes) |
+| 压缩可见性 / 全流式 / WS-1~3 | TELEGRAM-UX | 重活进行时不掉线 |
+
+### 9.5 已发现并待修的关键病灶（KNOWN）
+
+| 病灶 | 坐标 | 后果 | 修于 |
+|---|---|---|---|
+| RECALL append 进 system prompt | `attempt.ts:1781` | 每轮变化致稳定前缀 KV-cache 全失效,重 prefill | 序 1 |
+| RECALL 注入 snippet 当内容 | `attempt.ts:1781` | 既重又截断,未用 memory_get | 序 1 |
+| 压缩期不向渠道 emit | `compact.ts:918` | 用户误判掉线 | 序 2 |
+| typing TTL 2min 后停 | `typing.ts:28` | "正在输入"消失 | 序 2 |
+| reasoning 默认 off | `bot-message-dispatch.ts:133` | 思考不可见 | 序 3 |
+| 注入与压缩无共享预算 | attempt.ts / compact.ts | 反身性空转(注入→爆窗→压缩→丢注入) | 序 5 |
 
 
 

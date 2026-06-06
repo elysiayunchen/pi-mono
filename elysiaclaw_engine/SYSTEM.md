@@ -174,15 +174,25 @@ Compiler: `tsgo` (TypeScript Go compiler, v7.0.0-dev). **Not in PATH** — alway
 cd ~/pi-mono && ./deploy.sh
 ```
 
-`deploy.sh` does:
+`deploy.sh` 结构（3 Phase · 12 Step · 5 Guard）：
+
+**Phase A — 框架层**
 1. Guard 1: 校验 elysiaclaw.json + config.yaml
-2. `npm run build` (pi-mono)
+2. `npm run build` (pi-mono 4 包)
 3. 部署 4 个 dist → global `node_modules/@mariozechner/`
 4. Re-apply `scripts/patch-agent.cjs`
 5. Guard 2: patch 验证 (setSystemPrompt/replaceMessages + 语法检查)
-6. Build elysiaclaw: `node scripts/tsdown-build.mjs` + 后处理脚本（跳过 canvas:a2ui:bundle 和 build:plugin-sdk:dts — Pitfall #38）
-7. 部署 elysiaclaw dist → global
-8. `elysiaclaw gateway restart` + 验证
+
+**Phase B — 应用层**
+6. Build elysiaclaw: `node scripts/tsdown-build.mjs` + 后处理（跳过 canvas:a2ui:bundle 和 build:plugin-sdk:dts — Pitfall #38）
+7. Deploy dist (clean slate: `rm -rf` + `cp -r`，含文件数下限检查 ≥100)
+8. Guard 3: dist 完整性校验（grep memory_search/memory_get/memory-core/createMemorySearchTool）
+9. Deploy extensions: 同步 `elysiaclaw/extensions/` → 全局 `node_modules/elysiaclaw/extensions/`
+
+**Phase C — 部署后**
+10-11. postinstall + `elysiaclaw gateway restart`
+12. Guard 4: 框架工具 parity 检查
+13. Guard 5: memory_search E2E 验证（curl POST /tools/invoke）
 
 ### Patch Protection
 `scripts/patch-agent.cjs` is the guardian of the `pi-agent-core` monkey-patch.
@@ -268,12 +278,15 @@ All AI handoff documents live in a single directory:
 ├── CLAUD-CODE-COMPARISON.md
 ├── DELEGATE-CODE-TASK-PLAN.md
 ├── HANDOFF.md
+├── MEMORY-ACTIVATION-RUNBOOK.md   ← 记忆引擎激活执行手册（T1-T6，已完成）
 ├── PITFALLS.md
 ├── README.md
 ├── ROADMAP.md
 ├── SPRINT.md
 ├── SUBAGENT-CODE-DELEGATION.md
-└── SYSTEM.md ← you are here
+├── SUPERADMIN-AGENT-DESIGN.md    ← 超级计算机管理员 Agent 架构设计
+├── SYSTEM.md ← you are here
+└── TOOL-PARITY-PLAN.md
 
 **Important**: This directory is NOT at the project root (`~/projects/pi-mono/`). It is inside `elysiaclaw_engine/`. Always use this path when reading or updating documentation.
 
@@ -287,4 +300,4 @@ All AI handoff documents live in a single directory:
 
 ---
 
-*Last updated: 2026-06-05. Code Mode 已废弃，由 delegate_code_task 子代理分发替代。ToolDefinition expanded (7->18 fields)。GrepTool parity enhanced。BashTool enhanced。elysiaclaw build DTS errors (6, workaround in place, needs dedicated fix)。mom/web-ui/pods 已从 packages/ 删除。*
+*Last updated: 2026-06-06. 记忆引擎激活全流程完成 (T1-T6)。deploy.sh 增强至 5 Guard / 12 Step（含 extensions sync + dist 完整性校验 + E2E 验证）。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。elysiaclaw build DTS errors (6, workaround in place, needs dedicated fix)。*
