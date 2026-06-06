@@ -123,6 +123,54 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 
 ---
 
+## Sprint: 记忆引擎激活（RUNBOOK T1-T6）(2026-06-06) ✅ 已完成
+
+**Sprint 目标**: 激活 TS 语义记忆引擎，取代 Python session_search 旁路，接入 agent 认知循环
+**开始时间**: 2026-06-06
+**完成时间**: 2026-06-06
+**状态**: ✅ 已完成
+
+### 完成的工作
+
+| 任务 | 内容 |
+|------|------|
+| T2 | 开 config: memorySearch.sources=[memory,sessions] + experimental.sessionMemory=true |
+| T3 | 全量回填: `elysiaclaw memory index --force` → 121 files · 508 chunks |
+| T4 | 并行验证: TS FTS trigram + pplx-embed-v1-4b vs Python LIKE，8 个 query TS 优于或持平 Python |
+| T4b | FTS tokenizer 修复: unicode61 → trigram（`memory-schema.ts` + `manager-sync-ops.ts`），3+ 字符 CJK 搜索从 0 恢复 |
+| T4c | Embedding 模型切换: nvidia/llama-nemotron-embed-vl-1b-v2:free → perplexity/pplx-embed-v1-4b（2560d），"流式" 等短 CJK 查询从 0 → 3 条 |
+| T5 | 切换 + 清理: 删 session-search-tool.ts + session-indexer.py + session-index.db，改 attempt.ts 指引指向 memory_search，退四层注册 |
+| T6 | RECALL 注入: attempt.ts 每轮构建 system prompt 时自动 search top-5，注入 `## RECALL: Relevant past context` 块 |
+
+### 文件改动
+
+| 仓库 | 文件 | 操作 |
+|------|------|------|
+| elysiaclaw | `src/memory/memory-schema.ts` | 修改: FTS tokenize='trigram' |
+| elysiaclaw | `src/memory/manager-sync-ops.ts` | 修改: resetIndex() DROP+CREATE 迁移 |
+| elysiaclaw | `src/agents/tools/session-search-tool.ts` | 删除 |
+| elysiaclaw | `scripts/session-indexer.py` | 删除 |
+| elysiaclaw | `src/agents/pi-embedded-runner/run/attempt.ts` | 修改: MEMORY_SEARCH_GUIDANCE + RECALL 注入 |
+| elysiaclaw | `src/agents/elysiaclaw-tools.ts` | 修改: 移除 session_search import/注册 |
+| elysiaclaw | `src/agents/tool-catalog.ts` | 修改: 移除 session_search 条目 |
+| ~/.elysiaclaw | `elysiaclaw.json` | 修改: model→pplx-embed-v1-4b, tools.allow 移除 session_search |
+| ~/.elysiaclaw | `session-index.db` | 删除 |
+
+### 技术关键词
+
+- **Provider: openai → OpenRouter** (pplx-embed-v1-4b, 2560d, $0.03/1M tokens)
+- **FTS: unicode61 → trigram** (3+ 字符 CJK 搜索可用)
+- **已知局限**: 2 字符 CJK 查询依赖 embedding 质量；sessions chunks 47% 含 CLAUDE.md project-memory 噪音（后续 World Model 阶段修复）
+
+### 验证
+
+- `elysiaclaw memory status`: 121 files, 508 chunks, vector ready, fts ready ✅
+- `elysiaclaw status`: Gateway reachable 68ms ✅
+- 搜索验证: "流式" 3 条、"代理配置" score=0.60、"gateway重启" 相关性强 ✅
+- 无 gateway 日志错误 ✅
+
+---
+
 ## Task 1: GrepTool 参数补全 (2026-04-10) ✅ 已完成
 
 **Sprint 目标**: GrepTool 参数补全，对标 Claude Code GrepTool

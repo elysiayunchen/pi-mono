@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-06 (session_search 跨会话记忆系统)
+> 最后更新: 2026-06-06 (T4-T6 记忆引擎激活完成)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -44,14 +44,14 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - 🔧 Thinking 流式：需 session `reasoningLevel: "stream"` 配置
   - 🔧 完整 stdout 输出：需 `verboseLevel: "full"`
 
-- **跨会话记忆系统** — ✅ 完成 (2026-06-06)
-  - `scripts/session-indexer.py` — SQLite FTS，索引 70 个真实 Telegram 会话
-  - `session_search` 工具 — 四层注册，attempt.ts MANDATORY 指引
-  - DB: `~/.elysiaclaw/session-index.db`
-  - 解决：agent 无法跨会话记忆、不记得使用 skill 的问题
+  - **跨会话记忆系统** — ✅ 完成 (2026-06-06)
+  - TS memory_search 已激活: 121 files, 508 chunks (pplx-embed-v1-4b, 2560d)
+  - FTS trigram tokenizer 支持 3+ 字符 CJK 搜索
+  - Python session_search 已删除（T5 清理 + 退四层注册）
+  - RECALL 注入已激活（T6：每轮 system prompt 自动召回 top-5）
+  - DB: `~/.elysiaclaw/memory/main.sqlite`
 
-- 下一步: 确认可用模型 → Telegram 端到端验证 → DTS 错误修复 × 6 → Tool Parity Task 3-16
-
+  - 下一步: World Model 阶段 2 → Telegram 端到端验证 → DTS 修复 × 6 → Tool Parity Task 3-16
 ### 路径修正 (2026-06-05)
 - 项目根目录: `~/projects/pi-mono/` (此前文档记载为 `~/pi-mono/`)
 - 所有引擎文件路径已修正（7 个 .md + README.md = 8 个文件）

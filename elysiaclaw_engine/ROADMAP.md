@@ -25,10 +25,16 @@
 - Task 2 (BashTool 能力声明): ✅ 已完成
 - Task 3-16: 待执行
 
-**跨会话记忆**：✅ 已完成 (2026-06-06)
-  - `scripts/session-indexer.py` — 增量索引 JSONL → SQLite，支持中英文搜索
-  - `session_search` 工具 — 四层注册完整，系统提示注入 MANDATORY 指引
-  - 覆盖 70 个真实 Telegram 会话，agent 现在可以检索历史对话
+**跨会话记忆**：✅ 已完成 (2026-06-06) — 记忆引擎激活全流程
+  - TS memory_search: 121 files, 508 chunks, pplx-embed-v1-4b (2560d), FTS trigram
+  - Python session_search 已删除（T5 清理 + 退四层注册）
+  - RECALL 注入已激活（T6: 每轮 system prompt 自动召回 top-5）
+
+**残余技术债**：
+- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞（PITFALLS #38）
+- OpenRouter→阿里云路由劫持（坑 #40）— 临时规避，根因未修
+- sessions chunks 47% CLAUDE.md 注入噪音 — 后续 World Model 阶段去噪
+- Tool Parity 剩余 13 个 Task 待执行
 
 **残余技术债**：
 - DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，绕过方式：`node scripts/tsdown-build.mjs`（PITFALLS #38）

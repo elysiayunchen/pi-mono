@@ -561,5 +561,11 @@ with open(path, "w") as f:
 **解决**: 构建后手动 `cp -r dist/* ~/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw/dist/`
 **预防**: 高频警告中增加"elysiaclaw 构建后必须手动部署到全局"
 
-*记录截至 2026-06-05，坑 #67。下次遇到新坑从 #68 开始追加。*
+### #70 — Telegram tool lane 因 minInitialChars 防抖导致短标签无法显示
+**现象**: 工具调用流式输出偶尔出现但不显著——工具标签（如 "📖 Read" 7字符）显示后立即消失，实际执行命令未输出
+**根因**: `createDraftLane` 对所有 lane 统一使用 `DRAFT_MIN_INITIAL_CHARS = 30` 字符防抖阈值。tool lane 的短标签达不到阈值，`sendOrEditStreamMessage` 中 `renderedText.length < minInitialChars` 判定导致初始发送被跳过。后续 `onToolResult` 推送较长的工具摘要才触发发送，但此时 `onAssistantMessageStart` 即将清理 tool lane，造成"闪现然后消失"
+**解决**: `createDraftLane` 中对 `laneName === "tool"` 设置 `minInitialChars: undefined`，禁用防抖，短标签即时发出
+**预防**: Draft lane 的新消费者应检查 minInitialChars 是否适合其内容长度
+
+*记录截至 2026-06-06，坑 #70。下次遇到新坑从 #71 开始追加。*
 
