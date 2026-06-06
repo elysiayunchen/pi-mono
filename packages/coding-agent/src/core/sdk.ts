@@ -5,7 +5,7 @@ import { getAgentDir, getDocsPath } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { AuthStorage } from "./auth-storage.js";
 import { AUTO_COMPACT_THRESHOLD, autoCompactMessages } from "./compaction/auto-compact.js";
-import { applyMultiLayerCompaction } from "./compaction/multi-layer.js";
+import { applyMultiLayerCompaction, evictConsumedToolResults } from "./compaction/multi-layer.js";
 import { shutdownCostTracker, wrapStreamForCost } from "./cost-tracker.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import type { ExtensionRunner, LoadExtensionsResult, SessionStartEvent, ToolDefinition } from "./extensions/index.js";
@@ -392,8 +392,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		},
 		sessionId: sessionManager.getSessionId(),
 		transformContext: async (messages, signal) => {
+			// L0: Evict consumed tool results — replace full output with one-line
+			// summaries once the model has responded (instant, no API call).
+			const afterEviction = evictConsumedToolResults(messages);
+
 			// Layer 1 + 2: Fast, free compression (snip + microcompact)
-			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(messages);
+			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(afterEviction);
 
 			let result = compressed;
 
