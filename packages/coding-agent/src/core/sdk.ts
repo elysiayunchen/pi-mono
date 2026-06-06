@@ -90,6 +90,15 @@ export interface CreateAgentSessionOptions {
 	 */
 	tokenBudget?: { total: number };
 	/**
+	 * Estimated token count consumed by system prompt / context injections
+	 * that are NOT part of the message array.  Subtracted from compaction
+	 * thresholds so the agent accounts for non-message context when deciding
+	 * whether to trigger compaction.
+	 *
+	 * Default: 0 (thresholds unchanged).
+	 */
+	contextPressureBudget?: number;
+	/**
 	 * Continue the most recent session for this cwd instead of creating a new one.
 	 * Equivalent to openclaw --continue.
 	 */
@@ -397,7 +406,13 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			const afterEviction = evictConsumedToolResults(messages);
 
 			// Layer 1 + 2: Fast, free compression (snip + microcompact)
-			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(afterEviction);
+			const multiLayerConfig = options.contextPressureBudget
+				? { autoCompactThreshold: Math.max(90_000 - options.contextPressureBudget, 30_000) }
+				: undefined;
+			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(
+				afterEviction,
+				multiLayerConfig,
+			);
 
 			let result = compressed;
 
@@ -433,7 +448,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			return runner.emitContext(result);
 		},
 
-		contextPressureThreshold: AUTO_COMPACT_THRESHOLD,
+		contextPressureThreshold: options.contextPressureBudget
+			? Math.max(AUTO_COMPACT_THRESHOLD - options.contextPressureBudget, 20_000)
+			: AUTO_COMPACT_THRESHOLD,
 		tokenBudget: options.tokenBudget,
 		steeringMode: settingsManager.getSteeringMode(),
 		followUpMode: settingsManager.getFollowUpMode(),
