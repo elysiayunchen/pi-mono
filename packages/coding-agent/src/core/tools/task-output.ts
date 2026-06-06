@@ -40,6 +40,18 @@ export const taskOutputToolDefinition: ToolDefinition<typeof schema> = {
 	],
 	parameters: schema,
 
+	isConcurrencySafe: () => true,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary(input: any) {
+		return input.taskId ?? "Task output";
+	},
+	getActivityDescription(input: any) {
+		return `Reading output: ${input.taskId ?? "..."}`;
+	},
+	toAutoClassifierInput(input: any) {
+		return { tool: "task_output", ...(input as Record<string, unknown>) };
+	},
 	async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 		const sessionId = getCurrentSessionId();
 		const task = getTask(sessionId, params.task_id);

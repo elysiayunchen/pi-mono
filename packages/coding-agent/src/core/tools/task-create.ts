@@ -65,6 +65,18 @@ export const taskCreateToolDefinition: ToolDefinition<typeof schema> = {
 	],
 	parameters: schema,
 
+	isConcurrencySafe: () => true,
+	isReadOnly: () => false,
+	isDestructive: () => false,
+	getToolUseSummary(input: any) {
+		return input.subject ?? "Task create";
+	},
+	getActivityDescription(input: any) {
+		return `Creating task: ${input.subject ?? "..."}`;
+	},
+	toAutoClassifierInput(input: any) {
+		return { tool: "task_create", ...(input as Record<string, unknown>) };
+	},
 	async execute(_toolCallId, params) {
 		const sessionId = getCurrentSessionId();
 

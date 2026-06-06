@@ -30,6 +30,18 @@ export const taskListToolDefinition: ToolDefinition<typeof schema> = {
 		"Completed tasks' IDs are filtered from blockedBy lists automatically.",
 	parameters: schema,
 
+	isConcurrencySafe: () => true,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Task list";
+	},
+	getActivityDescription() {
+		return "Listing tasks";
+	},
+	toAutoClassifierInput() {
+		return { tool: "task_list" };
+	},
 	async execute(_toolCallId, _params) {
 		const sessionId = getCurrentSessionId();
 		const allTasks = listTasks(sessionId);

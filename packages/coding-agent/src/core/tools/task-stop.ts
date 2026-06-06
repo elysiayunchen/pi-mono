@@ -30,6 +30,18 @@ export const taskStopToolDefinition: ToolDefinition<typeof schema> = {
 	],
 	parameters: schema,
 
+	isConcurrencySafe: () => true,
+	isReadOnly: () => false,
+	isDestructive: () => false,
+	getToolUseSummary(input: any) {
+		return input.taskId ?? "Task stop";
+	},
+	getActivityDescription(input: any) {
+		return `Stopping task: ${input.taskId ?? "..."}`;
+	},
+	toAutoClassifierInput(input: any) {
+		return { tool: "task_stop", ...(input as Record<string, unknown>) };
+	},
 	async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 		const sessionId = getCurrentSessionId();
 		const task = getTask(sessionId, params.task_id);

@@ -28,6 +28,18 @@ export const enterPlanModeToolDefinition: ToolDefinition<typeof schema> = {
 	promptSnippet: "Enter plan mode — plan before executing",
 	parameters: schema,
 
+	isConcurrencySafe: () => false,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Enter plan mode";
+	},
+	getActivityDescription() {
+		return "Entering plan mode";
+	},
+	toAutoClassifierInput() {
+		return { tool: "enter_plan_mode" };
+	},
 	async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 		// Phase 2: Pre-analyze task complexity
 		const analysis = analyzeTask(params.reason);

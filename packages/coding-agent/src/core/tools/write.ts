@@ -191,6 +191,20 @@ export function createWriteToolDefinition(
 		promptSnippet: "Create or overwrite files",
 		promptGuidelines: ["Use write only for new files or complete rewrites."],
 		parameters: writeSchema,
+		isConcurrencySafe: () => false,
+		isReadOnly: () => false,
+		isDestructive: () => true,
+		getToolUseSummary(input: any) {
+			const p = input.path?.trim();
+			return p || null;
+		},
+		getActivityDescription(input: any) {
+			const p = input.path?.trim();
+			return p ? `Writing: ${p}` : "Writing file";
+		},
+		toAutoClassifierInput(input: any) {
+			return { tool: "write", path: input.path };
+		},
 		async execute(
 			_toolCallId,
 			{ path, content }: { path: string; content: string },

@@ -108,6 +108,18 @@ export const taskAssignToolDefinition = {
 		"Returns immediately. A <task-notification> arrives when complete. " +
 		"Set worktree: true to auto-create an isolated coding environment instead of using an existing teammate.",
 	parameters: schema,
+	isConcurrencySafe: () => true,
+	isReadOnly: () => false,
+	isDestructive: () => false,
+	getToolUseSummary(input: any) {
+		return input.taskId ?? "Task assign";
+	},
+	getActivityDescription() {
+		return "Assigning task";
+	},
+	toAutoClassifierInput(input: any) {
+		return { tool: "task_assign", ...(input as Record<string, unknown>) };
+	},
 	execute,
 };
 

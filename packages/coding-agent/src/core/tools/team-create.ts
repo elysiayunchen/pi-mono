@@ -56,6 +56,18 @@ export const teamCreateToolDefinition = {
 		"The teammate runs the same model as the host session and maintains its own conversation history. " +
 		"Use team_list to see existing teammates, send_message to talk to one, team_delete to remove one.",
 	parameters: schema,
+	isConcurrencySafe: () => true,
+	isReadOnly: () => false,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Team create";
+	},
+	getActivityDescription() {
+		return "Creating team";
+	},
+	toAutoClassifierInput() {
+		return { tool: "team_create" };
+	},
 	execute,
 };
 

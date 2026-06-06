@@ -18,6 +18,18 @@ export const exitCodeModeToolDefinition: ToolDefinition<typeof schema> = {
 	],
 	parameters: schema,
 
+	isConcurrencySafe: () => false,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Exit code mode";
+	},
+	getActivityDescription() {
+		return "Exiting code mode";
+	},
+	toAutoClassifierInput() {
+		return { tool: "exit_code_mode" };
+	},
 	async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
 		return {
 			content: [

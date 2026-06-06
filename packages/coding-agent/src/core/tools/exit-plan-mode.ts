@@ -14,6 +14,18 @@ export const exitPlanModeToolDefinition: ToolDefinition<typeof schema> = {
 	promptSnippet: "Exit plan mode — begin executing approved plan",
 	parameters: schema,
 
+	isConcurrencySafe: () => false,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Exit plan mode";
+	},
+	getActivityDescription() {
+		return "Exiting plan mode";
+	},
+	toAutoClassifierInput() {
+		return { tool: "exit_plan_mode" };
+	},
 	async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 		return {
 			content: [

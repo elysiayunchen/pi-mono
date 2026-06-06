@@ -22,6 +22,18 @@ export const taskGetToolDefinition: ToolDefinition<typeof schema> = {
 		"Retrieve a single task by ID including its full description, status, " + "output, and blocking relationships.",
 	parameters: schema,
 
+	isConcurrencySafe: () => true,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary(input: any) {
+		return input.taskId ?? "Task get";
+	},
+	getActivityDescription() {
+		return "Getting task details";
+	},
+	toAutoClassifierInput(input: any) {
+		return { tool: "task_get", ...(input as Record<string, unknown>) };
+	},
 	async execute(_toolCallId, params) {
 		const task = getTask(getCurrentSessionId(), params.taskId);
 

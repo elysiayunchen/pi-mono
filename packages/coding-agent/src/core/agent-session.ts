@@ -280,8 +280,9 @@ export class AgentSession {
 	private _codeMode = false;
 	private _todos: Array<{
 		id: string;
-		description: string;
+		content: string;
 		status: "pending" | "in_progress" | "completed" | "cancelled";
+		priority: "high" | "medium" | "low";
 		createdAt: number;
 		updatedAt: number;
 	}> = [];
@@ -929,8 +930,9 @@ export class AgentSession {
 	/** 获取当前 todo 清单（副本） */
 	getTodos(): Array<{
 		id: string;
-		description: string;
+		content: string;
 		status: "pending" | "in_progress" | "completed" | "cancelled";
+		priority: "high" | "medium" | "low";
 		createdAt: number;
 		updatedAt: number;
 	}> {
@@ -941,8 +943,9 @@ export class AgentSession {
 	setTodos(
 		todos: Array<{
 			id: string;
-			description: string;
+			content: string;
 			status: "pending" | "in_progress" | "completed" | "cancelled";
+			priority: "high" | "medium" | "low";
 			createdAt: number;
 			updatedAt: number;
 		}>,

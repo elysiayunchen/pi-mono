@@ -120,6 +120,20 @@ export function createFindToolDefinition(
 		description: `Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
 		promptSnippet: "Find files by glob pattern (respects .gitignore)",
 		parameters: findSchema,
+		isConcurrencySafe: () => true,
+		isReadOnly: () => true,
+		isDestructive: () => false,
+		getToolUseSummary(input: any) {
+			const p = input.path?.trim();
+			return p ? `Find in ${p}` : null;
+		},
+		getActivityDescription(input: any) {
+			const p = input.path?.trim();
+			return p ? `Finding in ${p}` : "Finding files";
+		},
+		toAutoClassifierInput(input: any) {
+			return { tool: "find", path: input.path };
+		},
 		async execute(
 			_toolCallId,
 			{ pattern, path: searchDir, limit }: { pattern: string; path?: string; limit?: number },

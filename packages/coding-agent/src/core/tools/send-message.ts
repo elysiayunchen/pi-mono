@@ -111,6 +111,18 @@ export const sendMessageToolDefinition = {
 		"Supports structured shutdown_request to gracefully terminate a teammate. " +
 		"Use team_list to see available teammates, team_create to add new ones.",
 	parameters: schema,
+	isConcurrencySafe: () => true,
+	isReadOnly: () => false,
+	isDestructive: () => false,
+	getToolUseSummary(input: any) {
+		return input.message?.substring(0, 50) ?? "Send message";
+	},
+	getActivityDescription() {
+		return "Sending message";
+	},
+	toAutoClassifierInput(input: any) {
+		return { tool: "send_message", ...(input as Record<string, unknown>) };
+	},
 	execute,
 };
 

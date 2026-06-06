@@ -28,6 +28,12 @@ const replaceEditSchema = Type.Object(
 				"Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call.",
 		}),
 		newText: Type.String({ description: "Replacement text for this targeted edit." }),
+		replace_all: Type.Optional(
+			Type.Boolean({
+				description:
+					"If true, replace ALL occurrences of oldText (global find-and-replace for this edit). Default: false (only replace the first unique match).",
+			}),
+		),
 	},
 	{ additionalProperties: false },
 );
@@ -100,7 +106,10 @@ function validateEditInput(input: EditToolInput): { path: string; edits: Edit[] 
 	if (!Array.isArray(input.edits) || input.edits.length === 0) {
 		throw new Error("Edit tool input is invalid. edits must contain at least one replacement.");
 	}
-	return { path: input.path, edits: input.edits };
+	return {
+		path: input.path,
+		edits: input.edits.map((e) => ({ oldText: e.oldText, newText: e.newText, replaceAll: e.replace_all })),
+	};
 }
 
 type RenderableEditArgs = {
@@ -169,6 +178,24 @@ export function createEditToolDefinition(
 			"Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.",
 		],
 		parameters: editSchema,
+		isConcurrencySafe: () => false,
+		isReadOnly: () => false,
+		isDestructive: () => true,
+		getToolUseSummary(input: Partial<EditToolInput>) {
+			const path = input.path?.trim();
+			if (!path) return null;
+			const editCount = Array.isArray(input.edits) ? input.edits.length : 1;
+			const suffix = editCount > 1 ? ` (${editCount} edits)` : "";
+			return `${path}${suffix}`;
+		},
+		getActivityDescription(input: Partial<EditToolInput>) {
+			const path = input.path?.trim();
+			if (!path) return "Editing file";
+			return `Editing: ${path}`;
+		},
+		toAutoClassifierInput(input: EditToolInput) {
+			return { tool: "edit", path: input.path, editCount: input.edits?.length ?? 0 };
+		},
 		prepareArguments: prepareEditArguments,
 		async execute(_toolCallId, input: EditToolInput, signal?: AbortSignal, _onUpdate?, _ctx?) {
 			const { path, edits } = validateEditInput(input);

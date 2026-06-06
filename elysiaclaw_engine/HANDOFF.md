@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (Tool Parity Task 1/2 测试落实 +25 用例；序1-7 全部完成)
+> 最后更新: 2026-06-07 (Tool Parity Task 3 TodoWrite 完成；Task 12/13 确认; DTS 全修复)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -18,7 +18,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 ### 架构
 - **12 层 Agent 框架**: 全部竣工（s01-s12.1）
 - **P 系列补丁**: P1-A/B/C + P2-A/B/D + P3-A/B 全部完成
-- **Tool Parity**: 3/16 = 18.75% (Task 0/1/2/12 已完成；Task 1/2 已补真实测试 +25 用例，2026-06-07)
+- **Tool Parity**: 11/16 = 68.75% (Task 0/1/2/3/4 框架层 + Task 5-11 批量能力声明 + Task 12 四层注册 + Task 13 elysiaclaw 超预期)
 - **DTS 类型错误**: ✅ 全部修复 (2026-06-07)，`pnpm build` 干净通过
 - **子代理基础设施**: elysiaclaw 层完整实现（37 个文件）
 
@@ -40,7 +40,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - 序 7: 用户画像 User Model (SQLite 持久化 + 双路径更新 + summary 注入 B2) ✅ (2026-06-07)
   - **边缘情况加固** (2026-06-07): 正则 bug 修复、防守代码、门限常量化、JSON.stringify 循环引用防护
 
-- **下一步**: 序 8 Conversation 层 + Handoff (见 `ARCHITECTURE.md` Part 9.3)
+- **下一步**: Tool Parity Task 14 AskUserQuestion / Task 15 MCP / Task 16 并行执行 (见 `TOOL-PARITY-PLAN.md`)
 ### 路径修正 (2026-06-05)
 - 项目根目录: `~/projects/pi-mono/` (此前文档记载为 `~/pi-mono/`)
 - 所有引擎文件路径已修正（7 个 .md + README.md = 8 个文件）

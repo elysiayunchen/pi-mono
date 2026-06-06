@@ -31,6 +31,18 @@ export const enterCodeModeToolDefinition: ToolDefinition<typeof schema> = {
 	],
 	parameters: schema,
 
+	isConcurrencySafe: () => false,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Enter code mode";
+	},
+	getActivityDescription() {
+		return "Entering code mode";
+	},
+	toAutoClassifierInput() {
+		return { tool: "enter_code_mode" };
+	},
 	async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 		return {
 			content: [

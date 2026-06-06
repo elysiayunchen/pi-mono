@@ -34,6 +34,18 @@ export const teamListToolDefinition = {
 	label: "List Teammates",
 	description: "List all active in-process teammates for this session, including their id, role, and message count.",
 	parameters: schema,
+	isConcurrencySafe: () => true,
+	isReadOnly: () => true,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Team list";
+	},
+	getActivityDescription() {
+		return "Listing teams";
+	},
+	toAutoClassifierInput() {
+		return { tool: "team_list" };
+	},
 	execute,
 };
 

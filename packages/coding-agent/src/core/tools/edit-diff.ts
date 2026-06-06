@@ -73,6 +73,8 @@ export interface FuzzyMatchResult {
 export interface Edit {
 	oldText: string;
 	newText: string;
+	/** When true, replace ALL occurrences of oldText instead of only the first. Default: false. */
+	replaceAll?: boolean;
 }
 
 interface MatchedEdit {
@@ -198,6 +200,7 @@ export function applyEditsToNormalizedContent(
 	const normalizedEdits = edits.map((edit) => ({
 		oldText: normalizeToLF(edit.oldText),
 		newText: normalizeToLF(edit.newText),
+		replaceAll: edit.replaceAll === true,
 	}));
 
 	for (let i = 0; i < normalizedEdits.length; i++) {
@@ -219,17 +222,43 @@ export function applyEditsToNormalizedContent(
 			throw getNotFoundError(path, i, normalizedEdits.length);
 		}
 
-		const occurrences = countOccurrences(baseContent, edit.oldText);
-		if (occurrences > 1) {
-			throw getDuplicateError(path, i, normalizedEdits.length, occurrences);
-		}
+		if (edit.replaceAll) {
+			// Collect all occurrences for replace_all mode.
+			const positions: number[] = [];
+			const resolvedOld = matchResult.usedFuzzyMatch ? normalizeForFuzzyMatch(edit.oldText) : edit.oldText;
+			let searchFrom = 0;
+			while (searchFrom < baseContent.length) {
+				const idx = baseContent.indexOf(resolvedOld, searchFrom);
+				if (idx === -1) break;
+				positions.push(idx);
+				searchFrom = idx + resolvedOld.length;
+			}
+			if (positions.length === 0) {
+				throw getNotFoundError(path, i, normalizedEdits.length);
+			}
+			// Register each occurrence as a separate MatchedEdit for reverse-order replacement.
+			for (const idx of positions) {
+				// When fuzzy matching, map the index back to baseContent (which IS fuzzyContent here).
+				matchedEdits.push({
+					editIndex: i,
+					matchIndex: idx,
+					matchLength: resolvedOld.length,
+					newText: edit.newText,
+				});
+			}
+		} else {
+			const occurrences = countOccurrences(baseContent, edit.oldText);
+			if (occurrences > 1) {
+				throw getDuplicateError(path, i, normalizedEdits.length, occurrences);
+			}
 
-		matchedEdits.push({
-			editIndex: i,
-			matchIndex: matchResult.index,
-			matchLength: matchResult.matchLength,
-			newText: edit.newText,
-		});
+			matchedEdits.push({
+				editIndex: i,
+				matchIndex: matchResult.index,
+				matchLength: matchResult.matchLength,
+				newText: edit.newText,
+			});
+		}
 	}
 
 	matchedEdits.sort((a, b) => a.matchIndex - b.matchIndex);

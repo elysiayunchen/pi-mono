@@ -124,6 +124,20 @@ export function createReadToolDefinition(
 		promptSnippet: "Read file contents",
 		promptGuidelines: ["Use read to examine files instead of cat or sed."],
 		parameters: readSchema,
+		isConcurrencySafe: () => true,
+		isReadOnly: () => true,
+		isDestructive: () => false,
+		getToolUseSummary(input: any) {
+			const p = input.path?.trim();
+			return p || null;
+		},
+		getActivityDescription(input: any) {
+			const p = input.path?.trim();
+			return p ? `Reading: ${p}` : "Reading file";
+		},
+		toAutoClassifierInput(input: any) {
+			return { tool: "read", path: input.path };
+		},
 		async execute(
 			_toolCallId,
 			{ path, offset, limit }: { path: string; offset?: number; limit?: number },

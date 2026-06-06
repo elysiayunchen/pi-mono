@@ -30,6 +30,18 @@ export const teamDeleteToolDefinition = {
 	label: "Delete Teammate",
 	description: "Delete an in-process teammate and free its resources. Any in-progress generation is aborted.",
 	parameters: schema,
+	isConcurrencySafe: () => true,
+	isReadOnly: () => false,
+	isDestructive: () => false,
+	getToolUseSummary() {
+		return "Team delete";
+	},
+	getActivityDescription() {
+		return "Deleting team";
+	},
+	toAutoClassifierInput() {
+		return { tool: "team_delete" };
+	},
 	execute,
 };
 

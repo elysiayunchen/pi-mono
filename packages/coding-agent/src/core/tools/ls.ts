@@ -107,6 +107,20 @@ export function createLsToolDefinition(
 		description: `List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
 		promptSnippet: "List directory contents",
 		parameters: lsSchema,
+		isConcurrencySafe: () => true,
+		isReadOnly: () => true,
+		isDestructive: () => false,
+		getToolUseSummary(input: any) {
+			const p = input.path?.trim();
+			return p || null;
+		},
+		getActivityDescription(input: any) {
+			const p = input.path?.trim();
+			return p ? `Listing: ${p}` : "Listing directory";
+		},
+		toAutoClassifierInput(input: any) {
+			return { tool: "ls", path: input.path };
+		},
 		async execute(
 			_toolCallId,
 			{ path, limit }: { path?: string; limit?: number },

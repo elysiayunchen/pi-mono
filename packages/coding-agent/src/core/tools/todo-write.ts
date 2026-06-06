@@ -3,32 +3,36 @@ import { Type } from "@sinclair/typebox";
 import type { ToolDefinition } from "../extensions/types.js";
 import { wrapToolDefinition } from "./tool-definition-wrapper.js";
 
-interface TodoItem {
+export interface TodoItem {
 	id: string;
-	description: string;
+	content: string;
 	status: "pending" | "in_progress" | "completed" | "cancelled";
+	priority: "high" | "medium" | "low";
 	createdAt: number;
 	updatedAt: number;
 }
 
-const schema = Type.Object({
-	action: Type.String({
-		description:
-			'Operation: "create" (new list), "update" (change status), "add" (append items), "list" (show current)',
+const todoItemSchema = Type.Object({
+	content: Type.String({ description: "Task description." }),
+	status: Type.String({
+		description: 'Task status: "pending", "in_progress", "completed", or "cancelled".',
 	}),
-	items: Type.Optional(
-		Type.Array(Type.String(), { description: 'For "create" and "add": list of step descriptions' }),
-	),
-	updates: Type.Optional(
-		Type.Array(
-			Type.Object({
-				id: Type.String(),
-				status: Type.String(),
-			}),
-			{ description: 'For "update": list of {id, status} changes' },
-		),
+	priority: Type.Optional(
+		Type.String({
+			description: 'Task priority: "high", "medium", or "low". Default: "medium".',
+		}),
 	),
 });
+
+const todoWriteSchema = Type.Object({
+	todos: Type.Array(todoItemSchema, {
+		description:
+			"Full todo list. This REPLACES all existing todos — pass the complete desired state, " +
+			"not an incremental diff. Each item requires content and status; priority is optional (defaults to medium).",
+	}),
+});
+
+export type TodoWriteInput = { todos: Array<{ content: string; status: string; priority?: string }> };
 
 // Shared state — set externally by AgentSession via setTodosRef()
 let currentTodos: TodoItem[] = [];
@@ -42,20 +46,54 @@ export function getCurrentTodos(): TodoItem[] {
 }
 
 export function setCurrentTodos(todos: TodoItem[]): void {
-	currentTodos = todos.slice();
+	currentTodos.length = 0;
+	currentTodos.push(...todos);
 }
+
+const DEFAULT_PRIORITY: TodoItem["priority"] = "medium";
+const VALID_STATUSES = new Set<TodoItem["status"]>(["pending", "in_progress", "completed", "cancelled"]);
+const VALID_PRIORITIES = new Set<TodoItem["priority"]>(["high", "medium", "low"]);
+
+const STATUS_ICON: Record<TodoItem["status"], string> = {
+	pending: "[ ]",
+	in_progress: "[~]",
+	completed: "[x]",
+	cancelled: "[-]",
+};
+
+const PRIORITY_LABEL: Record<TodoItem["priority"], string> = {
+	high: "🔴",
+	medium: "🟡",
+	low: "🟢",
+};
 
 function formatTodos(todos: TodoItem[]): string {
-	const statusIcon: Record<string, string> = {
-		pending: "[ ]",
-		in_progress: "[~]",
-		completed: "[x]",
-		cancelled: "[-]",
-	};
-	return todos.map((t) => `${statusIcon[t.status]} ${t.id}. ${t.description}`).join("\n");
+	if (todos.length === 0) {
+		return "(empty)";
+	}
+	return todos
+		.map((t) => {
+			const icon = STATUS_ICON[t.status];
+			const prio = t.priority !== "medium" ? ` ${PRIORITY_LABEL[t.priority]}` : "";
+			return `${icon}${prio} ${t.id}. ${t.content}`;
+		})
+		.join("\n");
 }
 
-export const todoWriteToolDefinition: ToolDefinition<typeof schema> = {
+function normalizePriority(raw: string | undefined): TodoItem["priority"] {
+	if (!raw) return DEFAULT_PRIORITY;
+	const normalized = raw.trim().toLowerCase();
+	return VALID_PRIORITIES.has(normalized as TodoItem["priority"])
+		? (normalized as TodoItem["priority"])
+		: DEFAULT_PRIORITY;
+}
+
+function normalizeStatus(raw: string): TodoItem["status"] {
+	const normalized = raw.trim().toLowerCase();
+	return VALID_STATUSES.has(normalized as TodoItem["status"]) ? (normalized as TodoItem["status"]) : "pending";
+}
+
+export const todoWriteToolDefinition: ToolDefinition<typeof todoWriteSchema> = {
 	name: "todo_write",
 	label: "Todo",
 	description:
@@ -67,67 +105,80 @@ export const todoWriteToolDefinition: ToolDefinition<typeof schema> = {
 		"4. After receiving new instructions — capture requirements as todos\n" +
 		"5. When starting work on a task — mark it as in_progress BEFORE beginning\n" +
 		"6. After completing a task — mark it as completed immediately\n\n" +
-		"Do NOT use for trivial tasks (< 3 steps) or purely conversational exchanges.",
-	promptSnippet: "Manage a task list (create, update, add, list)",
-	parameters: schema,
+		"Do NOT use for trivial tasks (< 3 steps) or purely conversational exchanges.\n\n" +
+		"IMPORTANT: The `todos` array IS the complete list — it replaces all existing todos. " +
+		"Always include ALL tasks (old and new) in every call, not just the ones you want to change.",
+	promptSnippet: "Manage a structured task list (create, update, track progress)",
+	parameters: todoWriteSchema,
+
+	isEnabled(): boolean {
+		return true;
+	},
 
 	async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
 		const now = Date.now();
+		const oldTodos = currentTodos.slice();
 
-		switch (params.action) {
-			case "create": {
-				const newTodos = (params.items ?? []).map((desc, i) => ({
-					id: String(i + 1),
-					description: desc,
-					status: "pending" as const,
-					createdAt: now,
-					updatedAt: now,
-				}));
-				currentTodos.length = 0;
-				currentTodos.push(...newTodos);
-				break;
+		// Normalize and deduplicate incoming todos
+		const incoming = (params.todos ?? []).map((raw, index) => {
+			const status = normalizeStatus(raw.status);
+			const priority = normalizePriority(raw.priority);
+			return {
+				id: String(index + 1),
+				content: raw.content.trim(),
+				status,
+				priority,
+				createdAt: now,
+				updatedAt: now,
+			} satisfies TodoItem;
+		});
+
+		// Preserve creation timestamps for items that carry over from old list.
+		// Match by content (case-insensitive) since IDs always regenerate.
+		const oldByContent = new Map<string, TodoItem>();
+		for (const old of oldTodos) {
+			const key = old.content.trim().toLowerCase();
+			if (!oldByContent.has(key)) {
+				oldByContent.set(key, old);
 			}
-			case "add": {
-				const startId = currentTodos.length + 1;
-				const newItems = (params.items ?? []).map((desc, i) => ({
-					id: String(startId + i),
-					description: desc,
-					status: "pending" as const,
-					createdAt: now,
-					updatedAt: now,
-				}));
-				currentTodos.push(...newItems);
-				break;
+		}
+		for (const item of incoming) {
+			const key = item.content.trim().toLowerCase();
+			const preserved = oldByContent.get(key);
+			if (preserved) {
+				item.createdAt = preserved.createdAt;
 			}
-			case "update": {
-				for (const update of params.updates ?? []) {
-					const item = currentTodos.find((t) => t.id === update.id);
-					if (item) {
-						item.status = update.status as TodoItem["status"];
-						item.updatedAt = now;
-					}
-				}
-				break;
-			}
-			case "list":
-				break;
 		}
 
-		const formatted = formatTodos(currentTodos);
+		// Replace current todos
+		currentTodos.length = 0;
+		currentTodos.push(...incoming);
+
+		const newTodos = currentTodos.slice();
 
 		// Verification nudge: when all tasks are done with 3+ items and no verification step
-		const allDone = currentTodos.length > 0 && currentTodos.every((t) => t.status === "completed");
-		const hasVerification = currentTodos.some((t) => /verif/i.test(t.description));
+		const allDone = newTodos.length > 0 && newTodos.every((t) => t.status === "completed");
+		const hasVerification = newTodos.some((t) => /verif/i.test(t.content));
+		const verificationNudgeNeeded = allDone && newTodos.length >= 3 && !hasVerification;
+
 		let nudge = "";
-		if (allDone && currentTodos.length >= 3 && !hasVerification) {
-			nudge = `\n\nNOTE: You closed out ${currentTodos.length} tasks. Before reporting completion, verify the work actually functions correctly — run the tests, execute the script, check the output.`;
+		if (verificationNudgeNeeded) {
+			nudge = `\n\nNOTE: You closed out ${newTodos.length} tasks. Before reporting completion, verify the work actually functions correctly — run the tests, execute the script, check the output.`;
 		}
+
+		const formatted = formatTodos(newTodos);
 
 		return {
 			content: [{ type: "text", text: `Current plan:\n\n${formatted}${nudge}` }],
-			details: { action: params.action, todos: currentTodos.slice() },
+			details: {
+				action: "replace",
+				todos: newTodos,
+				oldTodos,
+				newTodos,
+				verificationNudgeNeeded,
+			},
 		};
 	},
 };
 
-export const todoWriteTool: AgentTool<typeof schema> = wrapToolDefinition(todoWriteToolDefinition);
+export const todoWriteTool: AgentTool<typeof todoWriteSchema> = wrapToolDefinition(todoWriteToolDefinition);
