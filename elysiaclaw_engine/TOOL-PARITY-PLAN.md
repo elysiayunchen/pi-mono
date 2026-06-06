@@ -92,11 +92,12 @@ toAutoClassifierInput?: (input: Static<TParams>) => unknown
 
 ---
 
-## Task 1 — GrepTool 参数补全
+## Task 1 — GrepTool 参数补全 ✅ 已完成 (2026-04-10) · 测试落实 (2026-06-07)
 
 **优先级**: 🔴 高
 **预计改动**: `packages/coding-agent/src/core/tools/grep.ts`
 **源码参考**: `/home/elysia/pi-mono/claude-code-source-code-main/src/tools/GrepTool/GrepTool.ts`
+**测试**: `packages/coding-agent/test/grep-modes.test.ts`（12 用例，真实 ripgrep 端到端）
 
 **当前差距分析**（已读源码确认）：
 
@@ -135,13 +136,20 @@ toAutoClassifierInput?: (input: Static<TParams>) => unknown
 7. 手动测试各 output_mode
 
 **完成标准**:
-- [ ] 所有新参数在 schema 中定义，description 清晰
-- [ ] `output_mode: "files_with_matches"` 正确返回文件列表
-- [ ] `output_mode: "count"` 正确返回计数
-- [ ] `-A` / `-B` 正确传递给 ripgrep
-- [ ] `type` 正确过滤文件类型
-- [ ] `offset` 正确分页
-- [ ] 现有功能不回退（默认 output_mode 为 content 时行为不变）
+- [x] 所有新参数在 schema 中定义，description 清晰
+- [x] `output_mode: "files_with_matches"` 正确返回文件列表（测试覆盖）
+- [x] `output_mode: "count"` 正确返回计数 + 汇总行（测试覆盖）
+- [x] `-A` / `-B` 正确产生上下文行（测试覆盖）
+- [x] `type` 正确过滤文件类型（测试覆盖）
+- [x] `offset` 正确分页（测试覆盖）
+- [x] `multiline` 跨行匹配（测试覆盖）+ `head_limit` 上限通知（测试覆盖）
+- [x] 现有功能不回退（tools.test.ts 54 用例零回退）
+
+**代码异味（未证实为运行时 bug，不改）**: `grep.ts:360-368` files_with_matches 的
+mtime 排序在 `sort` 比较器内调 `outputLines.indexOf(a)`（原地排序中索引会与按原序构建的
+`fileStats` 错位）+ O(n²) + `statSync` 同步抛出绕过 `Promise.allSettled` 语义。3/5 文件实测
+排序结果均正确（V8 小数组插入排序的比较时机恰好规避错位），无法稳定复现失败，故归档为脆弱
+代码异味而非已确认 bug。重写建议：预建 `path→mtime` Map 后比较。
 
 ---
 

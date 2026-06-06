@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (序1-7 全部完成: L0-L3压缩链 + 注入预算器 + 输入分类器 + 用户画像)
+> 最后更新: 2026-06-07 (Tool Parity Task 1/2 测试落实 +25 用例；序1-7 全部完成)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -18,7 +18,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 ### 架构
 - **12 层 Agent 框架**: 全部竣工（s01-s12.1）
 - **P 系列补丁**: P1-A/B/C + P2-A/B/D + P3-A/B 全部完成
-- **Tool Parity**: 3/16 = 18.75% (Task 0/1/2 已完成)
+- **Tool Parity**: 3/16 = 18.75% (Task 0/1/2/12 已完成；Task 1/2 已补真实测试 +25 用例，2026-06-07)
 - **子代理基础设施**: elysiaclaw 层完整实现（37 个文件）
 
 ### 战略变更 (2026-06-05)
@@ -99,7 +99,16 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - 序 8: Conversation 层 + Handoff（下一个自然起点）
 - Telegram delegate_code_task 端到端验证（需可用模型）
 - DTS 类型错误修复 ×6
-- Tool Parity 剩余 13 个 Task
+
+**Tool Parity 后续 todo（按 PLAN 优先级，2026-06-07 接力点）**：
+- Task 13 WebSearchTool（🔴 高，新能力，Brave API/SearXNG）— 未开工
+- Task 3 TodoWrite 结构重写（🟡 中，schema 对齐 content+status+priority + outputSchema）— 未开工
+- Task 4 EditTool replace_all（🟡 中）— 未开工
+- Task 5-11 Read/Write/Find/Ls/PlanMode/Task系列/Team系列 能力声明（🟢 低，可批量）— 未开工
+- Task 14 AskUserQuestionTool（🟡 中，Telegram inline keyboard）— 未开工
+- Task 15 MCP 协议集成 / Task 16 并行执行引擎（🟡 中，大工程，最后）— 未开工
+- **测试补强模式可复用**：本次 Task 1/2 用「真实工具端到端 + vi.mock 隔离副作用」两类测试落实，后续每个 Task 完成应同步补 `test/<tool>-*.test.ts`，勿只勾选标准不验证
+- **grep.ts:360-368 排序代码异味**（非已确认 bug）：重写时预建 path→mtime Map，详见 TOOL-PARITY-PLAN.md Task 1
 
 
 ## 包管理规则（不可混用）
@@ -113,7 +122,7 @@ elysiaclaw 应用层	pnpm	~/projects/pi-mono/elysiaclaw/
 
 包	结果
 @mariozechner/pi-agent-core	36/36
-@mariozechner/pi-coding-agent	858/861 (3 failures 预存)
+@mariozechner/pi-coding-agent	858→883 (+25 Tool Parity 测试全绿；3 failures 预存不变；增量推算，未跑全套)
 @mariozechner/pi-tui	505/506 (1 flaky)
 
 

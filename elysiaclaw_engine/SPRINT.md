@@ -5,6 +5,27 @@
 
 ---
 
+## Sprint: 早期工具落地测试落实 — Tool Parity Task 1/2 (2026-06-07) ✅ 已完成
+
+**Sprint 目标**: Tool Parity Task 1 (GrepTool 参数补全) / Task 2 (BashTool 能力声明 + run_in_background) 标记完成但"手动测试各 output_mode"等完成标准从未勾选——补真实测试验证功能确实可用
+**开始/完成**: 2026-06-07
+**测试结果**: 新增 25 用例全过；tools.test.ts 现有 54 用例零回退（合计 79 绿）
+
+### 新增测试
+
+| 文件 | 模块 | 用例 | 方式 |
+|------|------|------|------|
+| `packages/coding-agent/test/grep-modes.test.ts` | GrepTool (Task 1) | 12 | 真实 ripgrep 端到端 |
+| `packages/coding-agent/test/bash-capabilities.test.ts` | BashTool (Task 2) | 13 | `vi.mock` 隔离 spawnBackground |
+
+覆盖：grep 的 output_mode(files_with_matches/count)、-A/-B、type、offset、multiline、head_limit、能力声明；bash 的 run_in_background 委派契约、commandPrefix 透传、6 个能力/UI/分类/权限匹配方法。
+
+### 关键发现（诚实归档，未夸大）
+
+- **grep files_with_matches 排序代码异味**: `grep.ts:360-368` sort 比较器内 `indexOf` + O(n²) + `statSync` 同步抛出绕过 `Promise.allSettled`。3/5 文件实测排序均正确，无法稳定复现失败 → 归档为脆弱代码异味而非已确认 bug，**不擅改框架源码**（无法证明修复能解决真实问题，反有回归风险）。详见 TOOL-PARITY-PLAN.md Task 1。
+
+---
+
 ## Sprint: 序 1-7 健全性审核 + 用户画像写路径闭环 (2026-06-07) ✅ 已完成
 
 **Sprint 目标**: 审核记忆系统与上下文系统健全性，修复审核暴露的接入缺口

@@ -455,11 +455,11 @@ export function createBashToolDefinition(
 		// ── UI enhancements ─────────────────────────────────────────────────
 		getToolUseSummary: (input) => {
 			const cmd = input?.command || "";
-			return cmd.length > 50 ? cmd.substring(0, 47) + "..." : cmd;
+			return cmd.length > 50 ? `${cmd.substring(0, 47)}...` : cmd;
 		},
 		getActivityDescription: (input) => {
 			const firstWord = (input?.command || "").split(/\s+/)[0] || "command";
-			return "Running: " + firstWord;
+			return `Running: ${firstWord}`;
 		},
 
 		// ── Security classification ──────────────────────────────────────────
@@ -473,7 +473,7 @@ export function createBashToolDefinition(
 			const cmd = input?.command || "";
 			return (pattern) => {
 				const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-				const regex = new RegExp("^" + escaped.replace(/\*/g, ".*") + "$");
+				const regex = new RegExp(`^${escaped.replace(/\*/g, ".*")}$`);
 				return regex.test(cmd);
 			};
 		},
