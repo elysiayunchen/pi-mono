@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-06 (记忆引擎激活完成 + deploy.sh 增强)
+> 最后更新: 2026-06-07 (序1-7 全部完成: L0-L3压缩链 + 注入预算器 + 输入分类器 + 用户画像)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -28,41 +28,18 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - 子代理只读，修改操作由主 agent 决策后执行
 
 ### 当前任务
-- **delegate_code_task 实施** — ✅ 已完成 (2026-06-05)
-  - 工具文件: `elysiaclaw/src/agents/tools/delegate-code-task.ts`
-  - 四层注册: elysiaclaw-tools.ts + tool-catalog.ts + elysiaclaw.json tools.allow
-  - 策略指引: attempt.ts 中注入 MANDATORY delegate_code_task 指引
-  - Code Mode 检测块已移除
-  - **修复 #65/#66/#67/#68**: 工具注册链完整
-  - **配置**: tools.subagents.tools.deny 已添加写操作禁止列表
-- **Telegram 端到端验证** — 受阻于主模型不可用（openrouter/owl-alpha 返回 400）
 
-- **Telegram 流式输出** — ✅ 完成 (2026-06-06)
-  - ✅ Tool lane 创建（复用 draft-stream，坑 #70 防抖修复）
-  - ✅ Tool result phase 路由（`agent-runner-execution.ts` 处理 phase "result"，携带 meta/isError）
-  - ✅ Tool lane 显示命令摘要（`onToolStart` phase="result" → `"📖 Read: /path/file"`）
-  - 🔧 Thinking 流式：需 session `reasoningLevel: "stream"` 配置
-  - 🔧 完整 stdout 输出：需 `verboseLevel: "full"`
+- **序 1-7 全部完成** ✅ (2026-06-07)
+  - 序 1: 索引化注入 + B4 改造 ✅ (T6 RECALL, 2026-06-06)
+  - 序 2: 压缩可见性 WS-1 (typing 心跳 + compaction 状态推送) ✅ (2026-06-07)
+  - 序 3: 全流式 WS-2 (thinking 默认流式) ✅ (2026-06-07)
+  - 序 4: L0 工具结果驱逐 (consumed tool results → [EVC] 摘要) ✅ (2026-06-07)
+  - 序 5: 统一注入预算器 (system prompt tokens 计入压缩阈值) ✅ (2026-06-07)
+  - 序 6: 输入分类器 (task/chat/affective/meta 四分类) ✅ (2026-06-07)
+  - 序 7: 用户画像 User Model (SQLite 持久化 + 双路径更新 + summary 注入 B2) ✅ (2026-06-07)
+  - **边缘情况加固** (2026-06-07): 正则 bug 修复、防守代码、门限常量化、JSON.stringify 循环引用防护
 
-  - **跨会话记忆系统** — ✅ 完成 (2026-06-06)
-  - TS memory_search 已激活: 121 files, 508 chunks (pplx-embed-v1-4b, 2560d)
-  - FTS trigram tokenizer 支持 3+ 字符 CJK 搜索
-  - Python session_search 已删除（T5 清理 + 退四层注册）
-  - RECALL 注入已激活（T6：每轮 system prompt 自动召回 top-5）
-  - DB: `~/.elysiaclaw/memory/main.sqlite`
-
-- **deploy.sh 增强** — ✅ 完成 (2026-06-06)
-  - 修复根因：dist 从未部署 + extensions 从未同步
-  - 从 3 Guard/11 Step → 5 Guard/12 Step
-  - 新增：clean slate deploy、extensions sync、dist 完整性校验、E2E 验证
-
-- **Telegram UX × 上下文/记忆协同计划** — 📋 起草 (2026-06-06)
-  - 计划文档: `TELEGRAM-UX-CONTEXT-PLAN.md`(PROPOSAL,待启动)
-  - 诊断: 压缩/思考期对用户静默 → 误判掉线;思考链不可见;注入与压缩无预算协同
-  - WS-1 压缩可见性(typing 心跳+状态) / WS-2 全流式输出(thinking 默认流式) / WS-3 压缩即沉淀+注入预算器
-  - WS-1/WS-2 不依赖主模型,可优先做;WS-3 是 World Model 注入前的硬前置
-
-  - 下一步: **见 `ARCHITECTURE.md` Part 9.3 统一实施优先级总表** — 序 1(索引化注入+B4改造,最优单点)→ 序 2-5(压缩可见性/全流式/L1工具驱逐/注入预算器,均不依赖主模型)→ 待模型恢复后序 7-12。旧线(World Model Ph2 / Telegram E2E / DTS×6 / Tool Parity 3-16)并入该表统筹。
+- **下一步**: 序 8 Conversation 层 + Handoff (见 `ARCHITECTURE.md` Part 9.3)
 ### 路径修正 (2026-06-05)
 - 项目根目录: `~/projects/pi-mono/` (此前文档记载为 `~/pi-mono/`)
 - 所有引擎文件路径已修正（7 个 .md + README.md = 8 个文件）
@@ -73,6 +50,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - delegate_code_task Telegram 端到端验证未完成 — 需可用模型
 - Telegram 完整 stdout 输出 — 需 `verboseLevel: "full"` 机制改造
 - Tool Parity 剩余 13 个 Task 待执行
+- elysiaclaw/ git push 需手动执行（auto-mode 阻止）
 
 ---
 
@@ -111,15 +89,17 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 
 ## 下个窗口的起步清单
 
-**当前主线（2026-06-06）：记忆引擎已激活，下一步 World Model Phase 2**
-- 总架构：`SUPERADMIN-AGENT-DESIGN.md`（Phase 1 ✅ 完成，Phase 2 World Model 数字孪生待启动）
-- 执行手册：`MEMORY-ACTIVATION-RUNBOOK.md`（T1-T6 全部完成，保留为参考文档）
+**当前主线（2026-06-07）：序 1-7 全部竣工，下一步序 8 Conversation 层 + Handoff**
+- 优先级总表：`ARCHITECTURE.md` Part 9.3（序 1-7 ✅，序 8-12 待启动）
+- 用户画像已落地：`src/user-model/`（SQLite 持久化 + 双路径更新 + B2 注入）
+- 注入预算器已激活：system prompt tokens 计入压缩阈值，防反身性空转
+- L0 工具结果驱逐已启用：[EVC] sentinel 幂等检测
 
 其余待办（见 SPRINT.md）：
+- 序 8: Conversation 层 + Handoff（下一个自然起点）
 - Telegram delegate_code_task 端到端验证（需可用模型）
 - DTS 类型错误修复 ×6
 - Tool Parity 剩余 13 个 Task
-- World Model 数字孪生（Phase 2）
 
 
 ## 包管理规则（不可混用）

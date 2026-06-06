@@ -506,12 +506,14 @@ WS-1 / WS-2 并行(渠道层,不需主模型即可验证)→ WS-3 注入预算�
 
 | Sprint | 内容 | 依赖 |
 |---|---|---|
-| Telegram UX × 上下文/记忆协同 | WS-1/2/3（见 TELEGRAM-UX-CONTEXT-PLAN.md） | WS-1/2 无依赖;WS-3 依赖记忆引擎✅ |
-| World Model Phase 2 | 数字孪生：环境感知 + 操作记忆 + 经验沉淀（见 SUPERADMIN-AGENT-DESIGN.md） | 记忆引擎已激活 |
+| 序 8 Conversation 层 + Handoff | 手动 rotate 验证精度（见 SESSION-ROTATION-CONTINUITY.md） | 序 1-7 ✅ |
+| 序 9 自动轮换 | 安全点 + 触发（见 SESSION-ROTATION §5） | 序 8 |
+| 序 10 World Model Ph2 | 数字孪生：环境感知 + 操作记忆 + 经验沉淀 | 序 5 ✅ / 模型 |
+| 序 11 技能进化 | episode→skill + 沙箱 + HITL | 模型 |
+| 序 12 CONSOLIDATE 闭环 | 封口/轮换沉淀 | 序 7-11 |
 | 端到端验证 | Telegram delegate_code_task 功能验证 | 可用模型 |
 | DTS 修复 | 修复 6 个 DTS 类型错误 | 无 |
 | Tool Parity | Task 3-16: 继续 Tool Parity 迁移 | 无 |
-| 部署后验证自动化 | Gateway restart 后的回归测试套件 | deploy.sh 增强完成 |
 
 ---
 

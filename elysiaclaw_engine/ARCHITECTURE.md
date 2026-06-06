@@ -635,23 +635,22 @@ Adding an elysiaclaw tool (defined in elysiaclaw):
 
 ### 9.3 统一实施优先级（跨文档总表，接手 agent 按此选起点）
 
-| 序 | 工作项 | 文档 | 依赖模型? | 独立可验证? | ROI |
-|---|---|---|---|---|---|
-| 1 | **索引化注入 + B4 改造**(RECALL snippet→索引信号,移出 system prompt) | KB-EVO §11 阶段1 / CONTEXT-INJECTION | 否 | 是 | 🔥🔥🔥 同处代码改两目标 + 修 cache 病灶 |
-| 2 | **压缩可见性 WS-1**(typing 心跳 + 状态) | TELEGRAM-UX | 否 | 是 | 🔥🔥 体验立竿见影 |
-| 3 | **全流式 WS-2**(thinking 默认流式) | TELEGRAM-UX | 否 | 是 | 🔥🔥 |
-| 4 | **L1 工具结果驱逐**(接 compaction.tool-result-details) | SESSION-ROTATION §4B | 否 | 是 | 🔥🔥 小步见效 |
-| 5 | **统一注入预算器**(注入量计入压缩阈值,防反身性) | CONTEXT-INJECTION §3.3 / WS-3 | 否 | 是 | 🔥 World Model 大注入前的硬前置 |
-| 6 | 输入分类器(task/chat/...) | KB-EVO §3 | 轻 | 是 | 🔥 |
-| 7 | 用户画像 User Model(新建) | KB-EVO §6 | 是(提炼) | 是 | 🔥 真空白 |
-| 8 | Conversation 层 + Handoff(手动 rotate 验证精度) | SESSION-ROTATION §3-4 | 是 | 是 | 中 |
-| 9 | 自动轮换(安全点 + 触发) | SESSION-ROTATION §5 | 是 | — | 中 |
-| 10 | World Model 数字孪生(Phase 2) | SUPERADMIN §6 | 部分 | 是 | 中 |
-| 11 | 技能进化 Skill Evolution(episode→skill+HITL) | KB-EVO §7 | 是 | — | 中 |
-| 12 | CONSOLIDATE 闭环(封口/轮换沉淀) | SUPERADMIN §4 / KB-EVO §7 | 是 | — | 高(但依赖前置) |
+| 序 | 工作项 | 文档 | 依赖模型? | 独立可验证? | ROI | 状态 |
+|---|---|---|---|---|---|---|---|
+| 1 | **索引化注入 + B4 改造**(RECALL snippet→索引信号,移出 system prompt) | KB-EVO §11 阶段1 / CONTEXT-INJECTION | 否 | 是 | 🔥🔥🔥 | ✅ 已完成 (2026-06-06) |
+| 2 | **压缩可见性 WS-1**(typing 心跳 + 状态) | TELEGRAM-UX | 否 | 是 | 🔥🔥 | ✅ 已完成 (2026-06-07) |
+| 3 | **全流式 WS-2**(thinking 默认流式) | TELEGRAM-UX | 否 | 是 | 🔥🔥 | ✅ 已完成 (2026-06-07) |
+| 4 | **L1 工具结果驱逐**(接 compaction.tool-result-details) | SESSION-ROTATION §4B | 否 | 是 | 🔥🔥 | ✅ 已完成 (2026-06-07) |
+| 5 | **统一注入预算器**(注入量计入压缩阈值,防反身性) | CONTEXT-INJECTION §3.3 / WS-3 | 否 | 是 | 🔥 | ✅ 已完成 (2026-06-07) |
+| 6 | 输入分类器(task/chat/...) | KB-EVO §3 | 轻 | 是 | 🔥 | ✅ 已完成 (2026-06-07) |
+| 7 | 用户画像 User Model(新建) | KB-EVO §6 | 是(提炼) | 是 | 🔥 | ✅ 已完成 (2026-06-07) |
+| 8 | Conversation 层 + Handoff(手动 rotate 验证精度) | SESSION-ROTATION §3-4 | 是 | 是 | 中 | 待启动 |
+| 9 | 自动轮换(安全点 + 触发) | SESSION-ROTATION §5 | 是 | — | 中 | 待启动 |
+| 10 | World Model 数字孪生(Phase 2) | SUPERADMIN §6 | 部分 | 是 | 中 | 待启动 |
+| 11 | 技能进化 Skill Evolution(episode→skill+HITL) | KB-EVO §7 | 是 | — | 中 | 待启动 |
+| 12 | CONSOLIDATE 闭环(封口/轮换沉淀) | SUPERADMIN §4 / KB-EVO §7 | 是 | — | 高(但依赖前置) | 待启动 |
 
-**关键路径建议**:序 1-5 全部**不依赖主模型、可独立验证、ROI 高**,是无悬念的起步集群。其中**序 1 是最优单点**——它同时:① 落地"系统提示轻量化",② 修 `attempt.ts:1781` KV-cache 病灶,③ 复用现成 `memory_get`,④ 与 B4 改造同处代码。模型恢复(owl-alpha 400)前,把 1-5 做完即可显著提升效能与省钱。
-
+**序 1-7 已全部完成**（2026-06-07）。序 4-6 还经系统性的边缘情况审查和健壮性加固（正则修复、防守代码、门限常量化）。序 8 是下一个天然起点——它是 CONSOLIDATE 的落地第一块，且序 7 的用户画像为它提供了更新目标。
 ### 9.4 关键概念索引（术语 → 权威文档）
 
 | 概念 | 定义所在 | 一句话 |

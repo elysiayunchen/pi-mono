@@ -6,17 +6,17 @@
 
 ---
 
-## 当前状态快照（2026-06-06）
+## 当前状态快照（2026-06-07）
 
 **12 层 Agent 框架**：全部竣工（s01-s12.1）  
 **P 系列补丁**：P1-A/B/C + P2-A/B/D (Phase 1+2+3) + P3-A/B 全部完成  
 **Code Mode**：已废弃，由 `delegate_code_task` 子代理分发替代  
 **delegate_code_task**：✅ 已完成实施（2026-06-05），Telegram 端到端验证受阻于模型不可用
-**Telegram 流式输出**：🔧 进行中 (2026-06-06)
-  - Tool lane 流式显示：✅ 已实施（坑 #70: minInitialChars 防抖修复）
-  - Tool result phase 路由：✅ 已修复 — onToolStart 现在处理 phase "result"，tool lane 显示 "📖 Read: /path"
-  - Thinking/Reasoning 流式：已接线，需 session `reasoningLevel: "stream"` 配置
-  - Tool 完整 stdout 输出：需 verboseLevel="full"（下一 Sprint）
+**序 1-7 统一实施**：✅ 全部完成 (2026-06-07)
+  - 序 1 索引化注入+B4 改造 ✅ | 序 2 压缩可见性 WS-1 ✅ | 序 3 全流式 WS-2 ✅
+  - 序 4 L0 工具结果驱逐 ✅ | 序 5 统一注入预算器 ✅ | 序 6 输入分类器 ✅
+  - 序 7 用户画像 User Model ✅ (SQLite + 双路径更新 + B2 注入)
+  - 边缘情况加固: 正则修复、防守代码、门限常量化
 **pi-mono 统一版本**：0.64.0  
 **packages/ 精简**：mom/web-ui/pods 已删除（只剩 tui/ai/agent/coding-agent 4 个包）  
 **Tool Parity 进度**：3/16 = 18.75%
@@ -66,18 +66,20 @@ deploy.sh 发现并修复了导致"代码提交但 dist 未部署"的 3 个结�
 
 ---
 
-## 🔴 核心目标 — Telegram 输出体验 × 上下文/记忆协同 (2026-06-06 起草,PROPOSAL)
+## 🟢 Core — 统一实施优先级 (2026-06-07 序1-7全部完成)
 
-> 详细计划: `TELEGRAM-UX-CONTEXT-PLAN.md`
-> 上位架构: `SUPERADMIN-AGENT-DESIGN.md`(WS-3 是其 CONSOLIDATE 的第一块落地)
+> 优先级总表: `ARCHITECTURE.md` Part 9.3
 
-**问题**:agent 在 Telegram 最忙的两段时间(压缩、思考)对用户完全静默,被误判掉线;思考链不可见;大段信息直发;后续大量注入与压缩无预算协同(反身性空转隐患)。
-
-| 工作流 | 内容 | 依赖 | 优先级 |
-|------|------|------|------|
-| WS-1 压缩可见性 | 压缩 start/done 状态 + typing 心跳续命(TTL 2min 黑洞) | 无(不需模型) | 🔥 最高 |
-| WS-2 全流式输出 | thinking 默认流式 + 统一 lane 契约 + 消除大段直发 | 无(不需模型) | 🔥 高 |
-| WS-3 压缩×记忆协同 | 压缩即沉淀(CONSOLIDATE)+ 统一注入预算 + 压缩感知 RECALL | 记忆引擎✅ / World Model(Ph2) / 模型(提炼可降级) | 🔥 高 |
+| 工作流 | 内容 | 状态 |
+|------|------|------|
+| 序 1 索引化注入+B4 | RECALL snippet→索引信号, 移出 system prompt, 修 KV-cache 病灶 | ✅ 2026-06-06 |
+| 序 2 WS-1 压缩可见性 | 压缩 start/done 状态推送 + typing 心跳续命 | ✅ 2026-06-07 |
+| 序 3 WS-2 全流式 | thinking 默认流式 + 统一 lane 契约 | ✅ 2026-06-07 |
+| 序 4 L0 工具驱逐 | consumed tool result → [EVC] 摘要, 幂等检测 | ✅ 2026-06-07 |
+| 序 5 注入预算器 | system prompt tokens 计入压缩阈值, 防反身性 | ✅ 2026-06-07 |
+| 序 6 输入分类器 | task/chat/affective/meta 四分类, 偏向 task | ✅ 2026-06-07 |
+| 序 7 用户画像 | SQLite 持久化 + 双路径更新 + B2 注入 | ✅ 2026-06-07 |
+| 序 8 Conversation+Handoff | 手动 rotate 验证精度 | 待启动 |
 
 > **分层注入架构 `CONTEXT-INJECTION-ARCHITECTURE.md`**(2026-06-06):WS-3 的上位设计。按变化频率分 B0-B4 五带 + 消息流,钉 KV-cache 锚点,易变注入(RECALL/World Model)下沉锚点之后。**已发现严重病灶**:RECALL 被 append 进 system prompt(`attempt.ts:1781`),每轮变化致稳定前缀(base+GUIDANCE 数 k token)KV-cache 每轮全失效、重 prefill——token 白烧的根因。
 
@@ -222,6 +224,7 @@ task_assign (worktree: true)
 | 2026-06-05 | delegate_code_task | Code Mode 废弃，子代理分发工具实施 + 引擎文件整理 |
 | 2026-06-06 | 记忆引擎激活 (T1-T6) | TS memory_search 全面取代 Python session_search，RECALL 注入激活 |
 | 2026-06-06 | deploy.sh 增强 | 修复 dist/extensions 部署遗漏（根因），新增 2 Guard + extensions sync + E2E 验证 |
+| 2026-06-07 | 序 1-7 统一实施 | L0-L3压缩链 + 注入预算器 + 输入分类器 + 用户画像 全部完成 |
 
 ---
 
@@ -240,4 +243,4 @@ task_assign (worktree: true)
 
 ---
 
-*最后更新：2026-06-06*
+*最后更新：2026-06-07*
