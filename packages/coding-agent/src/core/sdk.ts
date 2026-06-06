@@ -5,7 +5,11 @@ import { getAgentDir, getDocsPath } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { AuthStorage } from "./auth-storage.js";
 import { AUTO_COMPACT_THRESHOLD, autoCompactMessages } from "./compaction/auto-compact.js";
-import { applyMultiLayerCompaction, evictConsumedToolResults } from "./compaction/multi-layer.js";
+import {
+	applyMultiLayerCompaction,
+	DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD,
+	evictConsumedToolResults,
+} from "./compaction/multi-layer.js";
 import { shutdownCostTracker, wrapStreamForCost } from "./cost-tracker.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
 import type { ExtensionRunner, LoadExtensionsResult, SessionStartEvent, ToolDefinition } from "./extensions/index.js";
@@ -366,6 +370,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 
 	const extensionRunnerRef: { current?: ExtensionRunner } = {};
 
+	// Clamp injection budget to >= 0 — belt-and-suspenders for safety.
+	const safeBudget = Math.max(0, options.contextPressureBudget ?? 0);
+
 	agent = new Agent({
 		initialState: {
 			systemPrompt: "",
@@ -405,9 +412,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			// summaries once the model has responded (instant, no API call).
 			const afterEviction = evictConsumedToolResults(messages);
 
-			// Layer 1 + 2: Fast, free compression (snip + microcompact)
+			// Layer 1 + 2: Fast, free compression (snip + microcompact).
+			// Default threshold is 90k.  Subtract injection budget so large system prompts
+			// don't push us into reflexive compaction loops.
+			// Floor: 30k — below this, snip would run almost every turn (false-positive cost).
 			const multiLayerConfig = options.contextPressureBudget
-				? { autoCompactThreshold: Math.max(90_000 - options.contextPressureBudget, 30_000) }
+				? { autoCompactThreshold: Math.max(DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD - safeBudget, 30_000) }
 				: undefined;
 			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(
 				afterEviction,
@@ -448,8 +458,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			return runner.emitContext(result);
 		},
 
+		// Agent-level context pressure threshold — when to emit pressure events.
+		// Default: AUTO_COMPACT_THRESHOLD (80k).  Subtract injection budget to account
+		// for system prompt overhead.
+		// Floor: 20k — room for ~5k tokens of actual conversation before warning.
 		contextPressureThreshold: options.contextPressureBudget
-			? Math.max(AUTO_COMPACT_THRESHOLD - options.contextPressureBudget, 20_000)
+			? Math.max(AUTO_COMPACT_THRESHOLD - safeBudget, 20_000)
 			: AUTO_COMPACT_THRESHOLD,
 		tokenBudget: options.tokenBudget,
 		steeringMode: settingsManager.getSteeringMode(),

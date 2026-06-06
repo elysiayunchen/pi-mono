@@ -13,7 +13,9 @@ import { estimateTokens } from "./compaction.js";
 
 // Configuration
 export interface MultiLayerCompactionConfig {
+	/** @deprecated Reserved for future token-budget gating. Not currently used. */
 	maxTokens: number;
+	/** Threshold (tokens) above which snip + microcompact (L1+L2) run proactively. */
 	autoCompactThreshold: number;
 	maxToolResultChars: number;
 	enableSnip: boolean;
@@ -21,10 +23,13 @@ export interface MultiLayerCompactionConfig {
 	enableToolResultEviction: boolean;
 }
 
+/** Default autoCompactThreshold — exported so sdk.ts can adjust for injection budget. */
+export const DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD = 90_000;
+
 const DEFAULT_CONFIG: MultiLayerCompactionConfig = {
-	maxTokens: 100000,
-	autoCompactThreshold: 90000,
-	maxToolResultChars: 50000,
+	maxTokens: 100_000,
+	autoCompactThreshold: DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD,
+	maxToolResultChars: 50_000,
 	enableSnip: true,
 	enableMicrocompact: true,
 	enableToolResultEviction: true,
@@ -90,22 +95,58 @@ function buildToolResultSummary(
 
 	let totalChars = 0;
 	let firstLine = "";
+	const nonTextBlocks: string[] = [];
+
 	if (Array.isArray(tr.content)) {
-		for (const block of tr.content as Array<{ type?: string; text?: string }>) {
+		for (const block of tr.content as Array<{ type?: string; text?: string; [key: string]: unknown }>) {
 			if (block?.type === "text" && typeof block.text === "string") {
 				totalChars += block.text.length;
 				if (!firstLine) {
 					firstLine = collapseWhitespace(block.text.slice(0, 120));
 				}
+			} else if (block?.type && block.type !== "text") {
+				// Track non-text blocks (image, resource_link, resource, etc.)
+				const tag = block.type.replace(/_/g, "-");
+				if (!nonTextBlocks.includes(tag)) {
+					nonTextBlocks.push(tag);
+				} else {
+					// Append count for duplicates of same type
+					const existingIdx = nonTextBlocks.findIndex((b) => b.startsWith(`${tag}×`));
+					if (existingIdx >= 0) {
+						const count = Number.parseInt(nonTextBlocks[existingIdx].split("×")[1] || "1") + 1;
+						nonTextBlocks[existingIdx] = `${tag}×${count}`;
+					} else {
+						nonTextBlocks[nonTextBlocks.indexOf(tag)] = `${tag}×2`;
+					}
+				}
 			}
+		}
+	} else if (typeof tr.content === "string") {
+		// Plain-text content (rare but used by some tool implementations)
+		totalChars = tr.content.length;
+		firstLine = collapseWhitespace(tr.content.slice(0, 120));
+	} else if (tr.content != null) {
+		// Unknown content shape — JSON-serialize a snippet.
+		// Guard against circular references and other JSON.stringify failures.
+		try {
+			const json = JSON.stringify(tr.content);
+			totalChars = json.length;
+			firstLine = collapseWhitespace(json.slice(0, 120));
+		} catch {
+			// Circular reference or other serialisation failure — fall back to type tag.
+			const typeTag =
+				typeof tr.content === "object" ? (tr.content as object).constructor?.name || "object" : typeof tr.content;
+			totalChars = 0;
+			firstLine = `[${typeTag}]`;
 		}
 	}
 
 	const chars = totalChars > 0 ? ` (${totalChars} chars)` : "";
 	const path = filePath ? ` ${filePath}` : "";
 	const line = firstLine ? `: ${firstLine}` : "";
+	const nonText = nonTextBlocks.length > 0 ? ` +${nonTextBlocks.join(",")}` : "";
 
-	return `${EVICTED_MARKER}[${toolName}${path}]${isError}${chars}${line}`;
+	return `${EVICTED_MARKER}[${toolName}${path}]${isError}${chars}${nonText}${line}`;
 }
 
 /**
