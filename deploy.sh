@@ -182,6 +182,10 @@ if [ -d "$EXTS_SRC" ]; then
             # Copy subdirectories (e.g. telegram/src/) — exclude node_modules/skills/dist
             # Pitfall #76: -maxdepth 1 drops src/ subdirs, breaking plugins that import from ./src/
             for sub_dir in "$ext_dir"*/; do
+                # Pitfall #77: when an extension has NO subdirs, the glob "$ext_dir"*/
+                # does not expand and bash passes the literal "*/" to cp, which fails
+                # under `set -e` and aborts the whole deploy. Guard with -d.
+                [ -d "$sub_dir" ] || continue
                 sub_name=$(basename "$sub_dir")
                 if [ "$sub_name" = "node_modules" ] || [ "$sub_name" = "skills" ] || [ "$sub_name" = "dist" ]; then
                     continue

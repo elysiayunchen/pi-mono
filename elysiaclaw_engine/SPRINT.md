@@ -5,6 +5,54 @@
 
 ---
 
+## Sprint: 序 1-7 健全性审核 + 用户画像写路径闭环 (2026-06-07) ✅ 已完成
+
+**Sprint 目标**: 审核记忆系统与上下文系统健全性，修复审核暴露的接入缺口
+**开始/完成**: 2026-06-07
+
+### 审核结论
+
+逐一验证序 1-7 四模块是否真正接入运行时（非"写了测试但没接线"）：
+
+| 模块 | 接入证据 | 判定 |
+|------|----------|------|
+| L0 工具结果驱逐 | `sdk.ts:413` `transformContext` 每轮调用 | ✅ 有效 |
+| L1+L2+L3 压缩链 | `sdk.ts:419-456` evict→multiLayer→autoCompact 串联 | ✅ 完整 |
+| 输入分类器 | `route-reply.ts:111`（注：作用于**出站**文本） | ⚠️ 接入但语义可疑 |
+| 用户画像**读**路径 | `attempt.ts:1790`/`compact.ts:694` getSummary 注入 | ✅ 接线正确 |
+| 用户画像**写**路径 | `updateUserModel` 全 src 零调用 | ❌ **死代码（缺口 A）** |
+| `computeInjectionBudget` | runtime 只用 `estimateTextTokens`；核心函数零调用 | ⚠️ 被 SDK 内联架空（缺口 B）|
+
+**硬证据**: 部署前 `user-model.db` 行数 = **0**——写路径从未生效，读路径每轮读空。
+
+### 缺口 A 修复（本 Sprint 完成）— 用户画像写路径闭环
+
+- 新建 `user-model/user-model-ingest.ts`：`ingestUserMessage()` 写路径入口
+  - **全类型摄入 + 分类门控**：task 也贡献 recurringFocus（types 注释本就要求"从任务提取"），但不污染 preferences/communicationStyle（heuristicExtract 分类门控保证）
+  - **retry 去重**：attempt 在 run.ts 外层 retry 循环内，模块级 TTL(60s) 缓存按 agentId+text 防止重复提升 confidence
+  - **fire-and-forget + 静默失败**：不阻塞回复，画像故障不影响核心链
+  - **extractFn 就绪**：LLM 精密路径接口预留
+- `attempt.ts:1808`：读路径旁加 `void ingestUserMessage(...)` fire-and-forget
+- 新增 `user-model-ingest.test.ts`（7 测试）；user-model 全套 23/23 绿
+- 已部署，类型干净（新文件零 tsgo 错误）
+
+### 缺口 B 决策（本 Sprint 定向，单独立项）
+
+`computeInjectionBudget`（按 contextWindow 比例缩放阈值）未接入；SDK 用硬编码
+`90k/80k - budget` 基线，不随 1M 窗口缩放。用户决策：**精密为重，保留函数**，完整
+接入（改框架层 SDK 让阈值随窗口缩放 + 爆窗保护）作为独立任务。本 Sprint 仅
+对齐 `injection-budget.ts` 文档（如实标注两套算法 + 接入条件）。
+
+### 附带发现 / 修复
+
+- **classifier 数据源偏窄**（待定）：`classifyInput` 偏向 task，使"我是X"等短陈述
+  句落入 task，identity.name 几乎提不出。收紧 classifier 会损害 task 准确率，需
+  产品决策；当前靠 task 摄入贡献 recurringFocus 部分补偿。
+- **Pitfall #77**: deploy.sh Step 9 子目录递归在零子目录 extension 上 glob 字面量
+  + set -e 中止；加 `[ -d ]` 守卫修复。
+
+---
+
 ## Sprint: 序 1-7 测试加固 + Bug 修复 (2026-06-07) ✅ 已完成
 
 **Sprint 目标**: 序 4-7 核心新模块（L0 驱逐 / 注入预算器 / 输入分类器 / 用户画像）此前零单元测试，补深度测试并修复暴露的 bug

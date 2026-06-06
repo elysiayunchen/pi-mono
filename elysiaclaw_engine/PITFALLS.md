@@ -622,5 +622,12 @@ with open(path, "w") as f:
 3. deploy.sh Step 9 修复：① 增加子目录递归复制（排除 node_modules/skills/dist）；② 自动检测并复制 `elysiaclaw.plugin.json`（当全局只有 `openclaw.plugin.json` 时）
 **预防**: extension 子目录同步必须显式处理；manifest 命名不一致是 fork 遗留历史债，在 deploy.sh 中用自动适配而非手动修。
 
-*记录截至 2026-06-07，坑 #76。下次遇到新坑从 #77 开始追加。*
+### #77 — deploy.sh Step 9 子目录递归在「无子目录 extension」上 glob 字面量 + set -e 中止
+**现象**: 部署运行到 Step 9 报 `cp: cannot stat '.../extensions/copilot-proxy/*/': No such file or directory`，`set -e` 立即中止整个部署，gateway 未重启（停在 Step 11 之前，线上仍是旧版本）。
+**根因**: #76 修复时新增的子目录递归 `for sub_dir in "$ext_dir"*/`，当某 extension **没有任何子目录**（纯文件插件，如 copilot-proxy）时，glob `"$ext_dir"*/` 无匹配；bash 默认（未开 nullglob）保留字面量 `*/`，`cp -r '.../copilot-proxy/*/' ...` 失败。脚本 `set -e` 把单个 cp 失败升级为整个部署中止。
+**影响**: 部署在第一个无子目录的纯文件 extension 处硬中断。Steps 1-8（框架+应用 dist）已生效，但 extensions 未全同步、gateway 未重启——半完成状态，比干净失败更隐蔽。
+**解决**: 子目录循环体首行加目录存在守卫 `[ -d "$sub_dir" ] || continue`，字面 `*/`（非真目录）被跳过。
+**预防**: `set -e` 脚本里任何 `for x in <glob>*/` 必须配 `[ -d "$x" ] || continue` 守卫，或 `shopt -s nullglob`。教训：修一个坑（#76 子目录丢弃）引入的边界（零子目录）没被覆盖——子目录处理的修复必须同时考虑"零子目录"和"多子目录"两端。
+
+*记录截至 2026-06-07，坑 #77。下次遇到新坑从 #78 开始追加。*
 
