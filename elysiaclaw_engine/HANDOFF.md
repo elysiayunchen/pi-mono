@@ -19,6 +19,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - **12 层 Agent 框架**: 全部竣工（s01-s12.1）
 - **P 系列补丁**: P1-A/B/C + P2-A/B/D + P3-A/B 全部完成
 - **Tool Parity**: 3/16 = 18.75% (Task 0/1/2/12 已完成；Task 1/2 已补真实测试 +25 用例，2026-06-07)
+- **DTS 类型错误**: ✅ 全部修复 (2026-06-07)，`pnpm build` 干净通过
 - **子代理基础设施**: elysiaclaw 层完整实现（37 个文件）
 
 ### 战略变更 (2026-06-05)
@@ -46,7 +47,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - 数据目录 `~/.pi/agent/`、配置目录 `~/.elysiaclaw/` 不变
 
 ### 残余技术债
-- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，需绕过（坑 #38/#63）
+- ~~DTS 类型错误 ×6~~ → ✅ 已修复 (2026-06-07)，实际 8 个错误，`pnpm build` 不再阻塞
 - delegate_code_task Telegram 端到端验证未完成 — 需可用模型
 - Telegram 完整 stdout 输出 — 需 `verboseLevel: "full"` 机制改造
 - Tool Parity 剩余 13 个 Task 待执行
