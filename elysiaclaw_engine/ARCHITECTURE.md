@@ -319,7 +319,7 @@ Agent.runLoop()               ← agent-loop.ts
     │     ├── toolcall_start  → { phase: "building" } → Tool Lane: "📖 Read …"
     │     ├── toolcall_delta  → { phase: "building", meta } → Tool Lane: "📖 Read: /path…"
     │     ├── toolcall_end    → { phase: "built", meta } → Tool Lane: "📖 Read: /path"
-    │     ├── text_delta      → Answer Lane 流式文字
+    │     ├── text_delta      → Answer Lane 流式文字（⚠️ 需 canStreamAnswerDraft=true，见 PITFALLS #95）
     │     └── thinking_*      → Reasoning Lane (reasoningMode="stream")
     │
     ├── executeToolCalls()
@@ -652,7 +652,7 @@ Adding an elysiaclaw tool (defined in elysiaclaw):
 |---|---|---|---|---|---|---|---|
 | 1 | **索引化注入 + B4 改造**(RECALL snippet→索引信号,移出 system prompt) | KB-EVO §11 阶段1 / CONTEXT-INJECTION | 否 | 是 | 🔥🔥🔥 | ✅ 已完成 (2026-06-06) |
 | 2 | **压缩可见性 WS-1**(typing 心跳 + 状态) | TELEGRAM-UX | 否 | 是 | 🔥🔥 | ✅ 已完成 (2026-06-07) |
-| 3 | **全流式 WS-2**(thinking 默认流式) | TELEGRAM-UX | 否 | 是 | 🔥🔥 | ✅ 已完成 (2026-06-07) |
+| 3 | **全流式 WS-2**(thinking 默认流式 + blockStreamingDefault 修复) | TELEGRAM-UX | 否 | 是 | 🔥🔥 | ✅ 已完成 (2026-06-07, 配置修复 2026-06-08) |
 | 4 | **L1 工具结果驱逐**(接 compaction.tool-result-details) | SESSION-ROTATION §4B | 否 | 是 | 🔥🔥 | ✅ 已完成 (2026-06-07) |
 | 5 | **统一注入预算器**(注入量计入压缩阈值,防反身性) | CONTEXT-INJECTION §3.3 / WS-3 | 否 | 是 | 🔥 | ✅ 已完成 (2026-06-07) |
 | 6 | 输入分类器(task/chat/...) | KB-EVO §3 | 轻 | 是 | 🔥 | ✅ 已完成 (2026-06-07) |

@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (**设计审查完成** → 全引擎文档状态校正 + PITFALLS #85 新增 + 三级完成标注落地; **参与者持续性总架构落定** → [PARTICIPANT-CONTINUITY-ARCHITECTURE.md](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md);含 L0-L4 决策记录 D1-D10 + 现状审查 AS1-AS7 + DO-NOT-DRIFT。叠加序 8 深度审查 + 接线断链修复: 坑 #91-#94, tsgo 19→0, 134 测试全过)
+> 最后更新: 2026-06-08 (**流式输出修复** → blockStreamingDefault="off" 配置修复, 根因定位 `canStreamAnswerDraft=false` → answerLane.stream 未创建 → onPartialReply=undefined 链路; **设计审查完成** → 全引擎文档状态校正 + PITFALLS #85 新增 + 三级完成标注落地; **参与者持续性总架构落定** → [PARTICIPANT-CONTINUITY-ARCHITECTURE.md](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md);含 L0-L4 决策记录 D1-D10 + 现状审查 AS1-AS7 + DO-NOT-DRIFT。叠加序 8 深度审查 + 接线断链修复: 坑 #91-#94, tsgo 19→0, 134 测试全过)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -34,6 +34,10 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - 序 1: 索引化注入 + B4 改造 ✅ (T6 RECALL, 2026-06-06)
   - 序 2: 压缩可见性 WS-1 (typing 心跳 + compaction 状态推送) ✅ (2026-06-07)
   - 序 3: 全流式 WS-2 (thinking 默认流式) ✅ (2026-06-07)
+  - **流式输出修复 ✅ (2026-06-08)**: blockStreamingDefault `"on"` → `"off"` 配置修复
+    - 根因链路: `blockStreamingDefault="on"` → `accountBlockStreamingEnabled=true` → `canStreamAnswerDraft=false` → `answerLane.stream` 未创建 → `onPartialReply=undefined` → `text_delta` 事件的 token-by-token 流式输出被丢弃
+    - 修复: `/home/elysia/.elysiaclaw/elysiaclaw.json` L357 `blockStreamingDefault` 从 `"on"` 改为 `"off"`
+    - 验证: 网关 `{"ok":true,"status":"live"}`, elysiaclaw(PID 1803653) + gateway(PID 1803660) 正常运行
   - 序 4: L0 工具结果驱逐 (consumed tool results → [EVC] 摘要) ✅ (2026-06-07)
   - 序 5: 统一注入预算器 (system prompt tokens 计入压缩阈值) ✅ (2026-06-07)
   - 序 6: 输入分类器 (task/chat/affective/meta 四分类) ✅ (2026-06-07)
@@ -109,7 +113,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 1.本文档 (HANDOFF.md) — 你在看这个
 2.elysiaclaw_engine/SYSTEM.md — 运行环境、构建部署、文件索引
 3.elysiaclaw_engine/ARCHITECTURE.md — 架构蓝图
-4.elysiaclaw_engine/PITFALLS.md — 70+ 踩坑记录（必读）
+4.elysiaclaw_engine/PITFALLS.md — 95+ 踩坑记录（必读）
 5.elysiaclaw_engine/PARTICIPANT-CONTINUITY-ARCHITECTURE.md — 参与者持续性总架构（决策记录 + DO-NOT-DRIFT）
 6.elysiaclaw_engine/SUPERADMIN-AGENT-DESIGN.md — 记忆架构总设计（Phase 1 完成，Phase 2 待启动）
 7.elysiaclaw_engine/CONTEXT-INJECTION-ARCHITECTURE.md — 分层上下文注入架构（KV-cache 优化 + 注入预算）

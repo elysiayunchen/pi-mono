@@ -83,7 +83,7 @@ deploy.sh 发现并修复了导致"代码提交但 dist 未部署"的 3 个结�
 |------|------|------|
 | 序 1 索引化注入+B4 | RECALL snippet→索引信号, 移出 system prompt, 修 KV-cache 病灶 | ✅ 2026-06-06 |
 | 序 2 WS-1 压缩可见性 | 压缩 start/done 状态推送 + typing 心跳续命 | ✅ 2026-06-07 |
-| 序 3 WS-2 全流式 | thinking 默认流式 + 统一 lane 契约 | ✅ 2026-06-07 |
+| 序 3 WS-2 全流式 | thinking 默认流式 + 统一 lane 契约 + 流式输出修复 | ✅ 2026-06-07 (配置修复 2026-06-08) |
 | 序 4 L0 工具驱逐 | consumed tool result → [EVC] 摘要, 幂等检测 | ✅ 2026-06-07 |
 | 序 5 注入预算器 | system prompt tokens 计入压缩阈值, 防反身性 | ✅ 2026-06-07 |
 | 序 6 输入分类器 | task/chat/affective/meta 四分类, 偏向 task | ✅ 2026-06-07 |

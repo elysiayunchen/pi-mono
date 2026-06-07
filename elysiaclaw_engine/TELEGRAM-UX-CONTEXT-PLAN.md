@@ -4,7 +4,7 @@
 > 范围:Telegram 流式观感重构 + 压缩期可见性 + 上下文压缩与记忆引擎闭环
 > 标注约定:**KNOWN**=有代码/grep 证据;**PROPOSAL**=设计建议,未实现。
 > 关联文档:`SUPERADMIN-AGENT-DESIGN.md`(记忆/World Model 总架构)· `PITFALLS.md`(#70)· `SYSTEM.md`
-> 进度:WS-1(压缩可见性)✅生产验证通过 · WS-2(全流式输出)✅生产验证通过 · WS-3(压缩×记忆协同)=PROPOSAL,依赖记忆引擎+World Model
+> 进度:WS-1(压缩可见性)✅生产验证通过 · WS-2(全流式输出)✅生产验证通过(含 blockStreamingDefault 互斥修复 2026-06-08) · WS-3(压缩×记忆协同)=PROPOSAL,依赖记忆引擎+World Model
 
 ---
 
@@ -43,6 +43,14 @@
 - RECALL 注入已激活(记忆引擎 T6,`attempt.ts` 每轮 system prompt 注入 top-5)。
 - 后续 World Model 摘要注入(`SUPERADMIN-AGENT-DESIGN.md §6.7`)、CONSOLIDATE 回写将**持续增大每轮注入量**。
 - 二者与 s06 压缩链**无共享预算**:大量注入会顶高 token → 立刻触发压缩 → 压缩又可能丢掉刚注入的记忆 → **反身性空转**。这是"后续注入大量信息"必须先解决的结构性问题。
+
+### P6 — 块流式传输与草稿流式预览互斥（✅ 已修复 2026-06-08）
+
+- `elysiaclaw.json:357` `blockStreamingDefault` 默认为 `"on"`，导致 `get-reply-directives.ts` 中 `resolvedBlockStreaming="on"`。
+- 在 `bot-message-dispatch.ts` 中，`accountBlockStreamingEnabled=true` 导致 `canStreamAnswerDraft=false`。
+- 完整链路：`blockStreamingDefault="on"` → `canStreamAnswerDraft=false` → `answerLane.stream` 未创建 → `onPartialReply=undefined` → `text_delta` 事件的 token-by-token 流式输出被丢弃。
+- 块流式传输（block streaming）会将消息合并后一次性发送，与流式草稿预览（answer draft streaming）是**互斥的**。
+- **修复**: `/home/elysia/.elysiaclaw/elysiaclaw.json` L357 `blockStreamingDefault` 从 `"on"` 改为 `"off"`。详见 Sprint 19。
 
 ---
 
@@ -95,6 +103,15 @@
 | `src/telegram/lane-delivery*.ts` | 长文本增量保证、超长输出落盘摘要 |
 
 **DoD**:开启后 Telegram 可见思考增量;无 >3000 字一次性消息(超长落盘);`/think off` 仍可关。
+
+**WS-2 实施记录（2026-06-07 ~ 2026-06-08）**:
+
+| 日期 | 内容 | 状态 |
+|------|------|------|
+| 2026-06-07 | reasoning 默认 stream（序 3）+ 统一 lane 契约 | ✅ |
+| 2026-06-08 | blockStreamingDefault `"on"` → `"off"` 配置修复（Sprint 19） | ✅ |
+
+**blockStreamingDefault 修复详情**: 见问题诊断 P6 及 Sprint 19。核心发现：块流式传输与草稿流式预览互斥，`blockStreamingDefault="on"` 会抑制 `answerLane.stream` 创建，导致整个 token-by-token 流式输出链路断裂。修复为纯配置级变更，无需改代码。
 
 ---
 

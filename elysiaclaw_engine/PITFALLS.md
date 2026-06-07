@@ -7,7 +7,7 @@
 
 ## 高频警告（必读）
 
-在执行任何操作前，先过这 13 条：
+在执行任何操作前，先过这 14 条：
 
 1. **写文件用 Python**，不要用 heredoc（坑 #1）；含花括号/反引号的代码走 Write→Bash 两段式（坑 #79）
 2. **字符串替换用 Python `str.replace()`**，不要用 sed（坑 #2）
@@ -22,6 +22,7 @@
 11. **信 ✅ 前先 grep 生产调用者**：`grep -rn funcName src | grep -v test`，零命中即死代码（坑 #85）
 12. **wrapToolDefinition 必须逐字段传播**，不能只靠 `as` 类型断言——扩展字段会在运行时变成 `undefined`（坑 #82）
 13. **测试 `describe()` 回调不准捕获 `beforeEach` 变量**——使用 `const t = foo` 在 `it()` 内会拿到 `undefined`（坑 #84）
+14. **blockStreamingDefault="on" 会抑制流式草稿预览**——块流式传输与 answer draft streaming 互斥，开启后 token-by-token 流式输出整个链路断裂（坑 #95）
 
 ---
 
@@ -432,6 +433,7 @@ with open(path, "w") as f:
 | buildAndStoreDualTrackIndex 覆盖抹掉 macro | #92 |
 | rotate_session 违反 AgentTool 框架契约 | #93 |
 | attempt.ts inputClassification 重复声明 | #94 |
+| blockStreamingDefault 抑制流式草稿预览 | #95 |
 
 ---
 
@@ -548,6 +550,7 @@ with open(path, "w") as f:
 | Telegram 超长回复截断 | #81 |
 | 设计-实现鸿沟 / 代码存在≠完成 | #85 |
 | session-rotation 孤儿段 | #87 |
+| blockStreamingDefault / 流式输出 | #95 |
 
 ---
 
@@ -963,3 +966,16 @@ describe("UI helpers", () => {
 **根因**: 序8 TaskSegment 集成在函数上方新增 `const inputClassification = classifyInput(...)` 用于 log，但下方原有 L0 classifier 的同名 `const` 声明未删 → 同作用域重复 `const`
 **解决**: 删除下方重复声明，复用上方变量（值相同）
 **预防**: 集成新代码块时 grep 同名变量；重复 `const` 是 tsgo 能抓但 tsc/运行时打包可能放过的真 bug
+
+### #95 — blockStreamingDefault="on" 抑制流式草稿预览（2026-06-08 已修复）
+**现象**: agent 在 Telegram 中没有流式输出（token-by-token 逐字显示），消息在生成完成后才一次性出现。用户看到"正在输入"但无内容更新。
+**根因**: `elysiaclaw.json:357` `blockStreamingDefault` 默认为 `"on"`，导致块流式传输（block streaming）被启用。块流式传输与流式草稿预览（answer draft streaming）互斥。完整链路：
+1. `blockStreamingDefault="on"` → `get-reply-directives.ts` 中 `resolvedBlockStreaming="on"`
+2. → `bot-message-dispatch.ts` 中 `accountBlockStreamingEnabled=true`
+3. → `canStreamAnswerDraft=false`
+4. → `lane-delivery-text-deliverer.ts` 中 `answerLane.stream` 未创建
+5. → `bot-message-dispatch.ts` 中 `onPartialReply=undefined`
+6. → `pi-embedded-subscribe.handlers.messages.ts` 中 `text_delta` 事件的 partial reply 被丢弃
+**解决**: `/home/elysia/.elysiaclaw/elysiaclaw.json` L357 `blockStreamingDefault` 从 `"on"` 改为 `"off"`。需重启服务生效。
+**预防**: 修改涉及流式输出的配置项后，验证 `canStreamAnswerDraft` 为 `true`；新增配置项默认值需考虑与现有流式行为的互斥关系。详见 Sprint 19 / TELEGRAM-UX-CONTEXT-PLAN.md P6。
+**关联**: PITFALLS #70 (tool lane 防抖) · TELEGRAM-UX-CONTEXT-PLAN.md WS-2

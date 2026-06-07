@@ -1086,3 +1086,69 @@ grep -n "setSystemPrompt\\|replaceMessages" \\
 | elysiaclaw_engine/*.md | 更新: 5 份文档全部同步 |
 
 ---
+
+## Sprint 19: 流式输出修复 — blockStreamingDefault 错误抑制 (2026-06-08) ✅ 已完成
+
+**Sprint 目标**: 排查并修复 agent 流式输出不工作的问题
+**开始/完成**: 2026-06-08
+
+### 问题描述
+
+用户反馈 agent 在 Telegram 中没有流式输出（token-by-token 逐字显示），消息在生成完成后才一次性出现。
+
+### 排查过程
+
+1. 验证 `streamSimple` 函数是否正确分配为 agent 的 streamFn — ✅ 正常
+2. 确认 `text_delta` 事件在 `agent-loop.ts` 中被正确 emit — ✅ 正常
+3. 检查 `pi-embedded-subscribe.handlers.messages.ts` 中 `handleTextDelta` 处理流式更新 — ✅ 正常
+4. 分析推理级别配置（reasoning level）是否影响流式输出 — ✅ 推理流独立
+5. 调查块流式传输设置是否合并消息而非流式输出 — ⚠️ **发现根因**
+6. 追踪完整消息流：LLM 响应 → Telegram 消息交付 — 定位到 `canStreamAnswerDraft=false`
+
+### 根因
+
+**完整链路**:
+```
+blockStreamingDefault="on" (elysiaclaw.json:357)
+  → resolvedBlockStreaming="on" (get-reply-directives.ts)
+  → accountBlockStreamingEnabled=true (bot-message-dispatch.ts)
+  → canStreamAnswerDraft=false (bot-message-dispatch.ts)
+  → answerLane.stream 未创建 (lane-delivery-text-deliverer.ts)
+  → onPartialReply=undefined (bot-message-dispatch.ts)
+  → text_delta 事件的 partial reply 被丢弃 (pi-embedded-subscribe.handlers.messages.ts)
+  → 用户看不到流式输出
+```
+
+**关键发现**: `blockStreamingDefault` 配置为 `"on"` 时，块流式传输（block streaming）被启用，但这与流式草稿预览（answer draft streaming）是**互斥的**。块流式传输会将消息合并后再发送，而不是逐 token 流式输出。
+
+### 修复
+
+| 文件 | 修改 |
+|---|---|
+| `/home/elysia/.elysiaclaw/elysiaclaw.json` L357 | `"blockStreamingDefault": "on"` → `"off"` |
+
+### 验证
+
+| 检查项 | 结果 |
+|---|---|
+| 配置 `blockStreamingDefault` | `"off"` ✅ |
+| 网关 health check | `{"ok":true,"status":"live"}` ✅ |
+| 主进程 | PID 1803653 ✅ |
+| 网关进程 | PID 1803660 ✅ |
+
+### 影响范围
+
+- 块流式传输不再默认启用，需要显式设置 `blockStreaming: true` 在 Telegram 账户配置中
+- 流式输出（answer draft streaming）恢复为默认行为
+- 不影响 reasoning 流式输出（序 3 WS-2 已独立修复）
+
+### 涉及的关键代码文件
+
+| 文件 | 作用 |
+|---|---|
+| `elysiaclaw/src/auto-reply/reply/get-reply-directives.ts` | 解析 blockStreaming 配置 |
+| `elysiaclaw/src/telegram/bot-message-dispatch.ts` | 控制 canStreamAnswerDraft 判断 |
+| `elysiaclaw/src/telegram/lane-delivery-text-deliverer.ts` | answerLane.stream 创建 |
+| `elysiaclaw/src/agents/pi-embedded-subscribe.handlers.messages.ts` | text_delta → onPartialReply 转发 |
+| `elysiaclaw/src/auto-reply/reply/agent-runner-execution.ts` | onPartialReply 处理 |
+| `elysiaclaw/src/auto-reply/reply/reply-delivery.ts` | 块回复交付处理 |

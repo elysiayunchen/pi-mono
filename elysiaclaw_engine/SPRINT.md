@@ -30,6 +30,7 @@
 | 16 | 引擎设计审查 + 文档状态校正 | 2026-06-07 | 三级完成标注标准 + 9 文件修正 |
 | 17 | 架构优化 Sprint | 2026-04-05 | BUG-1~4 修复 + deploy.sh 守卫 |
 | 18 | Code Mode Phase 0 最小可行补丁 | 2026-04-05 | attempt.ts /code /exit 检测 |
+| 19 | 流式输出修复 — blockStreamingDefault 错误抑制 | 2026-06-08 | 根因定位 + 配置修复 + 端到端验证 |
 
 ---
 
@@ -293,3 +294,54 @@ grep "ToolDefinition" ~/projects/pi-mono/packages/coding-agent/src/index.ts
 grep -n "setSystemPrompt\\|replaceMessages" \\
   ~/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw/node_modules/@mariozechner/pi-agent-core/dist/agent.js
 ```
+
+---
+
+## Sprint 19: 流式输出修复 — blockStreamingDefault 错误抑制 (2026-06-08) ✅ 已完成
+
+**Sprint 目标**: 排查并修复 agent 流式输出不工作的问题
+**开始时间**: 2026-06-08
+**状态**: ✅ 已完成
+
+### 根因分析
+
+用户反馈 agent 没有流式输出（token-by-token 逐字显示）。经过全链路追踪排查：
+
+**完整链路**:
+```
+blockStreamingDefault="on" (elysiaclaw.json:357)
+  → resolvedBlockStreaming="on" (get-reply-directives.ts)
+  → accountBlockStreamingEnabled=true (bot-message-dispatch.ts)
+  → canStreamAnswerDraft=false (bot-message-dispatch.ts)
+  → answerLane.stream 未创建 (lane-delivery-text-deliverer.ts)
+  → onPartialReply=undefined (bot-message-dispatch.ts)
+  → text_delta 事件的 partial reply 被丢弃 (pi-embedded-subscribe.handlers.messages.ts)
+  → 用户看不到流式输出
+```
+
+**关键代码位置**:
+- `elysiaclaw.json:357` — `blockStreamingDefault: "on"` 是根因
+- `get-reply-directives.ts` — `resolvedBlockStreaming` 解析逻辑
+- `bot-message-dispatch.ts` — `canStreamAnswerDraft` 判断逻辑
+- `pi-embedded-subscribe.handlers.messages.ts` — `shouldEmitPartialReplies` 控制 partial reply 发送
+
+### 修复
+
+| 文件 | 修改 | 说明 |
+|---|---|---|
+| `/home/elysia/.elysiaclaw/elysiaclaw.json` L357 | `"blockStreamingDefault": "on"` → `"off"` | 关闭默认块流式传输，恢复流式草稿预览 |
+
+### 验证
+
+| 检查项 | 结果 |
+|---|---|
+| 配置 `blockStreamingDefault` | `"off"` ✅ |
+| 网关 health check | `{"ok":true,"status":"live"}` ✅ |
+| 主进程 | PID 1803653 ✅ |
+| 网关进程 | PID 1803660 ✅ |
+
+### 影响范围
+
+- 块流式传输（block streaming）不再默认启用，需要显式设置 `blockStreaming: true` 在 Telegram 账户配置中
+- 流式输出（answer draft streaming）恢复为默认行为
+- 不影响 reasoning 流式输出（序 3 WS-2 已独立修复）
