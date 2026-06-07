@@ -426,6 +426,10 @@ with open(path, "w") as f:
 | completeToolCall 同名匹配 | #88 |
 | handoff-inject 轮换后查找失败 | #89 |
 | rotate-session-tool 错误处理不一致 | #90 |
+| executeRotation 死代码 + MacroIndex 永不产出 | #91 |
+| buildAndStoreDualTrackIndex 覆盖抹掉 macro | #92 |
+| rotate_session 违反 AgentTool 框架契约 | #93 |
+| attempt.ts inputClassification 重复声明 | #94 |
 
 ---
 
@@ -886,3 +890,27 @@ describe("UI helpers", () => {
 **根因**: `goal` 校验在 `validateHandoffCompleteness` 之前单独检查，绕过了统一校验
 **解决**: 移除单独的 goal 检查，所有完整性问题统一走 `validateHandoffCompleteness` + `ToolInputError`
 **预防**: 校验逻辑只保留一个入口，不要在入口前后各加一层检查
+
+### #91 — executeRotation 死代码 + MacroIndex 永不产出（双轨退化单轨）
+**现象**: 序8 设计为"双轨延续"（Macro=压缩会话摘要 + Micro=任务段），但真实运行下 `macroIndex` 恒为 `[]`，只有 Micro 轨工作
+**根因**: `rotation-controller.ts` 的 `executeRotation`（含 CompactionSummary 生成 + `appendMacroIndexEntry`）是死代码——仅被 `index.ts` 导出和 23 个测试覆盖，**无任何运行时调用者**。真实轮换工具 `rotate-session-tool.ts` 自己手搓 `store.updateActiveSession`，绕过整个编排器。`buildCompactionSummaryFromHandoff` 唯一调用点在死的 `executeRotation` 内
+**解决**: 提取共享纯函数 `buildMacroEntryFromHandoff()`（dual-track-index.ts），让 `rotate_session` 工具在 `updateActiveSession` 后调 `appendMacroIndexEntry` 沉淀本会话 macro 摘要；`executeRotation` 也复用同一函数（消除重复逻辑）。`executeRotation` 全套接入（需 `RotationControllerDeps` 运行时句柄：spawnNewSession/archiveSession）保留为自动轮换的未来接入点
+**预防**: 每个模块的 DoD 增加"运行时调用链 grep 验证"——`grep -rn funcName src | grep -v test`，零命中即死代码。测试覆盖 ≠ 接入运行时（与用户画像写路径死代码、computeInjectionBudget 架空同构）
+
+### #92 — buildAndStoreDualTrackIndex 全量覆盖抹掉轮换写入的 macro
+**现象**: 修复 #91 后，轮换写入的 MacroIndex 会被运行结束时的索引重建静默清空
+**根因**: `conversation-store.ts` 的 `updateDualTrackIndex` 是**全量替换**两列，而 `appendMacroIndexEntry` 是**增量追加**。运行结束 `buildAndStoreDualTrackIndex` 只传 `taskSegments` 不传 `compactionSummaries`，生成空 macro 全量覆盖，抹掉轮换路径 append 的 macro
+**解决**: `buildAndStoreDualTrackIndex` 改为读既有 `macroIndex` 后保留，只刷新 micro 轨：`macroIndex = [...existing.macroIndex, ...(新 compaction 如有)]`。语义对齐——micro 轨由运行结束幂等重建，macro 轨由轮换 append 拥有
+**预防**: 同一份数据有 append 和 replace 两种写入路径时，必须明确各路径的所有权边界，replace 路径要先合并既有数据
+
+### #93 — rotate_session 工具违反 AgentTool 框架契约（工具从未能正确返回）
+**现象**: rotate_session 工具即便注册并被调用，运行时返回的 `content` 为空，模型收不到工具结果；tsgo 报 4 类错误
+**根因**: 序8 工具定义全面偏离 `AgentTool` 契约——① `execute: async (input) => {}` 单参签名，正确为 `(toolCallId, params, signal?, onUpdate?)`；② 返回 `{ text }`，`AgentToolResult` 实为 `{ content: (Text|Image)[], details }`，无 text 字段；③ schema 字段名 `inputSchema`，正确为 `parameters`；④ 缺必填 `label`。这些 tsgo 错误此前未暴露是因为序8 文件在"tsgo 53→0 清零"sprint 之后才创建，未被覆盖，且 SPRINT 用 `tsc` 而非更严格的 `tsgo`
+**解决**: execute 改 `(_toolCallId, input)`；返回 `{ content: [{type:"text", text}], details }`；`inputSchema`→`parameters`；补 `label`。测试同步对齐（execute 加 toolCallId 参 + 读 `content[0].text`）。tsgo 全仓 19→0
+**预防**: 新工具以现有工具（如 delegate-code-task.ts）为模板对齐契约；新文件创建后立即跑 `tsgo --noEmit`（不要只信 `tsc`，两者严格度不同）
+
+### #94 — attempt.ts inputClassification 重复声明（运行时 SyntaxError 风险）
+**现象**: tsgo 报 `TS2451: Cannot redeclare block-scoped variable 'inputClassification'`（1436 + 1450 行）
+**根因**: 序8 TaskSegment 集成在函数上方新增 `const inputClassification = classifyInput(...)` 用于 log，但下方原有 L0 classifier 的同名 `const` 声明未删 → 同作用域重复 `const`
+**解决**: 删除下方重复声明，复用上方变量（值相同）
+**预防**: 集成新代码块时 grep 同名变量；重复 `const` 是 tsgo 能抓但 tsc/运行时打包可能放过的真 bug

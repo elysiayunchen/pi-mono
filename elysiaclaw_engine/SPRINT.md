@@ -5,6 +5,53 @@
 
 ---
 
+## Sprint: 序 8 深度审查 + 接线断链修复 (2026-06-07) ✅ 已完成
+
+**Sprint 目标**: 对序 8（已声明"阶段 1-4 完成"）做接线闭环审查——验证是否真正接入运行时、是否符合双轨设计、是否能正常运行。修复审查暴露的断链。
+
+**触发**: 用户要求审查"已声明落实的系统是否健壮、符合设计、正常运行"。
+
+### 审查结论（证据驱动）
+
+| 维度 | 判定 | 硬证据 |
+|------|------|--------|
+| 测试 | ✅ 真实 131 全过（文档说 123，低估） | `vitest run` 8 文件 131 passed |
+| 接线（读/写/consume） | ✅ 大部分到位 | attempt.ts 1433/1917/2622/3107 调用链存在 |
+| **executeRotation 编排** | ❌ **死代码** | `grep executeRotation src \| grep -v test` 仅定义+导出，零运行时调用 |
+| **MacroIndex 双轨** | ❌ **真实路径恒空** | 工具走 `updateActiveSession` 绕过编排；attempt 不传 compactionSummaries |
+| **框架契约** | ❌ 工具从未能正确返回 | tsgo: execute 单参/返回 `{text}`/`inputSchema`/缺 label |
+| **运行状态** | ❌ **未运行** | 全局 dist 无此模块；无 conversation db；attempt.ts 106 行未提交 |
+| 类型检查 | ❌ tsgo 19 错误（序8 在清零 sprint 后创建，未覆盖） | `tsgo --noEmit` 19 errors |
+
+**元结论**: 与项目惯犯模式（用户画像写路径死代码、computeInjectionBudget 架空）**同构**——"模块+测试齐全"被当成"完成"，但接线闭环无测试守护。
+
+### 修复清单（本 Sprint 全部完成）
+
+| # | 问题 | 修复 | 坑号 |
+|---|------|------|------|
+| 1 | executeRotation 死代码 → MacroIndex 永不产出 | 提取共享 `buildMacroEntryFromHandoff`，rotate_session 工具轮换时 `appendMacroIndexEntry` 沉淀 macro | #91 |
+| 2 | `updateDualTrackIndex` 全量覆盖抹掉轮换 macro | `buildAndStoreDualTrackIndex` 保留既有 macro，只刷新 micro | #92 |
+| 3 | rotate_session 违反 AgentTool 契约（returncontent 空） | execute 改双参 + 返回 `content/details` + `parameters` + `label` | #93 |
+| 4 | attempt.ts `inputClassification` 重复 `const` | 删重复声明复用上方变量 | #94 |
+| 5 | 缺口 D：handoffPacket.artifacts 恒空 | schema 加 artifacts 入参 + 透传 | — |
+| 6 | DRY：rotation-controller 私有重复逻辑 | 复用共享函数，删 `buildCompactionSummaryFromHandoff`/`compactionSummaryToMacroEntry` | — |
+
+### 验证
+
+- `tsgo --noEmit` 全仓 **19 → 0** ✅
+- `vitest run session-rotation` **131 → 134**（+3：rotate macro 沉淀 1 + handoff-inject macro 保留/append 2）✅
+- `oxlint` 改动文件 0 warning 0 error ✅
+- 改动 8 文件 +355/−86
+
+### 诚实标注：本 Sprint **未做**（需架构决策，非参数微调能解决）
+
+- **executeRotation 全套接入**：依赖 `RotationControllerDeps`（spawnNewSession/archiveSession/injectHandoff）运行时句柄，工具层拿不到。强行接会造假实现。保留为自动轮换的未来接入点。
+- **SafetyPoint 运行时检查**（pending tool calls / background lane / cooldown）：同样需 attempt 层运行时句柄，工具层无法判断。真实轮换当前**跳过安全检查**——需在 attempt auto-trigger 路径补。
+- **TaskSegmentTracker → handoffPacket 自动填充**：tracker 的 todos/phase/decisions 仍靠 LLM 手填工具入参。自动填充需把 tracker 实例传入工具，架构改动较大。
+- **端到端验证**：仍需可用模型 + 部署后跑出第一条 conversation db 记录。
+
+---
+
 ## Sprint: 序 8 Conversation 层 + Handoff (2026-06-07) 🔄 进行中
 
 **Sprint 目标**: 实施序 8 — 会话轮换与跨会话任务延续 (SESSION-ROTATION-CONTINUITY.md)

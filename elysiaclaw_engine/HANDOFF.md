@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (序 8 阶段 1-4 完成: TaskSegment 追踪 + 双轨索引 + CompactionSummary, 123 测试全过)
+> 最后更新: 2026-06-07 (序 8 深度审查 + 接线断链修复: 4 类实质 bug 修复[死代码/覆盖冲突/框架契约/重复声明], tsgo 19→0, 134 测试全过, 坑 #91-#94)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -68,7 +68,12 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - **健全性测试修复** ✅ (2026-06-07)
     - 5 项逻辑缺陷修复（详见 SPRINT.md）
     - 24 新测试用例 (73→97), tsc 零新增错误
-  - **待完成**: 阶段 5 (端到端验证, 需可用模型)
+  - **深度审查 + 接线断链修复** ✅ (2026-06-07, 见 SPRINT.md)
+    - 审查暴露：executeRotation 死代码（MacroIndex 真实路径恒空，双轨退化单轨）/ updateDualTrackIndex 覆盖冲突 / rotate_session 违反 AgentTool 契约（return content 空）/ attempt.ts inputClassification 重复声明
+    - 修复：buildMacroEntryFromHandoff 共享函数 + 工具轮换沉淀 macro / 保留既有 macro / execute 双参+content/details+parameters+label / 删重复声明
+    - tsgo 19→0, 测试 131→134, 坑 #91-#94
+    - **未做（需架构决策）**: executeRotation 全套接入 + SafetyPoint 运行时检查 + tracker→handoff 自动填充（详见 SPRINT.md 诚实标注）
+  - **待完成**: 阶段 5 (端到端验证, 需可用模型 + 部署后跑出首条 conversation db)
 
 - **下一步**: 序 8 阶段 5 端到端验证(需可用模型) / Tool Parity Task 14-16
 ### 路径修正 (2026-06-05)
