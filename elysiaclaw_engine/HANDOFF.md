@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (序 8 深度审查 + 接线断链修复: 4 类实质 bug 修复[死代码/覆盖冲突/框架契约/重复声明], tsgo 19→0, 134 测试全过, 坑 #91-#94)
+> 最后更新: 2026-06-07 (**参与者持续性总架构落定** → [PARTICIPANT-CONTINUITY-ARCHITECTURE.md](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md);含 L0-L4 决策记录 D1-D10 + 现状审查 AS1-AS7 + DO-NOT-DRIFT。叠加序 8 深度审查 + 接线断链修复: 坑 #91-#94, tsgo 19→0, 134 测试全过)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -40,7 +40,13 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - 序 7: 用户画像 User Model (SQLite 持久化 + 双路径更新 + summary 注入 B2) ✅ (2026-06-07)
   - **边缘情况加固** (2026-06-07): 正则 bug 修复、防守代码、门限常量化、JSON.stringify 循环引用防护
 
-- **序 8 Conversation 层 + Handoff** 🔄 (2026-06-07, 阶段 1-4 + 健全性修复已完成)
+- **参与者持续性总架构** 📐 (2026-06-07, 设计宗旨锁定, 实现 W0-W5 待落地) → [PARTICIPANT-CONTINUITY-ARCHITECTURE.md](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md)
+  - 宗旨: 对模型"会话/窗口"不存在, 唯一单元是 Participant; 工作空间只留 active task, 索引(认知图谱)只增不减
+  - 决策已拍板 D1-D10(连续性绑 participant_id / 群双写 / 图谱混合边 / agent 即受限 Participant / 协作用户门控 / Mirror Lane / core admin / 汇报首达+行动+摘要)
+  - **现状审查 AS1-AS7**: 序 8 多处 "✅" 真实语义是"代码+测试存在"非生产运行(executeRotation 死代码 / 自动轮换仅提示文字 / CONSOLIDATE 未接 / 未部署)
+  - 路线: W0 闭环现有轮换 → W1 认知图谱一期 → W2 身份/会话 → W3 协作/安全 → W4 topic 二期 → W5 统一打磨
+
+- **序 8 Conversation 层 + Handoff** 🔄 (2026-06-07, 阶段 1-4 代码+测试存在; 生产接线见上位文档 W0)
   - 阶段 1: 核心类型 + Conversation Store ✅
     - `session-rotation/handoff-types.ts` — HandoffPacket / TaskSegment / **TaskPhase / CompressedPhaseResult** / validateHandoffCompleteness / formatHandoffForInjection
     - `session-rotation/conversation-types.ts` — ConversationEntry / ConversationStoreData

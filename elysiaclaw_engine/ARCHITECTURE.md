@@ -314,7 +314,17 @@ Agent.runLoop()               ← agent-loop.ts
     │         LLM API call
     │         RateLimitScheduler.release()
     │
+    ├── streamAssistantResponse()  ← 流式事件链
+    │     ├── toolcall_start  → { phase: "building" } → Tool Lane: "📖 Read …"
+    │     ├── toolcall_delta  → { phase: "building", meta } → Tool Lane: "📖 Read: /path…"
+    │     ├── toolcall_end    → { phase: "built", meta } → Tool Lane: "📖 Read: /path"
+    │     ├── text_delta      → Answer Lane 流式文字
+    │     └── thinking_*      → Reasoning Lane (reasoningMode="stream")
+    │
     ├── executeToolCalls()
+    │     ├── tool_execution_start → { phase: "start" } → Tool Lane 保持
+    │     ├── tool_execution_update → { phase: "update" }
+    │     ├── tool_execution_end → { phase: "result", meta } → Tool Lane: "📖 Read: /path: 42 lines"
     │     ├── runPreToolUseHooks() [P3-A]
     │     ├── FileHistory.snapshot() [P3-B] (write/edit 工具)
     │     ├── tool.execute()
@@ -342,7 +352,7 @@ Agent.runLoop()               ← agent-loop.ts
 
 ---
 
-*本文档描述截至 2026-06-06 的架构状态。工具注册四层链已全部修复（#56）。ToolDefinition 接口已扩展至 18 字段 (Task 0)。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。记忆引擎已激活（T1-T6 完成，TS memory_search 取代 Python session_search）。deploy.sh 已增强至 5 Guard/12 Step（含 extensions sync + dist 完整性校验 + E2E 验证）。elysiaclaw `pnpm build` 有 DTS 错误需绕过 (PITFALLS #38)。*
+*本文档描述截至 2026-06-07 的架构状态。工具注册四层链已全部修复（#56）。ToolDefinition 接口已扩展至 18 字段 (Task 0)。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。记忆引擎已激活（T1-T6 完成，TS memory_search 取代 Python session_search）。deploy.sh 已增强至 5 Guard/12 Step（含 extensions sync + dist 完整性校验 + E2E 验证）。elysiaclaw `pnpm build` 有 DTS 错误需绕过 (PITFALLS #38)。流式输出修复：toolcall_start/delta/end 事件接入 Tool Lane 流式渲染（building→built phase），reasoning 默认开启 stream。*
 
 ## Part 6 — Philosophy: Evolutionary Architecture & Semiotic Flow
 
@@ -677,5 +687,6 @@ Adding an elysiaclaw tool (defined in elysiaclaw):
 | RECALL 注入 snippet 当内容 | `attempt.ts:1781` | 既重又截断,未用 memory_get | 序 1 |
 | 压缩期不向渠道 emit | `compact.ts:918` | 用户误判掉线 | 序 2 |
 | typing TTL 2min 后停 | `typing.ts:28` | "正在输入"消失 | 序 2 |
-| reasoning 默认 off | `bot-message-dispatch.ts:133` | 思考不可见 | 序 3 |
+| reasoning 默认 off | `attempt.ts:2474` | 思考不可见 | ✅ 已修 (2026-06-07): `?? "off"` → `?? "stream"` |
+| toolcall 流式事件被丢弃 | `pi-embedded-subscribe.handlers.messages.ts:129` | 工具调用参数构建过程不可见，用户只看到空白等待 | ✅ 已修 (2026-06-07): 新增 building/built phase |
 | 注入与压缩无共享预算 | attempt.ts / compact.ts | 反身性空转(注入→爆窗→压缩→丢注入) | 序 5 |

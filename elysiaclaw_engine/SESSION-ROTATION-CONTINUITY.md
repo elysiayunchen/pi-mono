@@ -1,6 +1,9 @@
 # ElysiaClaw — 持久对话 × 工作记忆轮换与跨会话任务延续
 
-> 起草:2026-06-06 · 状态:**阶段 1-4 实施完成,待端到端验证** · 维护者:aoseluo(云尘 / 奈緒)
+> ⚠️ **本文已被上位总架构统摄** → 先读 [`PARTICIPANT-CONTINUITY-ARCHITECTURE.md`](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md)。本文是其 **L2 工作记忆轮换机制** 的细节稿。
+> ⚠️ **状态校正(2026-06-07 实测)**:下文多处 "✅ IMPLEMENTED" 的真实语义是"代码+测试存在",**非生产运行**。真实基线见上位文档 §七(AS1-AS7):`executeRotation` 是死代码、自动轮换只是提示文字、CONSOLIDATE 未接、未部署、无 conversation 表。**信 ✅ 前先 grep 生产调用者**。
+
+> 起草:2026-06-06 · 状态:**阶段 1-4 代码+测试存在,生产未接线/未部署(见上位文档 §七)** · 维护者:aoseluo(云尘 / 奈緒)
 > 范围:用户无感的持久对话 + 模型自主 session 轮换(刷新工作记忆窗口)+ 跨会话任务延续机制
 > 定位:`CONTEXT-INJECTION-ARCHITECTURE.md`(静态分层)的动态化;`SUPERADMIN-AGENT-DESIGN.md`(记忆/CONSOLIDATE)的延续承载
 > 标注:**KNOWN**=代码证据;**INFERRED**=原理推断;**PROPOSAL**=设计建议

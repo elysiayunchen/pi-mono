@@ -15,6 +15,7 @@
 | 文档 | 用途 | 更新频率 |
 |---|---|---|
 | **[HANDOFF.md](./HANDOFF.md)** | AI 接手快照：当前状态、关键路径、起步清单 | 每个 Sprint 结束 |
+| **[PARTICIPANT-CONTINUITY-ARCHITECTURE.md](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md)** | **参与者持续性总架构**（L0-L4：身份/会话/认知图谱/协作/安全）；含决策记录 + 现状审查 + DO-NOT-DRIFT。统摄 SESSION-ROTATION | 架构变更时 |
 | **[SYSTEM.md](./SYSTEM.md)** | 核心系统信息：环境、部署、规则、文件索引 | 架构变更时 |
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | 架构蓝图：pi-mono、ElysiaClaw 扩展层 | 架构变更时 |
 | **[PITFALLS.md](./PITFALLS.md)** | 踩坑记录：已知问题及解决方案，持续追加 | 每次遇到新坑 |

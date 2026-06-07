@@ -5,6 +5,115 @@
 
 ---
 
+## Sprint: 流式输出修复 — Tool Lane 流式 + Reasoning 默认开启 (2026-06-07) ✅ 已完成
+
+**Sprint 目标**: 修复 agent 不再输出流式工具调用和思考模块的问题
+**开始/完成**: 2026-06-07
+
+### 问题诊断
+
+两个断点导致流式输出缺失：
+
+| 断点 | 位置 | 根因 | 后果 |
+|------|------|------|------|
+| 1 | `pi-embedded-subscribe.handlers.messages.ts:129` | `toolcall_start/delta/end` 事件被 `evtType !== "text_delta"` 过滤丢弃 | 工具调用参数构建过程完全不可见 |
+| 2 | `attempt.ts:2474` | `reasoningMode: params.reasoningLevel ?? "off"` 默认关闭 | 思考过程不可见 |
+
+### 修复清单
+
+| # | 文件 | 修复 | 效果 |
+|---|------|------|------|
+| 1 | `pi-embedded-subscribe.handlers.messages.ts` | 新增 `toolcall_start/delta/end` 事件处理分支，发出 `{ phase: "building" }` / `{ phase: "built" }` 事件 | LLM 构建工具调用参数时 Tool Lane 立即可见 |
+| 2 | `pi-embedded-subscribe.handlers.messages.ts` | 添加 `inferToolMetaFromArgs` import，`toolcall_delta` 时 best-effort 提取 meta | 参数流式填充时 Tool Lane 显示 `📖 Read: /path…` |
+| 3 | `agent-runner-execution.ts` | `onAgentEvent` 中新增 `phase === "building" \|\| phase === "built"` 分支 | building/built 事件传递给 `onToolStart` 回调 |
+| 4 | `bot-message-dispatch.ts` | `onToolStart` 回调新增 `building` / `built` phase 处理 | Tool Lane 流式渲染：`📖 Read …` → `📖 Read: /path…` → `📖 Read: /path` |
+| 5 | `attempt.ts:2474` | `?? "off"` → `?? "stream"` | 思考过程默认流式输出 |
+
+### 流式事件完整生命周期
+
+```
+LLM 开始构建工具调用
+  → toolcall_start  → phase: "building" → Tool Lane: "📖 Read …"
+  → toolcall_delta  → phase: "building" → Tool Lane: "📖 Read: /src/main.ts…"
+  → toolcall_end    → phase: "built"    → Tool Lane: "📖 Read: /src/main.ts"
+
+工具实际执行
+  → tool_execution_start → phase: "start"  → Tool Lane 保持
+  → tool_execution_end   → phase: "result" → Tool Lane: "📖 Read: /src/main.ts: 42 lines"
+```
+
+### 验证
+
+- `NODE_OPTIONS="--max-old-space-size=4096" npx tsc --noEmit` 零错误 ✅
+
+---
+
+## Sprint: W0 闭环 session-rotation (2026-06-07) 🔄 进行中
+
+**Sprint 目标**: 闭环现有 session-rotation，把 AS1-AS7 红线项做真。详细任务设计见 `PARTICIPANT-CONTINUITY-ARCHITECTURE.md §九·W0 详细任务`。
+**开始时间**: 2026-06-07
+**状态**: 规划完成，待执行
+
+### 代码级审查结论（2026-06-07）
+
+**验证通过项**:
+
+| # | 声明 | 代码证据 |
+|---|---|---|
+| ✅ | B3 Handoff 注入 | `attempt.ts:2624-2632` — consumeDualTrackIndexBlockForSession + consumeHandoffBlockForSession 已接入 |
+| ✅ | B4 RECALL 出 system prompt | `attempt.ts:2634-2638` — recallIndexBlock prepend 到 effectivePrompt（用户消息），不在 system prompt 内 |
+| ✅ | TaskSegmentTracker 集成 | `attempt.ts:1433-1438` 初始化 + `attempt.ts:2438` advancePhase + `attempt.ts:3058-3110` 封口+索引 |
+| ✅ | 注入预算器基础接入 | `attempt.ts:1921` contextPressureBudget → SDK `sdk.ts:374` 扣减阈值 |
+| ✅ | 用户画像 B2 注入 | `attempt.ts:1899-1913` system prompt + fire-and-forget 写路径 |
+| ✅ | 输入分类器 | `attempt.ts:1436` classifyInput + L0 routing hint |
+| ✅ | rotate_session 工具 | rotate-session-tool.ts — 完整实现，含 buildMacroEntryFromHandoff 沉淀 |
+| ✅ | tsgo 零错误 | `npx tsgo --noEmit` 退出码 0 |
+| ✅ | 125 测试全过 | `vitest run src/session-rotation/` 7 文件 125 passed |
+
+**确认的问题项**:
+
+| # | 问题 | 代码证据 | 严重度 |
+|---|---|---|---|
+| P1 | executeRotation 死代码 | grep executeRotation 仅定义+导出+测试，零生产调用 | 🔴 高 |
+| P2 | 自动轮换 = 假自动 | `attempt.ts:2783-2784` pendingToolCalls:0, hasActiveBackgroundLane:false 写死 | 🔴 高 |
+| P3 | CONSOLIDATE 未接 | grep archive→memory / writeBack / consolidat 零业务命中 | 🔴 高 |
+| P4 | 注入预算器用简化版 | injection-budget.ts 注释明确：runtime 只用 estimateTextTokens | 🟡 中 |
+| P5 | RECALL 注入顺序反 | `attempt.ts:2624-2638` 全部 prepend 到 effectivePrompt 开头 | 🟡 中 |
+| P6 | 未部署 | 无 conversation-store.db 生产实例 | 🔴 高 |
+
+### 任务清单
+
+| 任务 | 修 | 严重度 | 依赖 | 状态 |
+|---|---|---|---|---|
+| W0-T1: 安全点运行时真检查 | AS4/P2 | 🔴 高 | 无 | ⬜ |
+| W0-T2: RECALL 注入位置下沉 | AS6/P5 | 🟡 中 | 无 | ⬜ |
+| W0-T3: CONSOLIDATE 回写接线 | AS3/P3 | 🔴 高 | T1 | ⬜ |
+| W0-T4: executeRotation 去留决策 | AS1-2/P1 | 🔴 高 | 无（需决策） | ⬜ |
+| W0-T5: 注入预算器升级 | AS5/P4 | 🟡 中 | 无 | ⬜ |
+| W0-T6: 端到端验证 + 部署 | AS7/P6 | 🔴 高 | T1-T5 | ⬜ |
+
+### 依赖图
+
+```
+W0-T2 (RECALL 下沉) ─── 独立，可先做
+W0-T1 (安全点真检查) ─── 独立，可先做
+W0-T4 (executeRotation 决策) ─── 独立，需先决策
+W0-T5 (注入预算器升级) ─── 独立，可先做
+W0-T3 (CONSOLIDATE 接线) ─── 依赖 T1
+W0-T6 (端到端验证) ─── 依赖 T1-T5 全部完成
+```
+
+### 执行顺序建议
+
+1. **T2** (RECALL 下沉) — 改动最小、效果最明确，热身
+2. **T4** (executeRotation 决策) — 先做架构决策，决定后续方向
+3. **T1** (安全点真检查) — 需查 SDK 接口，可能要框架层改动
+4. **T5** (注入预算器升级) — 涉及框架层 SDK 参数扩展
+5. **T3** (CONSOLIDATE 接线) — 依赖 T1 安全点正确
+6. **T6** (端到端验证) — 全部完成后部署验证
+
+---
+
 ## Sprint: 序 8 深度审查 + 接线断链修复 (2026-06-07) ✅ 已完成
 
 **Sprint 目标**: 对序 8（已声明"阶段 1-4 完成"）做接线闭环审查——验证是否真正接入运行时、是否符合双轨设计、是否能正常运行。修复审查暴露的断链。
