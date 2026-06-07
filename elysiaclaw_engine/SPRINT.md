@@ -9,7 +9,7 @@
 
 **Sprint 目标**: 实施序 8 — 会话轮换与跨会话任务延续 (SESSION-ROTATION-CONTINUITY.md)
 **开始时间**: 2026-06-07
-**状态**: 阶段 1-3 完成，阶段 4-5 待续
+**状态**: 阶段 1-3 完成 + 健全性测试修复完成，阶段 4-5 待续
 
 ### 设计红线
 
@@ -45,13 +45,13 @@
 |------|------|
 | `handoff-types.test.ts` | 18 |
 | `conversation-store.test.ts` | 14 |
-| `rotation-controller.test.ts` | 13 |
-| `task-segment-tracker.test.ts` | 14 |
+| `rotation-controller.test.ts` | 22 |
+| `task-segment-tracker.test.ts` | 24 |
 | `conversation-router.test.ts` | 6 |
-| `handoff-inject.test.ts` | 4 |
+| `handoff-inject.test.ts` | 7 |
 | `auto-trigger.test.ts` | 7 |
-| `rotate-session-tool.test.ts` | 4 |
-| **合计** | **80** (73 session-rotation + 4 rotate-session + 3 handoff-inject) |
+| `rotate-session-tool.test.ts` | 9 |
+| **合计** | **107** (97 session-rotation + 9 rotate-session + 1 handoff-inject) |
 
 ### attempt.ts 集成
 
@@ -60,8 +60,27 @@
 
 ### 类型检查
 
-- `npx tsc --noEmit` 零错误
-- `npx vitest run` 73+ 用例全过
+- `npx tsc --noEmit` 零新增错误（第三方 @buape/carbon 预存错误不影响）
+- `npx vitest run` 97 用例全过
+
+### 健全性测试修复 (2026-06-07)
+
+对 session-rotation 全模块进行健全性审查，发现并修复 5 项逻辑缺陷：
+
+| # | 文件 | 问题 | 修复 |
+|---|------|------|------|
+| 1 | `task-segment-tracker.ts` | `startSegment` 在已有活跃段时不处理旧段，旧段成为 running 孤儿 | 自动封印旧活跃段为 `incomplete` + 写入 outcome |
+| 2 | `task-segment-tracker.ts` | `completeToolCall` 按工具名匹配，同名多次调用只完成第一个 | 改为按 `callIndex` 索引完成 |
+| 3 | `task-segment-tracker.ts` | `classifyTaskType` 正则中 `排查` 重复 | 去重 |
+| 4 | `handoff-inject.ts` | 轮换后新 sessionKey ≠ chatId，`getByChatId` 找不到 handoff | 新增 `activeSessionKey` 回退查找路径 |
+| 5 | `rotate-session-tool.ts` | goal 缺失抛异常但 nextStep 缺失返回警告文本，错误处理不一致 | 统一为 `validateHandoffCompleteness` 前置校验，所有完整性问题都抛 `ToolInputError` |
+
+新增测试 24 用例（73→97），覆盖：
+- task-segment-tracker: 自动封印旧段、按索引完成、越界/重复完成、非存在段、startTimeoutSealLoop、更多分类覆盖
+- rotation-controller: `executeRotation` 完整测试（全流程、降级 handoff、注入验证、JSON 存储、操作顺序）、85% 边界、多安全检查
+- conversation-router: 轮换后路由、重复 sessionKey 幂等
+- handoff-inject: `activeSessionKey` 回退查找、双路径均无匹配
+- rotate-session-tool: nextStep 缺失拒绝、progress 默认值行为、handoff complete 标记、多问题拒绝
 
 ---
 

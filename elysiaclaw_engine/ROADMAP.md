@@ -17,6 +17,11 @@
   - 序 4 L0 工具结果驱逐 ✅ | 序 5 统一注入预算器 ✅ | 序 6 输入分类器 ✅
   - 序 7 用户画像 User Model ✅ (SQLite + 双路径更新 + B2 注入)
   - 边缘情况加固: 正则修复、防守代码、门限常量化
+
+**序 8 Conversation+Handoff**：🔄 阶段 1-3 完成 + 健全性测试修复 (2026-06-07)
+  - 阶段 1-3: session-rotation 模块 (9 文件) + rotate_session 工具 + B3 Handoff 注入 + 自动轮换检测 ✅
+  - 健全性测试: 5 项逻辑缺陷修复 + 24 新测试用例 (73→97) ✅
+  - 阶段 4-5: Task Segment 追踪集成 + 端到端验证 待续
 **pi-mono 统一版本**：0.64.0  
 **packages/ 精简**：mom/web-ui/pods 已删除（只剩 tui/ai/agent/coding-agent 4 个包）  
 **Tool Parity 进度**：3/16 = 18.75%
@@ -81,7 +86,7 @@ deploy.sh 发现并修复了导致"代码提交但 dist 未部署"的 3 个结�
 | 序 5 注入预算器 | system prompt tokens 计入压缩阈值, 防反身性 | ✅ 2026-06-07 |
 | 序 6 输入分类器 | task/chat/affective/meta 四分类, 偏向 task | ✅ 2026-06-07 |
 | 序 7 用户画像 | SQLite 持久化 + 双路径更新 + B2 注入 | ✅ 2026-06-07 |
-| 序 8 Conversation+Handoff | 手动 rotate 验证精度 | 🔄 阶段 1-3 完成 (2026-06-07) |
+| 序 8 Conversation+Handoff | 手动 rotate 验证精度 | 🔄 阶段 1-3 + 健全性修复完成 (2026-06-07) |
 
 > **分层注入架构 `CONTEXT-INJECTION-ARCHITECTURE.md`**(2026-06-06):WS-3 的上位设计。按变化频率分 B0-B4 五带 + 消息流,钉 KV-cache 锚点,易变注入(RECALL/World Model)下沉锚点之后。**已发现严重病灶**:RECALL 被 append 进 system prompt(`attempt.ts:1781`),每轮变化致稳定前缀(base+GUIDANCE 数 k token)KV-cache 每轮全失效、重 prefill——token 白烧的根因。
 
@@ -229,6 +234,7 @@ task_assign (worktree: true)
 | 2026-06-07 | 序 1-7 统一实施 | L0-L3压缩链 + 注入预算器 + 输入分类器 + 用户画像 全部完成 |
 | 2026-06-07 | tsgo 类型检查 53→0 | 全仓类型错误清零，npm run check 不再阻塞 |
 | 2026-06-07 | 序 8 Conversation+Handoff 阶段 1-3 | session-rotation 模块 (9 文件 73 测试) + rotate_session 工具 + B3 Handoff 注入 + 自动轮换检测 |
+| 2026-06-07 | 序 8 健全性测试 | 5 项逻辑缺陷修复 + 24 新测试 (73→97), tsc 零新增错误 |
 
 ---
 

@@ -422,6 +422,10 @@ with open(path, "w") as f:
 | heredoc f-string / 花括号 | #79 |
 | agent 卡死 / 重试循环 | #80 |
 | Telegram 消息截断 / 超长 | #81 |
+| session-rotation 孤儿段 | #87 |
+| completeToolCall 同名匹配 | #88 |
+| handoff-inject 轮换后查找失败 | #89 |
+| rotate-session-tool 错误处理不一致 | #90 |
 
 ---
 
@@ -857,3 +861,28 @@ describe("UI helpers", () => {
 
 *记录截至 2026-06-07，坑 #86。下次遇到新坑从 #87 开始追加。*
 
+---
+
+### #87 — task-segment-tracker startSegment 不封印旧活跃段致孤儿段
+**现象**: `startSegment()` 在已有活跃段时直接覆盖 `activeSegmentId`，旧段永远停留在 `running` 状态但不可访问
+**根因**: 缺少对旧活跃段的自动封印逻辑
+**解决**: `startSegment` 开头检测旧活跃段，自动封印为 `incomplete` + 写入 `outcome: "auto-sealed: superseded by new segment"`
+**预防**: 任何"替换当前活跃引用"的操作都必须处理旧引用的生命周期
+
+### #88 — completeToolCall 按工具名匹配在同名多次调用时只完成第一个
+**现象**: `completeToolCall(segmentId, tool, result)` 用 `find(tc => tc.tool === tool && tc.status === "running")` 匹配，同一工具调用两次只完成第一个
+**根因**: 按名称匹配而非按索引匹配，无法区分同一工具的多次调用
+**解决**: 接口改为 `completeToolCall(segmentId, callIndex, result)`，按数组索引精确定位
+**预防**: 当集合中存在重复 key 时，用索引而非 key 查找
+
+### #89 — handoff-inject 轮换后新 sessionKey 无法找到 handoff
+**现象**: `resolveHandoffBlockForSession(newSessionKey)` 返回 null，因为 `getByChatId(newSessionKey)` 找不到——轮换后 `activeSessionKey` 已更新但 `chatId` 不变
+**根因**: 只用 `getByChatId` 查找，轮换后新 sessionKey 不是 chatId
+**解决**: 新增 `listByStatus("active")` 回退查找路径，按 `activeSessionKey` 匹配
+**预防**: 轮换场景下 chatId ≠ sessionKey，查找逻辑必须覆盖两种映射
+
+### #90 — rotate-session-tool 错误处理不一致
+**现象**: `goal` 缺失时抛 `ToolInputError` 异常，但 `nextStep` 缺失时返回警告文本——两种完整性问题处理方式不同
+**根因**: `goal` 校验在 `validateHandoffCompleteness` 之前单独检查，绕过了统一校验
+**解决**: 移除单独的 goal 检查，所有完整性问题统一走 `validateHandoffCompleteness` + `ToolInputError`
+**预防**: 校验逻辑只保留一个入口，不要在入口前后各加一层检查
