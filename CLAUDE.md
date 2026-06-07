@@ -61,14 +61,18 @@ pi-mono/
 │   ├── extensions/              渠道插件（msteams/matrix/zalo/line/irc/nostr 等）
 │   └── skills/                  内置技能目录
 │
-├── elysiaclaw_engine/           ← AI 协作文档体系
+├── engine/                      ← AI 协作文档体系（v5 引擎文件系统）
+│   ├── ENGINE_MAP.md            索引层（profile、文件注册表、plan 关系图）
 │   ├── SYSTEM.md                核心系统信息（运行环境、构建部署、文件索引）
+│   ├── CONTEXT.md               当前状态快照
+│   ├── HANDOFF.md               会话交接
 │   ├── ARCHITECTURE.md          架构蓝图
-│   ├── PITFALLS.md              64 个踩坑记录（必读）
+│   ├── PITFALLS.md              94 个踩坑记录（必读）
 │   ├── ROADMAP.md               规划与目标
 │   ├── SPRINT.md                当前 Sprint 工作台
-│   ├── CLAUD-CODE-COMPARISON.md 与 Claude Code v2.1.88 逐层对标
-│   └── TOOL-PARITY-PLAN.md      工具迁移计划（16 Tasks）
+│   ├── ENGINE_FILE_SYSTEM_v5.md 引擎文件系统规范
+│   ├── plans/                   8 个 plan + 8 个 spec twin
+│   └── archive/                 归档文档（sprint-history 等）
 │
 ├── scripts/
 │   ├── patch-agent.cjs          pi-agent-core monkey-patch（幂等注入 + smoke test）
@@ -264,15 +268,14 @@ Bot/TUI 双路径均需检查。
 首次接手 pi-mono 时，按以下顺序阅读：
 
 1. 本文件（CLAUDE.md）— 你在这里
-2. [HANDOFF.md](elysiaclaw_engine/HANDOFF.md) — 当前状态快照（最快了解项目）
-3. [SYSTEM.md](elysiaclaw_engine/SYSTEM.md) — 运行环境、构建部署、文件索引
-4. [ARCHITECTURE.md](elysiaclaw_engine/ARCHITECTURE.md) — 架构蓝图
-5. [PITFALLS.md](elysiaclaw_engine/PITFALLS.md) — 64 个踩坑记录（**必读**）
-6. [SUBAGENT-CODE-DELEGATION.md](elysiaclaw_engine/SUBAGENT-CODE-DELEGATION.md) — 子代理代码委派技术设计
-7. [DELEGATE-CODE-TASK-PLAN.md](elysiaclaw_engine/DELEGATE-CODE-TASK-PLAN.md) — 实施计划
-8. [ROADMAP.md](elysiaclaw_engine/ROADMAP.md) — 选择下一个 Sprint
-9. [SPRINT.md](elysiaclaw_engine/SPRINT.md) — 当前 Sprint 工作台
-10. [TOOL-PARITY-PLAN.md](elysiaclaw_engine/TOOL-PARITY-PLAN.md) — 工具迁移计划
+2. [ENGINE_MAP.md](engine/ENGINE_MAP.md) — 索引层（profile、文件注册表、plan 关系图）
+3. [SYSTEM.md](engine/SYSTEM.md) — 运行环境、构建部署、文件索引
+4. [CONTEXT.md](engine/CONTEXT.md) — 当前状态快照
+5. [HANDOFF.md](engine/HANDOFF.md) — 会话交接
+6. [PITFALLS.md](engine/PITFALLS.md) — 94 个踩坑记录（**必读**）
+7. [ARCHITECTURE.md](engine/ARCHITECTURE.md) — 架构蓝图
+8. [ROADMAP.md](engine/ROADMAP.md) — 选择下一个 Sprint
+9. [SPRINT.md](engine/SPRINT.md) — 当前 Sprint 工作台
 
 ## 语言与输出规则
 

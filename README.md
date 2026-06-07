@@ -21,14 +21,15 @@ pi-mono/                         ← 本仓库
 ├── elysiaclaw/                  ← 应用层（独立 git 仓库，需单独 clone）
 │   └── src/agents/              渠道适配 / Gateway / 应用工具 / Cron 系统
 │
-├── elysiaclaw_engine/           ← AI 协作文档体系
+├── engine/                      ← AI 协作文档体系（v5 引擎文件系统）
+│   ├── ENGINE_MAP.md            索引层（profile、文件注册表、plan 关系图）
 │   ├── SYSTEM.md                核心系统信息
 │   ├── ARCHITECTURE.md          架构蓝图
-│   ├── PITFALLS.md              64 个踩坑记录
+│   ├── PITFALLS.md              94 个踩坑记录
 │   ├── ROADMAP.md               规划与目标
 │   ├── SPRINT.md                当前 Sprint 工作台
-│   ├── CLAUD-CODE-COMPARISON.md 与 Claude Code v2.1.88 逐层对标
-│   └── TOOL-PARITY-PLAN.md      工具迁移计划（16 Tasks）
+│   ├── plans/                   8 个 plan + 8 个 spec twin
+│   └── archive/                 归档文档
 │
 ├── deploy.sh                    一键构建 + 部署 + Gateway 重启
 ├── scripts/patch-agent.cjs      pi-agent-core monkey-patch（幂等）
@@ -159,11 +160,12 @@ cd ~/pi-mono && ./deploy.sh
 ## AI 协作者快速入口
 
 首次接手时按顺序阅读：
-1. [SYSTEM.md](elysiaclaw_engine/SYSTEM.md) — 运行环境、构建部署、文件索引
-2. [ARCHITECTURE.md](elysiaclaw_engine/ARCHITECTURE.md) — 架构蓝图
-3. [PITFALLS.md](elysiaclaw_engine/PITFALLS.md) — 64 个踩坑记录（必读）
-4. [ROADMAP.md](elysiaclaw_engine/ROADMAP.md) — 选择下一个 Sprint
-5. [SPRINT.md](elysiaclaw_engine/SPRINT.md) — 开始工作
+1. [ENGINE_MAP.md](engine/ENGINE_MAP.md) — 索引层
+2. [SYSTEM.md](engine/SYSTEM.md) — 运行环境、构建部署、文件索引
+3. [CONTEXT.md](engine/CONTEXT.md) — 当前状态快照
+4. [PITFALLS.md](engine/PITFALLS.md) — 94 个踩坑记录（必读）
+5. [ROADMAP.md](engine/ROADMAP.md) — 选择下一个 Sprint
+6. [SPRINT.md](engine/SPRINT.md) — 开始工作
 
 ## 许可证
 

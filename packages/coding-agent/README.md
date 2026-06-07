@@ -37,7 +37,7 @@ ElysiaClaw 通过 pi-mono 的 SDK/Hooks/Extension 体系，实现了以下扩展
 
 **测试基线**：858/861 passed（3 failures 预存）。
 
-详细架构文档见 [elysiaclaw_engine/ARCHITECTURE.md](../../elysiaclaw_engine/ARCHITECTURE.md)。
+详细架构文档见 [engine/ARCHITECTURE.md](../../engine/ARCHITECTURE.md)。
 
 ---
 
@@ -611,4 +611,3 @@ pi --thinking high "解决这个复杂问题"
 ## 许可证
 
 MIT
-
