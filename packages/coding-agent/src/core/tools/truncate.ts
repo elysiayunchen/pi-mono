@@ -8,8 +8,8 @@
  * Never returns partial lines (except bash tail truncation edge case).
  */
 
-export const DEFAULT_MAX_LINES = 2000;
-export const DEFAULT_MAX_BYTES = 50 * 1024; // 50KB
+export const DEFAULT_MAX_LINES = 4000;
+export const DEFAULT_MAX_BYTES = 100 * 1024; // 100KB — raised from 50KB (Pitfall #78: agent hits 25K char ceiling with mixed UTF-8)
 export const GREP_MAX_LINE_LENGTH = 500; // Max chars per grep match line
 
 export interface TruncationResult {

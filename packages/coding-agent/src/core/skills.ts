@@ -78,6 +78,8 @@ export interface Skill {
 	baseDir: string;
 	sourceInfo: SourceInfo;
 	disableModelInvocation: boolean;
+	/** Source classification set by downstream consumers (e.g. elysiaclaw) to track skill origin. */
+	source?: string;
 }
 
 export interface LoadSkillsResult {

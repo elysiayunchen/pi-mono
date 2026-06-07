@@ -6,7 +6,23 @@ export function wrapToolDefinition<TDetails = unknown>(
 	definition: ToolDefinition<any, TDetails>,
 	ctxFactory?: () => ExtensionContext,
 ): AgentTool<any, TDetails> {
-	return {
+	const tool: AgentTool<any, TDetails> & {
+		isEnabled?: () => boolean;
+		isConcurrencySafe?: (input: any) => boolean;
+		isReadOnly?: (input: any) => boolean;
+		isDestructive?: (input: any) => boolean;
+		checkPermissions?: (input: any, ctx: any) => Promise<any>;
+		validateInput?: (input: any, ctx: any) => Promise<any>;
+		getPath?: (input: any) => string | undefined;
+		preparePermissionMatcher?: (input: any) => Promise<(pattern: string) => boolean>;
+		getToolUseSummary?: (input: any) => string | null;
+		getActivityDescription?: (input: any) => string | null;
+		toAutoClassifierInput?: (input: any) => unknown;
+		promptSnippet?: string;
+		promptGuidelines?: string[];
+		renderCall?: (args: any, theme: any, context: any) => any;
+		renderResult?: (result: any, options: any, theme: any, context: any) => any;
+	} = {
 		name: definition.name,
 		label: definition.label,
 		description: definition.description,
@@ -14,19 +30,29 @@ export function wrapToolDefinition<TDetails = unknown>(
 		prepareArguments: definition.prepareArguments,
 		execute: (toolCallId, params, signal, onUpdate) =>
 			definition.execute(toolCallId, params, signal, onUpdate, ctxFactory?.() as ExtensionContext),
-	} as AgentTool<any, TDetails> & {
-		isEnabled: () => boolean;
-		isConcurrencySafe: (input: any) => boolean;
-		isReadOnly: (input: any) => boolean;
-		isDestructive: (input: any) => boolean;
-		checkPermissions: (input: any, ctx: any) => Promise<any>;
-		validateInput: (input: any, ctx: any) => Promise<any>;
-		getPath: (input: any) => string | undefined;
-		preparePermissionMatcher: (input: any) => Promise<(pattern: string) => boolean>;
-		getToolUseSummary: (input: any) => string | null;
-		getActivityDescription: (input: any) => string | null;
-		toAutoClassifierInput: (input: any) => unknown;
 	};
+
+	// Propagate optional extension fields from ToolDefinition (Pitfall #82: wrapToolDefinition
+	// was dropping capability declarations and UI helpers, causing runtime undefined for
+	// isConcurrencySafe/isReadOnly/isDestructive/getToolUseSummary etc.)
+	if (definition.isEnabled !== undefined) tool.isEnabled = definition.isEnabled;
+	if (definition.isConcurrencySafe !== undefined) tool.isConcurrencySafe = definition.isConcurrencySafe;
+	if (definition.isReadOnly !== undefined) tool.isReadOnly = definition.isReadOnly;
+	if (definition.isDestructive !== undefined) tool.isDestructive = definition.isDestructive;
+	if (definition.checkPermissions !== undefined) tool.checkPermissions = definition.checkPermissions;
+	if (definition.validateInput !== undefined) tool.validateInput = definition.validateInput;
+	if (definition.getPath !== undefined) tool.getPath = definition.getPath;
+	if (definition.preparePermissionMatcher !== undefined)
+		tool.preparePermissionMatcher = definition.preparePermissionMatcher;
+	if (definition.getToolUseSummary !== undefined) tool.getToolUseSummary = definition.getToolUseSummary;
+	if (definition.getActivityDescription !== undefined) tool.getActivityDescription = definition.getActivityDescription;
+	if (definition.toAutoClassifierInput !== undefined) tool.toAutoClassifierInput = definition.toAutoClassifierInput;
+	if (definition.promptSnippet !== undefined) tool.promptSnippet = definition.promptSnippet;
+	if (definition.promptGuidelines !== undefined) tool.promptGuidelines = definition.promptGuidelines;
+	if (definition.renderCall !== undefined) tool.renderCall = definition.renderCall;
+	if (definition.renderResult !== undefined) tool.renderResult = definition.renderResult;
+
+	return tool;
 }
 
 /** Wrap multiple ToolDefinitions into AgentTools for the core runtime. */

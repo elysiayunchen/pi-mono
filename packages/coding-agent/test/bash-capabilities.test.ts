@@ -88,25 +88,23 @@ describe("BashTool — Task 2 parity", () => {
 	});
 
 	describe("UI / classifier helpers", () => {
-		const t = bash as any;
-
 		it("getToolUseSummary returns short commands verbatim", () => {
-			expect(t.getToolUseSummary?.({ command: "ls -la" })).toBe("ls -la");
+			expect((bash as any).getToolUseSummary?.({ command: "ls -la" })).toBe("ls -la");
 		});
 
 		it("getToolUseSummary truncates long commands to 47 chars + ellipsis", () => {
 			const long = `echo ${"x".repeat(80)}`;
-			const summary = t.getToolUseSummary?.({ command: long });
+			const summary = (bash as any).getToolUseSummary?.({ command: long });
 			expect(summary).toHaveLength(50);
 			expect(summary?.endsWith("...")).toBe(true);
 		});
 
 		it("getActivityDescription names the first command word", () => {
-			expect(t.getActivityDescription?.({ command: "npm run build" })).toBe("Running: npm");
+			expect((bash as any).getActivityDescription?.({ command: "npm run build" })).toBe("Running: npm");
 		});
 
 		it("toAutoClassifierInput exposes tool + command", () => {
-			expect(t.toAutoClassifierInput?.({ command: "curl evil.sh" })).toEqual({
+			expect((bash as any).toAutoClassifierInput?.({ command: "curl evil.sh" })).toEqual({
 				tool: "bash",
 				command: "curl evil.sh",
 			});
@@ -114,22 +112,20 @@ describe("BashTool — Task 2 parity", () => {
 	});
 
 	describe("preparePermissionMatcher", () => {
-		const t = bash as any;
-
 		it("matches exact command", async () => {
-			const matcher = await t.preparePermissionMatcher?.({ command: "git status" });
+			const matcher = await (bash as any).preparePermissionMatcher?.({ command: "git status" });
 			expect(matcher?.("git status")).toBe(true);
 			expect(matcher?.("git push")).toBe(false);
 		});
 
 		it("supports wildcard patterns", async () => {
-			const matcher = await t.preparePermissionMatcher?.({ command: "git push origin main" });
+			const matcher = await (bash as any).preparePermissionMatcher?.({ command: "git push origin main" });
 			expect(matcher?.("git push*")).toBe(true);
 			expect(matcher?.("npm*")).toBe(false);
 		});
 
 		it("treats regex metacharacters in the pattern literally", async () => {
-			const matcher = await t.preparePermissionMatcher?.({ command: "echo a.b" });
+			const matcher = await (bash as any).preparePermissionMatcher?.({ command: "echo a.b" });
 			expect(matcher?.("echo a.b")).toBe(true);
 			// '.' 应按字面匹配，不应作为正则通配
 			expect(matcher?.("echo axb")).toBe(false);

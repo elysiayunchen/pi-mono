@@ -31,10 +31,10 @@
   - RECALL 注入已激活（T6: 每轮 system prompt 自动召回 top-5）
 
 **残余技术债**：
-- DTS 类型错误 ×6 — `pnpm build` 在 `build:plugin-sdk:dts` 阶段阻塞，绕过方式：`node scripts/tsdown-build.mjs`（PITFALLS #38）
+- ~~DTS 类型错误 ×6~~ → ✅ 已修复 (2026-06-07)；~~tsgo 全仓 53 类型错误~~ → ✅ 已修复 (2026-06-07)
 - OpenRouter→阿里云路由劫持（坑 #40）— 临时规避，根因未修
 - sessions chunks 47% CLAUDE.md 注入噪音 — 后续 World Model 阶段去噪
-- Tool Parity 剩余 13 个 Task 待执行
+- Tool Parity 剩余 3 个 Task (14/15/16) 待执行
 - Telegram 端到端验证 — delegate_code_task 功能测试受阻于主模型不可用
 - stripPluginOnlyAllowlist 时序问题 — `group:memory` 在 plugin 注册前被判定为 unknown（cosmetic，不影响功能）
 
@@ -225,6 +225,7 @@ task_assign (worktree: true)
 | 2026-06-06 | 记忆引擎激活 (T1-T6) | TS memory_search 全面取代 Python session_search，RECALL 注入激活 |
 | 2026-06-06 | deploy.sh 增强 | 修复 dist/extensions 部署遗漏（根因），新增 2 Guard + extensions sync + E2E 验证 |
 | 2026-06-07 | 序 1-7 统一实施 | L0-L3压缩链 + 注入预算器 + 输入分类器 + 用户画像 全部完成 |
+| 2026-06-07 | tsgo 类型检查 53→0 | 全仓类型错误清零，npm run check 不再阻塞 |
 
 ---
 
@@ -233,13 +234,13 @@ task_assign (worktree: true)
 1. 读 `HANDOFF.md` → 当前状态快照
 2. 读 `SYSTEM.md` → 了解运行环境和规则
 3. 读 `ARCHITECTURE.md` → 理解架构
-4. 读 `PITFALLS.md` → 避开已知坑
+4. 读 `PITFALLS.md` → 避开已知坑（含新增 #86 tsgo 类型检查）
 5. 读本文档 → 选择下一个 sprint
-6. **推荐首先做**: Telegram delegate_code_task 端到端验证（需可用模型）
-7. **然后**: 修复 6 个 DTS 类型错误（消除 pnpm build 阻塞）
-8. **再然后**: Tool Parity Task 3-16 继续推进
-9. **或者**: `[P2-C] Worktree → Auto PR/Merge`（需先 `sudo apt install gh && gh auth login`）
-10. **中期**: World Model 数字孪生（Phase 2，见 SUPERADMIN-AGENT-DESIGN.md）
+6. **建议第一步**: World Model 地基（Phase 2，见 SUPERADMIN-AGENT-DESIGN.md）— 超算管理员核心能力，纯逻辑不依赖模型
+7. **或者**: Tool Parity Task 14（AskUserQuestion）/ Task 15（MCP）/ Task 16（并行执行）
+8. **或者**: `[P2-C] Worktree → Auto PR/Merge`（需先 `sudo apt install gh && gh auth login`）
+9. **中期**: World Model 接入循环（Phase 3）→ CONSOLIDATE 闭环（Phase 4）
+10. **阻塞项**: delegate_code_task Telegram 端到端验证 — 需可用模型
 
 ---
 

@@ -64,7 +64,7 @@ describe("AgentSession auto-compaction queue resume", () => {
 		mkdirSync(tempDir, { recursive: true });
 		vi.useFakeTimers();
 
-		const model = getModel("anthropic", "claude-sonnet-4-5")!;
+		const model = getModel("anthropic", "claude-sonnet-4-6")!;
 		const agent = new Agent({
 			initialState: {
 				model,
@@ -247,11 +247,12 @@ describe("AgentSession auto-compaction queue resume", () => {
 			provider: model.provider,
 			model: model.id,
 			usage: {
-				input: 180_000,
+				input: 980_000,
 				output: 10_000,
 				cacheRead: 0,
 				cacheWrite: 0,
-				totalTokens: 190_000,
+				// claude-sonnet-4-6 contextWindow=1M, reserveTokens=16384, threshold=983616
+				totalTokens: 990_000,
 				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 			},
 			stopReason: "stop",
@@ -366,11 +367,12 @@ describe("AgentSession auto-compaction queue resume", () => {
 			provider: model.provider,
 			model: model.id,
 			usage: {
-				input: 180_000,
+				input: 980_000,
 				output: 10_000,
 				cacheRead: 0,
 				cacheWrite: 0,
-				totalTokens: 190_000,
+				// claude-sonnet-4-6 contextWindow=1M, reserveTokens=16384, threshold=983616
+				totalTokens: 990_000,
 				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 			},
 			stopReason: "stop",

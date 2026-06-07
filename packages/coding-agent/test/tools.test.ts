@@ -58,22 +58,22 @@ describe("Coding Agent Tools", () => {
 
 		it("should truncate files exceeding line limit", async () => {
 			const testFile = join(testDir, "large.txt");
-			const lines = Array.from({ length: 2500 }, (_, i) => `Line ${i + 1}`);
+			const lines = Array.from({ length: 4500 }, (_, i) => `Line ${i + 1}`);
 			writeFileSync(testFile, lines.join("\n"));
 
 			const result = await readTool.execute("test-call-3", { path: testFile });
 			const output = getTextOutput(result);
 
 			expect(output).toContain("Line 1");
-			expect(output).toContain("Line 2000");
-			expect(output).not.toContain("Line 2001");
-			expect(output).toContain("[Showing lines 1-2000 of 2500. Use offset=2001 to continue.]");
+			expect(output).toContain("Line 4000");
+			expect(output).not.toContain("Line 4001");
+			expect(output).toContain("[Showing lines 1-4000 of 4500. Use offset=4001 to continue.]");
 		});
 
 		it("should truncate when byte limit exceeded", async () => {
 			const testFile = join(testDir, "large-bytes.txt");
-			// Create file that exceeds 50KB byte limit but has fewer than 2000 lines
-			const lines = Array.from({ length: 500 }, (_, i) => `Line ${i + 1}: ${"x".repeat(200)}`);
+			// Create file that exceeds 100KB byte limit but has fewer than 4000 lines
+			const lines = Array.from({ length: 500 }, (_, i) => `Line ${i + 1}: ${"x".repeat(300)}`);
 			writeFileSync(testFile, lines.join("\n"));
 
 			const result = await readTool.execute("test-call-4", { path: testFile });
@@ -143,7 +143,7 @@ describe("Coding Agent Tools", () => {
 
 		it("should include truncation details when truncated", async () => {
 			const testFile = join(testDir, "large-file.txt");
-			const lines = Array.from({ length: 2500 }, (_, i) => `Line ${i + 1}`);
+			const lines = Array.from({ length: 4500 }, (_, i) => `Line ${i + 1}`);
 			writeFileSync(testFile, lines.join("\n"));
 
 			const result = await readTool.execute("test-call-9", { path: testFile });
@@ -152,8 +152,8 @@ describe("Coding Agent Tools", () => {
 			expect(result.details?.truncation).toBeDefined();
 			expect(result.details?.truncation?.truncated).toBe(true);
 			expect(result.details?.truncation?.truncatedBy).toBe("lines");
-			expect(result.details?.truncation?.totalLines).toBe(2500);
-			expect(result.details?.truncation?.outputLines).toBe(2000);
+			expect(result.details?.truncation?.totalLines).toBe(4500);
+			expect(result.details?.truncation?.outputLines).toBe(4000);
 		});
 
 		it("should detect image MIME type from file magic (not extension)", async () => {

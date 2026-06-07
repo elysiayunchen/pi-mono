@@ -275,6 +275,11 @@ async function runLoop(
 ): Promise<void> {
 	let firstTurn = true;
 	const budgetTracker = config.tokenBudget ? createBudgetTracker() : null;
+	// ── Consecutive tool failure tracker (Pitfall #80: prevent silent retry loops) ──
+	let consecutiveFailures = 0;
+	const MAX_CONSECUTIVE_FAILURES = 3;
+	let lastFailedTool = "";
+	let lastFailedArgs = "";
 	// Check for steering messages at start (user may have typed while waiting)
 	let pendingMessages: AgentMessage[] = (await config.getSteeringMessages?.()) || [];
 
@@ -344,9 +349,52 @@ async function runLoop(
 			if (hasMoreToolCalls) {
 				toolResults.push(...(await executeToolCalls(currentContext, message, config, signal, emit)));
 
+				// ── Consecutive tool failure detection (Pitfall #80) ──────────────
+				let toolFailureInjected = false;
 				for (const result of toolResults) {
 					currentContext.messages.push(result);
 					newMessages.push(result);
+
+					if (result.isError) {
+						const resultText = result.content
+							.filter((c): c is { type: "text"; text: string } => c.type === "text")
+							.map((c) => c.text)
+							.join("\n");
+						// Build a signature: toolName + first 200 chars of error
+						const errorSig = `${result.toolName ?? "unknown"}:${resultText.slice(0, 200)}`;
+						if (errorSig === lastFailedArgs) {
+							consecutiveFailures++;
+						} else {
+							consecutiveFailures = 1;
+							lastFailedTool = result.toolName ?? "unknown";
+							lastFailedArgs = errorSig;
+						}
+
+						if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES && !toolFailureInjected) {
+							toolFailureInjected = true;
+							const nudgeMsg = {
+								role: "user" as const,
+								content: [
+									{
+										type: "text" as const,
+										text:
+											`SYSTEM: Tool "${lastFailedTool}" has failed ${consecutiveFailures} times with the same error. ` +
+											"STOP retrying immediately. Report the failure to the user, explain what went wrong, " +
+											"and suggest an alternative approach. Do NOT attempt the same tool call again.",
+									},
+								],
+								timestamp: Date.now(),
+							} as AgentMessage;
+							currentContext.messages.push(nudgeMsg);
+							newMessages.push(nudgeMsg);
+							consecutiveFailures = 0; // Reset to allow fresh attempts
+						}
+					} else {
+						// Successful tool call resets the counter
+						consecutiveFailures = 0;
+						lastFailedTool = "";
+						lastFailedArgs = "";
+					}
 				}
 			}
 

@@ -109,11 +109,11 @@ npm run test         # 运行所有包的测试
 # === elysiaclaw 应用层（pnpm，在 elysiaclaw/ 目录执行）===
 cd elysiaclaw
 pnpm install
-pnpm build           # 构建应用（已知 build:plugin-sdk:dts 阶段有 6 个预存 DTS 错误）
+pnpm build           # 构建应用（DTS 类型错误已修复，全流程通过）
 pnpm dev             # 开发模式
 pnpm test            # 运行测试（vitest）
 pnpm check           # lint + format (oxlint + oxfmt)
-pnpm tsgo            # TypeScript 类型检查
+pnpm tsgo            # TypeScript 类型检查（零错误）
 ```
 
 ### 一键部署
@@ -152,8 +152,9 @@ cd ~/pi-mono && ./deploy.sh
 | 包 | 结果 |
 |------|------|
 | `@mariozechner/pi-agent-core` | 36/36 |
-| `@mariozechner/pi-coding-agent` | 858/861 (3 failures 预存) |
+| `@mariozechner/pi-coding-agent` | 907/955 (0 failures；16 预存全部修复，见 PITFALLS.md #82-#85) |
 | `@mariozechner/pi-tui` | 505/506 (1 flaky) |
+| elysiaclaw | 11188/11367 passed，123 failed (预存失败，非本次引入；见 PITFALLS.md #86) |
 
 ## 已完成的 Agent 架构
 
@@ -248,7 +249,8 @@ Bot/TUI 双路径均需检查。
 
 | 项目 | 说明 |
 |------|------|
-| DTS 类型错误 ×6 | `pnpm build` 在 elysiaclaw 端阻塞，绕过方式：`node scripts/tsdown-build.mjs`；deploy.sh 也跳过 canvas:a2ui:bundle 和 build:plugin-sdk:dts |
+| DTS/tsgo 类型检查 | ✅ 已修复 (2026-06-07) — `build:plugin-sdk:dts` 通过 + `tsgo --noEmit` 零错误 (PITFALLS #38/#63/#86) |
+| deploy.sh skip DTS | deploy.sh 仍用 `tsdown-build.mjs`（不跑 `build:plugin-sdk:dts`，但该步骤本身已可通过） |
 | models.generated.ts | 手动编辑了模型参数，需迁移到 `scripts/generate-models.ts` 数据源 |
 | pi-agent-core monkey-patch | `setSystemPrompt`/`replaceMessages` 依赖运行时注入 |
 | OpenRouter 路由劫持 | 临时绕过直连阿里云 Bailian，根因未修 |

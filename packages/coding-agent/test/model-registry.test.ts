@@ -207,7 +207,7 @@ describe("ModelRegistry", () => {
 
 		test("custom model with same id replaces built-in model by id", () => {
 			writeModelsJson({
-				openrouter: providerConfig(
+				"vercel-ai-gateway": providerConfig(
 					"https://my-proxy.example.com/v1",
 					[{ id: "anthropic/claude-sonnet-4" }],
 					"openai-completions",
@@ -215,7 +215,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 			const sonnetModels = models.filter((m) => m.id === "anthropic/claude-sonnet-4");
 
 			expect(sonnetModels).toHaveLength(1);
@@ -404,7 +404,7 @@ describe("ModelRegistry", () => {
 
 		test("modelOverrides still apply when provider also defines models", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					baseUrl: "https://my-proxy.example.com/v1",
 					apiKey: "OPENROUTER_API_KEY",
 					api: "openai-completions",
@@ -428,7 +428,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 
 			expect(models.some((m) => m.id === "custom/openrouter-model")).toBe(true);
 			expect(
@@ -475,7 +475,7 @@ describe("ModelRegistry", () => {
 	describe("modelOverrides (per-model customization)", () => {
 		test("model override applies to a single built-in model", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							name: "Custom Sonnet Name",
@@ -485,7 +485,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 			expect(sonnet?.name).toBe("Custom Sonnet Name");
@@ -497,7 +497,7 @@ describe("ModelRegistry", () => {
 
 		test("model override with compat.openRouterRouting", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							compat: {
@@ -509,7 +509,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 			const compat = sonnet?.compat as OpenAICompletionsCompat | undefined;
@@ -518,7 +518,7 @@ describe("ModelRegistry", () => {
 
 		test("model override deep merges compat settings", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							compat: {
@@ -530,7 +530,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 
 			// Should have both the new routing AND preserve other compat settings
@@ -540,7 +540,7 @@ describe("ModelRegistry", () => {
 
 		test("multiple model overrides on same provider", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							compat: { openRouterRouting: { only: ["amazon-bedrock"] } },
@@ -553,7 +553,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 			const opus = models.find((m) => m.id === "anthropic/claude-opus-4");
@@ -566,7 +566,7 @@ describe("ModelRegistry", () => {
 
 		test("model override combined with baseUrl override", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					baseUrl: "https://my-proxy.example.com/v1",
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
@@ -577,7 +577,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 
 			// Both overrides should apply
@@ -592,7 +592,7 @@ describe("ModelRegistry", () => {
 
 		test("model override for non-existent model ID is ignored", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"nonexistent/model-id": {
 							name: "This should not appear",
@@ -602,7 +602,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 
 			// Should not create a new model
 			expect(models.find((m) => m.id === "nonexistent/model-id")).toBeUndefined();
@@ -612,7 +612,7 @@ describe("ModelRegistry", () => {
 
 		test("model override can change cost fields partially", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							cost: { input: 99 },
@@ -622,7 +622,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 
 			// Input cost should be overridden
@@ -633,7 +633,7 @@ describe("ModelRegistry", () => {
 
 		test("model override can add headers at request time", async () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							headers: { "X-Custom-Model-Header": "value" },
@@ -643,7 +643,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const models = getModelsForProvider(registry, "openrouter");
+			const models = getModelsForProvider(registry, "vercel-ai-gateway");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 			expect(sonnet).toBeDefined();
 
@@ -656,7 +656,7 @@ describe("ModelRegistry", () => {
 
 		test("refresh() picks up model override changes", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							name: "First Name",
@@ -667,12 +667,12 @@ describe("ModelRegistry", () => {
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
 			expect(
-				getModelsForProvider(registry, "openrouter").find((m) => m.id === "anthropic/claude-sonnet-4")?.name,
+				getModelsForProvider(registry, "vercel-ai-gateway").find((m) => m.id === "anthropic/claude-sonnet-4")?.name,
 			).toBe("First Name");
 
 			// Update and refresh
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							name: "Second Name",
@@ -683,13 +683,13 @@ describe("ModelRegistry", () => {
 			registry.refresh();
 
 			expect(
-				getModelsForProvider(registry, "openrouter").find((m) => m.id === "anthropic/claude-sonnet-4")?.name,
+				getModelsForProvider(registry, "vercel-ai-gateway").find((m) => m.id === "anthropic/claude-sonnet-4")?.name,
 			).toBe("Second Name");
 		});
 
 		test("removing model override restores built-in values", () => {
 			writeRawModelsJson({
-				openrouter: {
+				"vercel-ai-gateway": {
 					modelOverrides: {
 						"anthropic/claude-sonnet-4": {
 							name: "Custom Name",
@@ -699,7 +699,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = ModelRegistry.create(authStorage, modelsJsonPath);
-			const customName = getModelsForProvider(registry, "openrouter").find(
+			const customName = getModelsForProvider(registry, "vercel-ai-gateway").find(
 				(m) => m.id === "anthropic/claude-sonnet-4",
 			)?.name;
 			expect(customName).toBe("Custom Name");
@@ -708,7 +708,7 @@ describe("ModelRegistry", () => {
 			writeRawModelsJson({});
 			registry.refresh();
 
-			const restoredName = getModelsForProvider(registry, "openrouter").find(
+			const restoredName = getModelsForProvider(registry, "vercel-ai-gateway").find(
 				(m) => m.id === "anthropic/claude-sonnet-4",
 			)?.name;
 			expect(restoredName).not.toBe("Custom Name");

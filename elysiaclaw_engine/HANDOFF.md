@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (Tool Parity Task 3 TodoWrite 完成；Task 12/13 确认; DTS 全修复)
+> 最后更新: 2026-06-07 (tsgo 全仓类型错误 53→0 清零完成)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -47,10 +47,11 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - 数据目录 `~/.pi/agent/`、配置目录 `~/.elysiaclaw/` 不变
 
 ### 残余技术债
-- ~~DTS 类型错误 ×6~~ → ✅ 已修复 (2026-06-07)，实际 8 个错误，`pnpm build` 不再阻塞
+- ~~DTS 类型错误 ×6~~ → ✅ 已修复 (2026-06-07)
+- ~~tsgo 全仓类型检查 53 错误~~ → ✅ 已修复 (2026-06-07)，`npx tsgo --noEmit` 零错误退出，`npm run check` 不再阻塞
 - delegate_code_task Telegram 端到端验证未完成 — 需可用模型
 - Telegram 完整 stdout 输出 — 需 `verboseLevel: "full"` 机制改造
-- Tool Parity 剩余 13 个 Task 待执行
+- Tool Parity 剩余 3 个 Task (14/15/16) 待执行
 - elysiaclaw/ git push 需手动执行（auto-mode 阻止）
 
 ---
@@ -123,7 +124,7 @@ elysiaclaw 应用层	pnpm	~/projects/pi-mono/elysiaclaw/
 
 包	结果
 @mariozechner/pi-agent-core	36/36
-@mariozechner/pi-coding-agent	858→883 (+25 Tool Parity 测试全绿；3 failures 预存不变；增量推算，未跑全套)
+@mariozechner/pi-coding-agent	858→907 (+49；16 预存失败全部修复，零回归；见 PITFALLS.md #82-#85)
 @mariozechner/pi-tui	505/506 (1 flaky)
 
 

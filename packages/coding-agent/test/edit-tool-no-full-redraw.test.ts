@@ -120,7 +120,11 @@ describe("edit tool TUI rendering", () => {
 		expect(terminal.fullClearCount).toBe(clearsBeforeResult);
 
 		const settledRender = component.render(80).join("\n");
-		expect(settledRender).toContain("line 50 changed");
-		expect(settledRender).toContain("line 950 changed");
+		// Strip ANSI escape sequences — the diff renderer highlights "changed" with
+		// reverse video (\x1b[7m...\x1b[27m), which breaks plain substring matching.
+		const ansiRegex = /\x1b\[[0-9;]*m/g;
+		const plainRender = settledRender.replace(ansiRegex, "");
+		expect(plainRender).toContain("line 50 changed");
+		expect(plainRender).toContain("line 950 changed");
 	});
 });

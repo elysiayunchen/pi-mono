@@ -605,6 +605,30 @@ WS-1 / WS-2 并行(渠道层,不需主模型即可验证)→ WS-3 注入预算�
 
 ---
 
+## Sprint: tsgo 全仓类型检查 53→0 清零 (2026-06-07) ✅ 已完成
+
+**Sprint 目标**: 修复 `npx tsgo --noEmit` 的 53 个类型错误，消除 `npm run check` 阻塞
+**开始/完成**: 2026-06-07
+**结果**: tsgo 零错误退出；`npm run build` 干净通过；907/955 测试零回归
+
+### 7 类错误修复
+
+| 类 | 文件数 | 错误数 | 根因 | 修复方式 |
+|------|------|------|------|------|
+| Skill.source 缺失 | 7 | 7 | pi-coding-agent `Skill` 接口无 `source` 字段 | 框架层加 `source?: string` + 应用层 `d.ts` 模块声明合并 |
+| redact-snapshot undefined | 1 | 41 | `ElysiaClawConfig` 字段全可选，测试深层访问无空值守卫 | `const cfg = result.config as typeof snapshot.config` |
+| ModelRegistry private | 1 | 1 | 私有构造函数不可 extends | `extends (actual.ModelRegistry as any)` + 去 `override` |
+| compaction 参数序号 | 2 | 2 | `generateSummary` 加了 `headers` 参数后测试序号失效 | `call[5]`→`call[6]`；补充 `undefined` 占位 |
+| configure-plan 拼写 | 1 | 1 | `elysiaclawCandidates` 应为 `__elysiaclawCandidates` | 重命名 |
+| skills-status 类型收缩 | 1 | 1 | `source?: string` 赋值给 `string` 字段 | `?? "unknown"` 默认值 |
+| Skill 测试缺 sourceInfo | 4 | 4 | fake Skill 对象未包含必填 `sourceInfo` | `as unknown as Skill` + 导入 Skill 类型 |
+
+### 新增坑点
+
+- #86 — tsgo 全量类型检查 53 错误（7 类根因 + 修复记录）
+
+---
+
 ## 后续 Sprint 规划
 
 | Sprint | 内容 | 依赖 |
