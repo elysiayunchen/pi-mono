@@ -5,6 +5,66 @@
 
 ---
 
+## Sprint: 序 8 Conversation 层 + Handoff (2026-06-07) 🔄 进行中
+
+**Sprint 目标**: 实施序 8 — 会话轮换与跨会话任务延续 (SESSION-ROTATION-CONTINUITY.md)
+**开始时间**: 2026-06-07
+**状态**: 阶段 1-3 完成，阶段 4-5 待续
+
+### 设计红线
+
+延续必须双轨——精确执行状态走结构化 Handoff Packet (B3)，背景知识走 memory_search 召回 (B4)；纯靠记忆检索延续任务会准确性塌陷。
+
+### 实施阶段
+
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| 1 | 核心类型 + Conversation Store (SQLite) | ✅ |
+| 2 | rotate_session 工具 + B3 Handoff 注入 + 四层注册 | ✅ |
+| 3 | 自动轮换触发 (token 压力检测 + safety 门控) | ✅ |
+| 4 | Task Segment 追踪集成到 attempt 主循环 | 待续 |
+| 5 | 端到端验证 (需可用模型) | 待续 |
+
+### 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `src/session-rotation/handoff-types.ts` | HandoffPacket / TaskSegment / validateHandoffCompleteness / formatHandoffForInjection |
+| `src/session-rotation/conversation-types.ts` | ConversationEntry / ConversationStoreData |
+| `src/session-rotation/conversation-store.ts` | SQLite 持久化 (node:sqlite DatabaseSync) |
+| `src/session-rotation/rotation-controller.ts` | SafetyPoint / shouldTriggerRotation / executeRotation |
+| `src/session-rotation/task-segment-tracker.ts` | 任务段实时追踪 + classifyTaskType |
+| `src/session-rotation/conversation-router.ts` | chat→Conversation→activeSession 间接映射 |
+| `src/session-rotation/handoff-inject.ts` | B3 Handoff 注入 (resolveHandoffBlockForSession) |
+| `src/session-rotation/auto-trigger.ts` | checkAutoRotation / estimateSessionTokens |
+| `src/agents/tools/rotate-session-tool.ts` | rotate_session 工具 (ownerOnly, completeness 门控) |
+
+### 新增测试
+
+| 文件 | 用例 |
+|------|------|
+| `handoff-types.test.ts` | 18 |
+| `conversation-store.test.ts` | 14 |
+| `rotation-controller.test.ts` | 13 |
+| `task-segment-tracker.test.ts` | 14 |
+| `conversation-router.test.ts` | 6 |
+| `handoff-inject.test.ts` | 4 |
+| `auto-trigger.test.ts` | 7 |
+| `rotate-session-tool.test.ts` | 4 |
+| **合计** | **80** (73 session-rotation + 4 rotate-session + 3 handoff-inject) |
+
+### attempt.ts 集成
+
+1. **B3 Handoff 注入**: B4 RECALL 前插入 `resolveHandoffBlockForSession()` 返回的 handoff block
+2. **自动轮换检测**: 每轮 prompt 前调用 `checkAutoRotation()`，token 压力过高时日志推荐 `rotate_session`
+
+### 类型检查
+
+- `npx tsc --noEmit` 零错误
+- `npx vitest run` 73+ 用例全过
+
+---
+
 ## Sprint: 早期工具落地测试落实 — Tool Parity Task 1/2 (2026-06-07) ✅ 已完成
 
 **Sprint 目标**: Tool Parity Task 1 (GrepTool 参数补全) / Task 2 (BashTool 能力声明 + run_in_background) 标记完成但"手动测试各 output_mode"等完成标准从未勾选——补真实测试验证功能确实可用
@@ -742,5 +802,3 @@ grep -n "setSystemPrompt\\|replaceMessages" \\
 | elysiaclaw_engine/*.md | 更新: 5 份文档全部同步 |
 
 ---
-
-

@@ -644,8 +644,8 @@ Adding an elysiaclaw tool (defined in elysiaclaw):
 | 5 | **统一注入预算器**(注入量计入压缩阈值,防反身性) | CONTEXT-INJECTION §3.3 / WS-3 | 否 | 是 | 🔥 | ✅ 已完成 (2026-06-07) |
 | 6 | 输入分类器(task/chat/...) | KB-EVO §3 | 轻 | 是 | 🔥 | ✅ 已完成 (2026-06-07) |
 | 7 | 用户画像 User Model(新建) | KB-EVO §6 | 是(提炼) | 是 | 🔥 | ✅ 已完成 (2026-06-07) |
-| 8 | Conversation 层 + Handoff(手动 rotate 验证精度) | SESSION-ROTATION §3-4 | 是 | 是 | 中 | 待启动 |
-| 9 | 自动轮换(安全点 + 触发) | SESSION-ROTATION §5 | 是 | — | 中 | 待启动 |
+| 8 | Conversation 层 + Handoff(手动 rotate 验证精度) | SESSION-ROTATION §3-4 | 是 | 是 | 中 | 🔄 阶段 1-3 完成 |
+| 9 | 自动轮换(安全点 + 触发) | SESSION-ROTATION §5 | 是 | — | 中 | ✅ 阶段 3 完成 |
 | 10 | World Model 数字孪生(Phase 2) | SUPERADMIN §6 | 部分 | 是 | 中 | 待启动 |
 | 11 | 技能进化 Skill Evolution(episode→skill+HITL) | KB-EVO §7 | 是 | — | 中 | 待启动 |
 | 12 | CONSOLIDATE 闭环(封口/轮换沉淀) | SUPERADMIN §4 / KB-EVO §7 | 是 | — | 高(但依赖前置) | 待启动 |
@@ -679,6 +679,3 @@ Adding an elysiaclaw tool (defined in elysiaclaw):
 | typing TTL 2min 后停 | `typing.ts:28` | "正在输入"消失 | 序 2 |
 | reasoning 默认 off | `bot-message-dispatch.ts:133` | 思考不可见 | 序 3 |
 | 注入与压缩无共享预算 | attempt.ts / compact.ts | 反身性空转(注入→爆窗→压缩→丢注入) | 序 5 |
-
-
-

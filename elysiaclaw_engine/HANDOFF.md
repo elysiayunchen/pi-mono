@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (tsgo 全仓类型错误 53→0 清零完成)
+> 最后更新: 2026-06-07 (序 8 Conversation 层 + Handoff 阶段 1-3 实施)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -40,7 +40,26 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
   - 序 7: 用户画像 User Model (SQLite 持久化 + 双路径更新 + summary 注入 B2) ✅ (2026-06-07)
   - **边缘情况加固** (2026-06-07): 正则 bug 修复、防守代码、门限常量化、JSON.stringify 循环引用防护
 
-- **下一步**: Tool Parity Task 14 AskUserQuestion / Task 15 MCP / Task 16 并行执行 (见 `TOOL-PARITY-PLAN.md`)
+- **序 8 Conversation 层 + Handoff** 🔄 (2026-06-07, 阶段 1-3 已完成)
+  - 阶段 1: 核心类型 + Conversation Store ✅
+    - `session-rotation/handoff-types.ts` — HandoffPacket / TaskSegment / validateHandoffCompleteness / formatHandoffForInjection
+    - `session-rotation/conversation-types.ts` — ConversationEntry / ConversationStoreData
+    - `session-rotation/conversation-store.ts` — SQLite 持久化 (node:sqlite DatabaseSync), chat→conversation 映射, 轮换追踪
+  - 阶段 2: rotate_session 工具 + B3 Handoff 注入 ✅
+    - `session-rotation/rotation-controller.ts` — SafetyPoint 检查 / shouldTriggerRotation / executeRotation 编排
+    - `session-rotation/task-segment-tracker.ts` — 任务段实时追踪 + classifyTaskType + 超时自动封口
+    - `session-rotation/conversation-router.ts` — chat→Conversation→activeSession 间接映射
+    - `session-rotation/handoff-inject.ts` — B3 Handoff 注入: 从 Conversation Store 读取→格式化→注入 attempt.ts
+    - `agents/tools/rotate-session-tool.ts` — rotate_session 工具 (ownerOnly, goal 必填, completeness 门控)
+    - 四层注册: elysiaclaw-tools.ts + tool-catalog.ts ✅
+    - attempt.ts B3 注入: B4 RECALL 前插入 handoffBlock ✅
+  - 阶段 3: 自动轮换触发 ✅
+    - `session-rotation/auto-trigger.ts` — checkAutoRotation (token 压力检测 + safety 门控) / estimateSessionTokens
+    - attempt.ts 集成: 每轮 prompt 前检测 token 压力, 日志推荐 rotate_session
+  - **测试**: 73 用例全过 (session-rotation 69 + rotate-session-tool 4), tsc --noEmit 零错误
+  - **待完成**: 阶段 4 (Task Segment 追踪集成到 attempt 主循环) + 阶段 5 (端到端验证)
+
+- **下一步**: 序 8 阶段 4-5 完善 / Tool Parity Task 14-16
 ### 路径修正 (2026-06-05)
 - 项目根目录: `~/projects/pi-mono/` (此前文档记载为 `~/pi-mono/`)
 - 所有引擎文件路径已修正（7 个 .md + README.md = 8 个文件）
@@ -53,6 +72,9 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - Telegram 完整 stdout 输出 — 需 `verboseLevel: "full"` 机制改造
 - Tool Parity 剩余 3 个 Task (14/15/16) 待执行
 - elysiaclaw/ git push 需手动执行（auto-mode 阻止）
+- `computeInjectionBudget` 未接入运行时（SDK 用硬编码阈值，不随 1M 窗口缩放）
+- `input-classifier` 数据源偏窄（短陈述句落入 task，identity.name 提不出）
+- sessions chunks 47% CLAUDE.md 注入噪音
 
 ---
 
@@ -91,16 +113,22 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 
 ## 下个窗口的起步清单
 
-**当前主线（2026-06-07）：序 1-7 全部竣工，下一步序 8 Conversation 层 + Handoff**
-- 优先级总表：`ARCHITECTURE.md` Part 9.3（序 1-7 ✅，序 8-12 待启动）
+**当前主线（2026-06-07）：序 8 Conversation 层 + Handoff 阶段 1-3 已完成**
+- 序 8 已落地模块：`src/session-rotation/` (9 文件, 73 测试)
+  - handoff-types.ts / conversation-types.ts / conversation-store.ts (SQLite)
+  - rotation-controller.ts / task-segment-tracker.ts / conversation-router.ts
+  - handoff-inject.ts (B3 注入) / auto-trigger.ts (token 压力检测)
+  - agents/tools/rotate-session-tool.ts (四层注册完成)
+- attempt.ts 集成：B3 Handoff 注入 + 自动轮换检测
+- 优先级总表：`ARCHITECTURE.md` Part 9.3（序 1-7 ✅，序 8 🔄 阶段 1-3，序 9-12 待启动）
 - 用户画像已落地：`src/user-model/`（SQLite 持久化 + 双路径更新 + B2 注入）
 - 注入预算器已激活：system prompt tokens 计入压缩阈值，防反身性空转
 - L0 工具结果驱逐已启用：[EVC] sentinel 幂等检测
 
 其余待办（见 SPRINT.md）：
-- 序 8: Conversation 层 + Handoff（下一个自然起点）
+- 序 8 阶段 4: Task Segment 追踪集成到 attempt 主循环
+- 序 8 阶段 5: 端到端验证（需可用模型）
 - Telegram delegate_code_task 端到端验证（需可用模型）
-- DTS 类型错误修复 ×6
 
 **Tool Parity 后续 todo（按 PLAN 优先级，2026-06-07 接力点）**：
 - Task 13 WebSearchTool（🔴 高，新能力，Brave API/SearXNG）— 未开工
@@ -134,4 +162,3 @@ elysiaclaw 应用层	pnpm	~/projects/pi-mono/elysiaclaw/
 pi-mono 全系	0.64.0
 elysiaclaw	v2026.4.4
 Node.js	v22.22.1
-
