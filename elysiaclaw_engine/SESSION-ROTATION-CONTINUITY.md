@@ -1,6 +1,6 @@
 # ElysiaClaw — 持久对话 × 工作记忆轮换与跨会话任务延续
 
-> 起草:2026-06-06 · 状态:**PROPOSAL,待启动** · 维护者:aoseluo(云尘 / 奈緒)
+> 起草:2026-06-06 · 状态:**阶段 1-4 实施完成,待端到端验证** · 维护者:aoseluo(云尘 / 奈緒)
 > 范围:用户无感的持久对话 + 模型自主 session 轮换(刷新工作记忆窗口)+ 跨会话任务延续机制
 > 定位:`CONTEXT-INJECTION-ARCHITECTURE.md`(静态分层)的动态化;`SUPERADMIN-AGENT-DESIGN.md`(记忆/CONSOLIDATE)的延续承载
 > 标注:**KNOWN**=代码证据;**INFERRED**=原理推断;**PROPOSAL**=设计建议
@@ -106,12 +106,22 @@ interface HandoffPacket {
 **边界**:`用户指令 → 模型完成信号`,这一整块是一个 Task Segment。打包是 streaming capture(实时),不是事后提炼。结构分两部分——轻量**索引头**(常驻)+ 可压缩**任务体**:
 
 ```ts
-// src/session-rotation/task-segment-types.ts
+// src/session-rotation/handoff-types.ts — IMPLEMENTED
+type TaskPhase = "plan" | "todo" | "review" | "recall";
+
+interface CompressedPhaseResult {
+  phase: TaskPhase;
+  compressedAt: number;
+  summary: string;
+  artifactRefs: string[];
+}
+
 interface TaskSegment {
   // —— 索引头(Index Header):轻量、常驻工作记忆、可快速扫 ——
   taskId: string;
-  type: TaskType;        // 分类:deploy|diagnose|query|code|config|chat|...
+  type: TaskType;        // 分类:deploy|diagnose|query|code|config|review|search|other
   status: "running" | "completed" | "incomplete" | "aborted";
+  phase: TaskPhase;      // plan→todo→review→recall 四阶段推进
   goal: string;          // 用户意图一句话
   outcome?: string;      // 完成了什么 / 卡在哪(完成信号时写)
   startedAt: number; endedAt?: number;
@@ -120,20 +130,35 @@ interface TaskSegment {
   body: {
     userInstruction: string;
     reasoning?: string;
+    plan?: string;           // plan 阶段的执行计划
+    todos: Array<{ text: string; done: boolean }>;  // todo 队列
     toolCalls: ToolCallRecord[];   // 见 4B.3,执行后即压缩
     finalReply?: string;
   };
+
+  // —— 压缩结果:已完成阶段的精炼摘要,替代冗余原始数据 ——
+  compressedResults: CompressedPhaseResult[];
 }
 ```
 
 索引头 = "附加索引,让模型粗略知道完成了/没完成什么、什么类型"的载体。它廉价常驻,任务体可随时压缩驱逐——**这是无缝接轨的关键:轮换/召回只需扫索引头即可定位,要细节再展开任务体或 RECALL**。
 
-### 4B.2 实时打包(Streaming Capture)
+### 4B.2 实时打包(Streaming Capture) — IMPLEMENTED
 
-- 用户指令落地 → 开 segment(status=running,写 goal/type);
-- 执行中增量写 body(reasoning / toolCalls / reply);
-- 模型发**完成信号**(显式标记 or turn 收尾)→ 封口(写 status + outcome),segment 即成天然 Handoff 来源;
-- **兜底封口**:超时 / topic_shift / token 压力 → 强制封口为 incomplete,防永不闭合。
+- 用户指令落地 → 开 segment(status=running, phase=**plan**,写 goal/type);
+- 模型首次调用工具 → advancePhase(**plan→todo**),进入执行阶段;
+- 执行中增量写 body(toolCalls / todos / reply);
+- 运行结束 → advancePhase(**todo→review**),compressCompletedPhase 压缩 todo 阶段;
+- 任务成功 → advancePhase(**review→recall**),封口(写 status + outcome);
+- 模型发**完成信号**(显式标记 or turn 收尾)→ sealSegment,segment 即成天然 Handoff 来源;
+- **兜底封口**:超时(10min) / topic_shift / token 压力 → 强制封口为 incomplete,防永不闭合;
+- **自动封印旧段**:新 segment 启动时,若旧段仍 running → 自动封印为 incomplete + 写入 outcome。
+
+**plan-todo-review-recall 四阶段逻辑**:
+- **plan**: 任务规划阶段,模型理解意图、制定计划;
+- **todo**: 执行阶段,工具调用实时记录,已完成 todo 压缩为结果;
+- **review**: 审查阶段,决定 plan 是否需要调整或 end;
+- **recall**: 回顾阶段,输出任务执行结果,压缩全部分段摘要。
 
 → Handoff Packet(§四)= 已封口 segment 的**索引头集合** + 当前 running segment 的**精确状态**。轮换时零额外提炼成本,因打包已实时完成。
 
@@ -252,18 +277,27 @@ interface ToolCallRecord {
 
 ---
 
-## 九、落地坐标(PROPOSAL)
+## 九、落地坐标
 
-| 文件 | 改动 |
-|---|---|
-| 新增 `src/session-rotation/handoff-types.ts` | HandoffPacket union + 完整性断言 |
-| 新增 `src/session-rotation/rotation-controller.ts` | 触发判断 + 安全点检测 + archive/spawn/inject 编排 |
-| 新增 `src/session-rotation/conversation-store.ts` | Conversation↔session 映射持久化(node:sqlite) |
-| `src/sessions/session-id-resolution.ts` | chat→Conversation→active session 间接层 |
-| `src/agents/pi-embedded-runner/run/attempt.ts` | 启动时注入 Handoff 到 B3;recallHints 驱动 B4 |
-| `src/agents/pi-embedded-runner/compact.ts` | 压缩阈值与轮换阈值统一;轮换触发 CONSOLIDATE |
-| `src/config/*`(Zod) | `sessionRotation.{enabled,triggers,maxWindowTokens}` |
-| `tool-catalog` + 四层注册 | (可选)`rotate_session` 工具,供模型主动翻篇 |
+| 文件 | 改动 | 状态 |
+|---|---|---|
+| `src/session-rotation/handoff-types.ts` | HandoffPacket + TaskSegment(含 TaskPhase/CompressedPhaseResult) + 完整性断言 + formatHandoffForInjection | ✅ IMPLEMENTED |
+| `src/session-rotation/rotation-controller.ts` | 触发判断 + 安全点检测 + archive/spawn/inject 编排 + **CompactionSummary 生成** | ✅ IMPLEMENTED |
+| `src/session-rotation/conversation-store.ts` | Conversation↔session 映射持久化(node:sqlite) + **双轨索引存储**(macroIndex/microIndex) + appendMacroIndexEntry | ✅ IMPLEMENTED |
+| `src/session-rotation/conversation-types.ts` | ConversationEntry / ConversationStoreData | ✅ IMPLEMENTED |
+| `src/session-rotation/task-segment-tracker.ts` | 任务段实时追踪 + **plan-todo-review-recall 四阶段** + compressCompletedPhase + classifyTaskType + 超时封口 | ✅ IMPLEMENTED |
+| `src/session-rotation/conversation-router.ts` | chat→Conversation→activeSession 间接映射 | ✅ IMPLEMENTED |
+| `src/session-rotation/handoff-inject.ts` | B3 Handoff 注入 + **双路径查找**(chatId + activeSessionKey) + consumeHandoff + **buildAndStoreDualTrackIndex** | ✅ IMPLEMENTED |
+| `src/session-rotation/auto-trigger.ts` | checkAutoRotation / estimateSessionTokens | ✅ IMPLEMENTED |
+| `src/session-rotation/dual-track-index.ts` | **双轨索引构建**:MacroIndex(压缩会话摘要) + MicroIndex(任务段摘要) + formatDualTrackIndexForInjection | ✅ IMPLEMENTED |
+| `src/session-rotation/index.ts` | 模块导出(含 TaskPhase/CompressedPhaseResult) | ✅ IMPLEMENTED |
+| `src/agents/tools/rotate-session-tool.ts` | rotate_session 工具(ownerOnly, completeness 门控) | ✅ IMPLEMENTED |
+| `src/agents/pi-embedded-runner/run/attempt.ts` | B3 Handoff 注入 + 自动轮换检测 + **TaskSegmentTracker 集成** + **双轨索引构建** | ✅ IMPLEMENTED |
+| `src/agents/elysiaclaw-tools.ts` | rotate_session 四层注册 | ✅ IMPLEMENTED |
+| `src/agents/tool-catalog.ts` | rotate_session 工具目录 | ✅ IMPLEMENTED |
+| `src/sessions/session-id-resolution.ts` | chat→Conversation→active session 间接层 | 待接入 |
+| `src/agents/pi-embedded-runner/compact.ts` | 压缩阈值与轮换阈值统一;轮换触发 CONSOLIDATE | 待接入 |
+| `src/config/*`(Zod) | `sessionRotation.{enabled,triggers,maxWindowTokens}` | 待接入 |
 
 ---
 
@@ -283,13 +317,25 @@ interface ToolCallRecord {
 ## 十一、实施路线(分阶段)
 
 ```
-前置:CONTEXT-INJECTION B3/B4 注入预算器就位(否则 Handoff 无处可注)
-阶段 1  Conversation 层 + chat 映射间接化(用户无感的地基,不改行为)
-阶段 2  Handoff 生成/注入(手动触发 rotate_session 工具,验证延续精度)
-阶段 3  自动轮换:安全点检测 + task_boundary/token_pressure 触发
-阶段 4  与压缩/CONSOLIDATE 统一(共享预算器,轮换即沉淀)
-阶段 5  状态机合并(与 SUPERADMIN 6 态对齐)+ 多任务并发(后置)
+前置:CONTEXT-INJECTION B3/B4 注入预算器就位(否则 Handoff 无处可注) ✅
+阶段 1  Conversation 层 + chat 映射间接化(用户无感的地基,不改行为) ✅
+阶段 2  Handoff 生成/注入(手动触发 rotate_session 工具,验证延续精度) ✅
+阶段 3  自动轮换:安全点检测 + task_boundary/token_pressure 触发 ✅
+阶段 4  Task Segment 追踪集成 + 双轨索引 + CompactionSummary 生成 ✅ (2026-06-07)
+阶段 5  端到端验证(需可用模型) + 与压缩/CONSOLIDATE 统一 待续
 ```
+
+**阶段 4 完成详情 (2026-06-07)**:
+
+| 功能 | 实现 | 测试 |
+|------|------|------|
+| TaskPhase 四阶段(plan→todo→review→recall) | handoff-types.ts + task-segment-tracker.ts | 43 tests |
+| CompressedPhaseResult 分段压缩 | compressCompletedPhase + buildPhaseCompressSummary | 43 tests |
+| MicroIndex 增强(phase + compressedPhaseSummaries) | dual-track-index.ts buildMicroIndexFromSegments | 10 tests |
+| MacroIndex CompactionSummary 生成 | rotation-controller.ts buildCompactionSummaryFromHandoff | 23 tests |
+| ConversationStore appendMacroIndexEntry | conversation-store.ts 增量追加 | 19 tests |
+| attempt.ts 主循环集成 | TaskSegmentTracker 初始化 + 工具调用事件 + 封口 + 双轨索引 | tsc 零错误 |
+| 双轨索引数据流闭环 | MicroIndex(任务段) + MacroIndex(会话压缩) → ConversationStore → 新会话注入 | 123 tests total |
 
 **验证基准(精度优先)**:阶段 2 用一个真实多步任务,轮换前后对比"新 session 是否准确知道 goal/progress/nextStep"——这是整个系统价值的试金石,不通过则不推进自动轮换。
 

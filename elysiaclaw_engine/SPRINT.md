@@ -9,7 +9,7 @@
 
 **Sprint 目标**: 实施序 8 — 会话轮换与跨会话任务延续 (SESSION-ROTATION-CONTINUITY.md)
 **开始时间**: 2026-06-07
-**状态**: 阶段 1-3 完成 + 健全性测试修复完成，阶段 4-5 待续
+**状态**: 阶段 1-4 完成 + 健全性测试修复完成，阶段 5 待续
 
 ### 设计红线
 
@@ -22,21 +22,23 @@
 | 1 | 核心类型 + Conversation Store (SQLite) | ✅ |
 | 2 | rotate_session 工具 + B3 Handoff 注入 + 四层注册 | ✅ |
 | 3 | 自动轮换触发 (token 压力检测 + safety 门控) | ✅ |
-| 4 | Task Segment 追踪集成到 attempt 主循环 | 待续 |
+| 4 | Task Segment 追踪集成 + 双轨索引 + CompactionSummary | ✅ (2026-06-07) |
 | 5 | 端到端验证 (需可用模型) | 待续 |
 
 ### 新增文件
 
 | 文件 | 说明 |
 |------|------|
-| `src/session-rotation/handoff-types.ts` | HandoffPacket / TaskSegment / validateHandoffCompleteness / formatHandoffForInjection |
+| `src/session-rotation/handoff-types.ts` | HandoffPacket / TaskSegment / TaskPhase / CompressedPhaseResult / validateHandoffCompleteness / formatHandoffForInjection |
 | `src/session-rotation/conversation-types.ts` | ConversationEntry / ConversationStoreData |
-| `src/session-rotation/conversation-store.ts` | SQLite 持久化 (node:sqlite DatabaseSync) |
-| `src/session-rotation/rotation-controller.ts` | SafetyPoint / shouldTriggerRotation / executeRotation |
-| `src/session-rotation/task-segment-tracker.ts` | 任务段实时追踪 + classifyTaskType |
+| `src/session-rotation/conversation-store.ts` | SQLite 持久化 (node:sqlite DatabaseSync) + 双轨索引存储 + appendMacroIndexEntry |
+| `src/session-rotation/rotation-controller.ts` | SafetyPoint / shouldTriggerRotation / executeRotation / **CompactionSummary 生成** |
+| `src/session-rotation/task-segment-tracker.ts` | 任务段实时追踪 + **plan-todo-review-recall 四阶段** + compressCompletedPhase + classifyTaskType |
 | `src/session-rotation/conversation-router.ts` | chat→Conversation→activeSession 间接映射 |
-| `src/session-rotation/handoff-inject.ts` | B3 Handoff 注入 (resolveHandoffBlockForSession) |
+| `src/session-rotation/handoff-inject.ts` | B3 Handoff 注入 + 双路径查找 + consumeHandoff + **buildAndStoreDualTrackIndex** |
 | `src/session-rotation/auto-trigger.ts` | checkAutoRotation / estimateSessionTokens |
+| `src/session-rotation/dual-track-index.ts` | **双轨索引构建**: MacroIndex + MicroIndex + formatDualTrackIndexForInjection |
+| `src/session-rotation/index.ts` | 模块导出 (含 TaskPhase / CompressedPhaseResult) |
 | `src/agents/tools/rotate-session-tool.ts` | rotate_session 工具 (ownerOnly, completeness 门控) |
 
 ### 新增测试
@@ -44,24 +46,26 @@
 | 文件 | 用例 |
 |------|------|
 | `handoff-types.test.ts` | 18 |
-| `conversation-store.test.ts` | 14 |
-| `rotation-controller.test.ts` | 22 |
-| `task-segment-tracker.test.ts` | 24 |
+| `conversation-store.test.ts` | 19 |
+| `rotation-controller.test.ts` | 23 |
+| `task-segment-tracker.test.ts` | 43 |
 | `conversation-router.test.ts` | 6 |
 | `handoff-inject.test.ts` | 7 |
 | `auto-trigger.test.ts` | 7 |
 | `rotate-session-tool.test.ts` | 9 |
-| **合计** | **107** (97 session-rotation + 9 rotate-session + 1 handoff-inject) |
+| **合计** | **132** (123 session-rotation + 9 rotate-session) |
 
 ### attempt.ts 集成
 
 1. **B3 Handoff 注入**: B4 RECALL 前插入 `resolveHandoffBlockForSession()` 返回的 handoff block
 2. **自动轮换检测**: 每轮 prompt 前调用 `checkAutoRotation()`，token 压力过高时日志推荐 `rotate_session`
+3. **TaskSegmentTracker 集成**: 初始化追踪器 → 工具调用事件记录(plan→todo 自动推进) → 运行结束封口(todo→review→recall) → 构建双轨索引
+4. **双轨索引构建**: 运行结束时 `buildAndStoreDualTrackIndex()` 将 MicroIndex + MacroIndex 存入 ConversationStore
 
 ### 类型检查
 
 - `npx tsc --noEmit` 零新增错误（第三方 @buape/carbon 预存错误不影响）
-- `npx vitest run` 97 用例全过
+- `npx vitest run` 123 用例全过 (session-rotation)
 
 ### 健全性测试修复 (2026-06-07)
 
@@ -81,6 +85,50 @@
 - conversation-router: 轮换后路由、重复 sessionKey 幂等
 - handoff-inject: `activeSessionKey` 回退查找、双路径均无匹配
 - rotate-session-tool: nextStep 缺失拒绝、progress 默认值行为、handoff complete 标记、多问题拒绝
+
+### 阶段 4: Task Segment 追踪集成 + 双轨索引 + CompactionSummary (2026-06-07) ✅
+
+**核心实现**:
+
+| 功能 | 文件 | 说明 |
+|------|------|------|
+| TaskPhase 四阶段 | `handoff-types.ts` | `type TaskPhase = "plan" \| "todo" \| "review" \| "recall"` |
+| CompressedPhaseResult | `handoff-types.ts` | 已完成阶段的精炼摘要 + artifactRefs |
+| TaskSegment 扩展 | `handoff-types.ts` | 新增 phase / body.plan / body.todos / compressedResults |
+| advancePhase | `task-segment-tracker.ts` | plan→todo→review→recall 阶段推进 |
+| compressCompletedPhase | `task-segment-tracker.ts` | 按阶段压缩: plan(计划摘要) / todo(完成+待办) / review(决策) |
+| updateTodos | `task-segment-tracker.ts` | 实时更新 todo 队列 |
+| buildMicroIndexFromSegments | `dual-track-index.ts` | 增强: phase + compressedPhaseSummaries |
+| buildCompactionSummaryFromHandoff | `rotation-controller.ts` | 从 HandoffPacket 生成 CompactionSummary → MacroIndexEntry |
+| appendMacroIndexEntry | `conversation-store.ts` | 增量追加 MacroIndex 条目(非全量替换) |
+| buildAndStoreDualTrackIndex | `handoff-inject.ts` | 一次性构建 MicroIndex + MacroIndex 并存入 ConversationStore |
+| attempt.ts 集成 | `attempt.ts` | TaskSegmentTracker 初始化 + 工具调用事件 + 封口 + 双轨索引 |
+
+**双轨索引完整数据流**:
+
+```
+用户指令 → TaskSegmentTracker.startSegment (plan)
+  → 工具调用 → advancePhase(plan→todo) → recordToolCall
+  → 运行结束 → advancePhase(todo→review→recall) → sealSegment
+  → buildAndStoreDualTrackIndex → MicroIndex 存入 ConversationStore
+
+会话轮转 → executeRotation
+  → buildCompactionSummaryFromHandoff → MacroIndexEntry 追加到 ConversationStore
+  → HandoffPacket 注入新会话
+
+新会话启动 → consumeDualTrackIndexBlockForSession
+  → MacroIndex + MicroIndex 注入模型上下文
+```
+
+**新增测试**: 26 用例 (97→123)
+- task-segment-tracker: +19 (phase 转换 / compressCompletedPhase / updateTodos / 双段 / recall 后 seal)
+- rotation-controller: +1 (compaction summary from full handoff)
+- conversation-store: +5 (appendMacroIndexEntry / updateDualTrackIndex)
+- dual-track-index: +1 (buildMicroIndexFromSegments with phase summaries)
+
+**修复**:
+- conversation-store.ts: 添加 MacroIndexEntry / MicroIndexEntry 类型导入
+- attempt.ts: conversationId 为 null 时使用 getOrCreateForChat 确保有效 ID
 
 ---
 

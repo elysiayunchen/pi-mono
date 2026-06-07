@@ -18,10 +18,14 @@
   - 序 7 用户画像 User Model ✅ (SQLite + 双路径更新 + B2 注入)
   - 边缘情况加固: 正则修复、防守代码、门限常量化
 
-**序 8 Conversation+Handoff**：🔄 阶段 1-3 完成 + 健全性测试修复 (2026-06-07)
+**序 8 Conversation+Handoff**：🔄 阶段 1-4 完成 + 健全性测试修复 (2026-06-07)
   - 阶段 1-3: session-rotation 模块 (9 文件) + rotate_session 工具 + B3 Handoff 注入 + 自动轮换检测 ✅
   - 健全性测试: 5 项逻辑缺陷修复 + 24 新测试用例 (73→97) ✅
-  - 阶段 4-5: Task Segment 追踪集成 + 端到端验证 待续
+  - 阶段 4: Task Segment 追踪集成 + 双轨索引 + CompactionSummary 生成 ✅ (2026-06-07)
+    - plan-todo-review-recall 四阶段 + CompressedPhaseResult 分段压缩
+    - MacroIndex(会话压缩摘要) + MicroIndex(任务段摘要) 双轨索引数据流闭环
+    - 26 新测试 (97→123), tsc 零新增错误
+  - 阶段 5: 端到端验证 + 与压缩/CONSOLIDATE 统一 待续
 **pi-mono 统一版本**：0.64.0  
 **packages/ 精简**：mom/web-ui/pods 已删除（只剩 tui/ai/agent/coding-agent 4 个包）  
 **Tool Parity 进度**：3/16 = 18.75%
@@ -86,11 +90,11 @@ deploy.sh 发现并修复了导致"代码提交但 dist 未部署"的 3 个结�
 | 序 5 注入预算器 | system prompt tokens 计入压缩阈值, 防反身性 | ✅ 2026-06-07 |
 | 序 6 输入分类器 | task/chat/affective/meta 四分类, 偏向 task | ✅ 2026-06-07 |
 | 序 7 用户画像 | SQLite 持久化 + 双路径更新 + B2 注入 | ✅ 2026-06-07 |
-| 序 8 Conversation+Handoff | 手动 rotate 验证精度 | 🔄 阶段 1-3 + 健全性修复完成 (2026-06-07) |
+| 序 8 Conversation+Handoff | 手动 rotate 验证精度 | 🔄 阶段 1-4 + 健全性修复完成 (2026-06-07) |
 
 > **分层注入架构 `CONTEXT-INJECTION-ARCHITECTURE.md`**(2026-06-06):WS-3 的上位设计。按变化频率分 B0-B4 五带 + 消息流,钉 KV-cache 锚点,易变注入(RECALL/World Model)下沉锚点之后。**已发现严重病灶**:RECALL 被 append 进 system prompt(`attempt.ts:1781`),每轮变化致稳定前缀(base+GUIDANCE 数 k token)KV-cache 每轮全失效、重 prefill——token 白烧的根因。
 
-> **会话轮换与跨会话延续 `SESSION-ROTATION-CONTINUITY.md`**(2026-06-06):把 session 从"用户可见对话单元"解耦为"模型工作记忆周期单元"。用户单对话框无感持久对话,模型按语义边界自主轮换 session(刷新工作记忆窗口),归档 session 回写记忆引擎。**设计红线**:延续必须双轨——精确执行状态走结构化 Handoff Packet(B3),背景知识走 memory_search 召回(B4);纯靠记忆检索延续任务会准确性塌陷。三层架构 Conversation/Session/Handoff;复用 SessionEntry + resume 机制;轮换=CONSOLIDATE 时机。新增 §4B 任务段(Task Segment)实时打包:`用户指令→完成信号`为边界,带索引头(type+status+goal)实时 streaming capture,Handoff 零额外提炼;任务内三级压缩(L1 工具结果驱逐/L2 任务段归档/L3 会话轮换,颗粒度递增频率递减,消费即降权)。
+> **会话轮换与跨会话延续 `SESSION-ROTATION-CONTINUITY.md`**(2026-06-06, 阶段 1-4 已实施):把 session 从"用户可见对话单元"解耦为"模型工作记忆周期单元"。用户单对话框无感持久对话,模型按语义边界自主轮换 session(刷新工作记忆窗口),归档 session 回写记忆引擎。**设计红线**:延续必须双轨——精确执行状态走结构化 Handoff Packet(B3),背景知识走 memory_search 召回(B4);纯靠记忆检索延续任务会准确性塌陷。三层架构 Conversation/Session/Handoff;复用 SessionEntry + resume 机制;轮换=CONSOLIDATE 时机。§4B 任务段(Task Segment)实时打包:`用户指令→完成信号`为边界,带索引头(type+status+goal+phase)实时 streaming capture,Handoff 零额外提炼;任务内三级压缩(L1 工具结果驱逐/L2 任务段归档/L3 会话轮换,颗粒度递增频率递减,消费即降权)。**双轨索引**:MacroIndex(压缩会话摘要,轮转时从 HandoffPacket 生成)+ MicroIndex(任务段摘要,含 phase+compressedPhaseSummaries),存入 ConversationStore,新会话注入模型上下文。**plan-todo-review-recall 四阶段**:plan(规划)→todo(执行,工具调用自动推进)→review(审查,决定 plan 调整或 end)→recall(回顾,输出结果+压缩全分段)。
 
 > **知识库与自我进化 `KNOWLEDGE-BASE-EVOLUTION.md`**(2026-06-06):上下文=信息接收系统的范式。核心①**索引化注入**:系统注入只给轻量索引信号(指针),完整内容靠 `memory_get`(KNOWN 已存在)按需取——病灶是 `attempt.ts:1781` 把 snippet 当内容注入;修正为"索引为主+强相关预取"分级,非一刀切全索引。②**输入分类**(task/chat/affective/meta,误判成本不对称→偏向 task),闲聊不进任务轨但进画像流。③**用户画像 User Model**(KNOWN 真空白,新建)。④**技能进化**(KNOWN skills 只读,episode→skill+沙箱+HITL)。⑤**自我进化闭环**:接收→分类→CONSOLIDATE→更新画像/固化技能/沉淀记忆→索引化注入回认知,内置非用户改善。阶段 1(索引化注入)ROI 最高、复用现成工具、与 CONTEXT-INJECTION B4 改造同处代码。**5 份设计已成网,亟需 ARCHITECTURE.md 总览图**。
 
@@ -235,6 +239,7 @@ task_assign (worktree: true)
 | 2026-06-07 | tsgo 类型检查 53→0 | 全仓类型错误清零，npm run check 不再阻塞 |
 | 2026-06-07 | 序 8 Conversation+Handoff 阶段 1-3 | session-rotation 模块 (9 文件 73 测试) + rotate_session 工具 + B3 Handoff 注入 + 自动轮换检测 |
 | 2026-06-07 | 序 8 健全性测试 | 5 项逻辑缺陷修复 + 24 新测试 (73→97), tsc 零新增错误 |
+| 2026-06-07 | 序 8 阶段 4 | TaskSegment 追踪 + 双轨索引 + CompactionSummary + 26 新测试 (97→123) |
 
 ---
 
