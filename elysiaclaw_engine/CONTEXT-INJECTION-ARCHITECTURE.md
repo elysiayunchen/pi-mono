@@ -1,9 +1,10 @@
 # ElysiaClaw — 分层上下文注入架构（Layered Context Injection）
 
-> 起草:2026-06-06 · 状态:**PROPOSAL,待启动** · 维护者:aoseluo(云尘 / 奈緒)
+> 起草:2026-06-06 · 状态:**部分实施中** · 维护者:aoseluo(云尘 / 奈緒)
 > 范围:系统注入给 LLM 的信息的分层结构 + KV-cache 优化 + 注入预算 + 上下文生命周期管理
 > 定位:`TELEGRAM-UX-CONTEXT-PLAN.md` WS-3 的上位设计;`SUPERADMIN-AGENT-DESIGN.md`(World Model/RECALL)的注入承载层
 > 标注:**KNOWN**=代码证据;**INFERRED**=原理推断/数量级估算;**NEEDS-VERIFICATION**=需实测;**PROPOSAL**=设计建议
+> 进度:序1(索引化注入+B4改造)✅生产验证通过 · 序5(注入预算器)✅基础接入(简化版,完整版待升级) · 序4(L0工具结果驱逐)✅ · 其余序=PROPOSAL
 
 ---
 
@@ -57,6 +58,7 @@ systemPromptText =
 │ B1 CAPABILITY    工具定义 + skill 索引 + 静态 GUIDANCE        部署级·随构建变
 │                  (delegate_code_task / memory_search 指引)
 │ B2 ENVIRONMENT   World Model 摘要 + 运行环境快照               慢变·reconcile 周期(30min)
+│                  ⚠️ 当前实际:World Model Phase 2 未启动,B2 仅注入用户画像 summary,"环境快照"定位名不副实
 ├══ CACHE ANCHOR ══ prefix-caching 断点(cache_control / 自然前缀)═══════════┤
 │ B3 WORKING SET   压缩 summary + CLAUDE.md 懒加载 + 会话事实    会话内变·压缩时
 │ B4 EPHEMERAL     RECALL top-k + 临时知识 + 压缩感知回补        ★每轮变★
@@ -132,8 +134,8 @@ T_inj   = 注入预算上限(B2+B3+B4),建议 ≤ 总窗口的某固定比例(NE
 
 ## 七、风险与盲点
 
-- **provider 缓存差异**:不同 provider 的 prefix caching 触发条件/最小长度/TTL 不一 → cache 锚点策略需 per-provider 适配,不能假设统一。**NEEDS-VERIFICATION**。
-- **B2 颠簸**:World Model 若 reconcile 过频会频繁失效前缀 → 锁 30min 周期 + 仅在实体真变时才更新摘要(diff 后无变化则不动 B2 文本)。
+- **provider 缓存差异**:不同 provider 的 prefix caching 触发条件/最小长度/TTL 不一 → cache 锚点策略需 per-provider 适配,不能假设统一。**NEEDS-VERIFICATION**。⚠️ **落地阻塞**:OpenRouter / 阿里云 Bailian 的 prefix caching 行为差异是落地时的硬阻塞,建议在落地前先做实测(最小可缓存长度、TTL、命中计费比)。
+- **B2 颠簸**:World Model 若 reconcile 过频会频繁失效前缀 → 锁 30min 周期 + 仅在实体真变时才更新摘要(diff 后无变化则不动 B2 文本)。⚠️ **当前 B2 实际只有用户画像 summary**,World Model Phase 2 未启动前此风险暂不适用,但 Phase 2 启动后需立即关注。
 - **预算误配**:T_inj 过大→挤压对话/触发压缩;过小→召回不足 → 需实测调参,先保守。
 - **尾锚冗余**:尾锚复述过多会变噪音 → 只压最关键 1-2 条硬约束。
 - **裁剪误伤**:溢出裁剪逻辑必须严守优先级,B0 安全红线绝不可裁——加单测覆盖。
@@ -153,4 +155,4 @@ T_inj   = 注入预算上限(B2+B3+B4),建议 ≤ 总窗口的某固定比例(NE
 
 ---
 
-*相关文档:`TELEGRAM-UX-CONTEXT-PLAN.md`(WS-3)· `SUPERADMIN-AGENT-DESIGN.md`(World Model/RECALL/CONSOLIDATE)· `MEMORY-ACTIVATION-RUNBOOK.md`(记忆引擎已激活)· `ARCHITECTURE.md` · `PITFALLS.md`*
+*相关文档:`TELEGRAM-UX-CONTEXT-PLAN.md`(WS-3)· `SUPERADMIN-AGENT-DESIGN.md`(World Model/RECALL/CONSOLIDATE)· `archive/MEMORY-ACTIVATION-RUNBOOK.md`(记忆引擎已激活)· `ARCHITECTURE.md` · `PITFALLS.md`*

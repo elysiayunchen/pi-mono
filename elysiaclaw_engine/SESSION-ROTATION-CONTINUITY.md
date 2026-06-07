@@ -4,9 +4,6 @@
 > ⚠️ **状态校正(2026-06-07 实测)**:下文多处 "✅ IMPLEMENTED" 的真实语义是"代码+测试存在",**非生产运行**。真实基线见上位文档 §七(AS1-AS7):`executeRotation` 是死代码、自动轮换只是提示文字、CONSOLIDATE 未接、未部署、无 conversation 表。**信 ✅ 前先 grep 生产调用者**。
 
 > 起草:2026-06-06 · 状态:**阶段 1-4 代码+测试存在,生产未接线/未部署(见上位文档 §七)** · 维护者:aoseluo(云尘 / 奈緒)
-> 范围:用户无感的持久对话 + 模型自主 session 轮换(刷新工作记忆窗口)+ 跨会话任务延续机制
-> 定位:`CONTEXT-INJECTION-ARCHITECTURE.md`(静态分层)的动态化;`SUPERADMIN-AGENT-DESIGN.md`(记忆/CONSOLIDATE)的延续承载
-> 标注:**KNOWN**=代码证据;**INFERRED**=原理推断;**PROPOSAL**=设计建议
 
 ---
 
@@ -154,6 +151,7 @@ interface TaskSegment {
 - 运行结束 → advancePhase(**todo→review**),compressCompletedPhase 压缩 todo 阶段;
 - 任务成功 → advancePhase(**review→recall**),封口(写 status + outcome);
 - 模型发**完成信号**(显式标记 or turn 收尾)→ sealSegment,segment 即成天然 Handoff 来源;
+  > ⚠️ **审查风险标注**:完成信号没有结构化定义,实际靠启发式(turn 收尾 / 超时),可靠性存疑。`advancePhase` 是自动推进的,封口依赖模型发出"完成信号"——但模型不会显式发信号,只能靠推断。建议定义结构化完成标记(如 `TASK_DONE` 指令或工具调用)。
 - **兜底封口**:超时(10min) / topic_shift / token 压力 → 强制封口为 incomplete,防永不闭合;
 - **自动封印旧段**:新 segment 启动时,若旧段仍 running → 自动封印为 incomplete + 写入 outcome。
 
@@ -189,6 +187,7 @@ interface ToolCallRecord {
 ```
 
 判定"已消费"启发式:产生下一个 assistant turn 即视为上一批 tool_result 已消费 → 驱逐。需要回看 → 经 `artifactRef` 精确召回(复用 Tool-Log Interceptor,`SUPERADMIN` 待深挖 #7)。**驱逐 = 移出工作记忆窗口,非删除**——这是不可逆驱逐与回看需求的平衡点。
+  > ⚠️ **审查风险标注**:启发式过于粗糙——如果模型在下一个 turn 中需要引用上一个 tool_result 的细节呢?`artifactRef` 回查机制虽已设计但未实现。在回查机制落地前,L1 驱逐可能导致模型丢失关键上下文。
 
 ### 4B.4 三级与现有压缩/注入的归并
 
@@ -284,23 +283,23 @@ interface ToolCallRecord {
 
 | 文件 | 改动 | 状态 |
 |---|---|---|
-| `src/session-rotation/handoff-types.ts` | HandoffPacket + TaskSegment(含 TaskPhase/CompressedPhaseResult) + 完整性断言 + formatHandoffForInjection | ✅ IMPLEMENTED |
-| `src/session-rotation/rotation-controller.ts` | 触发判断 + 安全点检测 + archive/spawn/inject 编排 + **CompactionSummary 生成** | ✅ IMPLEMENTED |
-| `src/session-rotation/conversation-store.ts` | Conversation↔session 映射持久化(node:sqlite) + **双轨索引存储**(macroIndex/microIndex) + appendMacroIndexEntry | ✅ IMPLEMENTED |
-| `src/session-rotation/conversation-types.ts` | ConversationEntry / ConversationStoreData | ✅ IMPLEMENTED |
-| `src/session-rotation/task-segment-tracker.ts` | 任务段实时追踪 + **plan-todo-review-recall 四阶段** + compressCompletedPhase + classifyTaskType + 超时封口 | ✅ IMPLEMENTED |
-| `src/session-rotation/conversation-router.ts` | chat→Conversation→activeSession 间接映射 | ✅ IMPLEMENTED |
-| `src/session-rotation/handoff-inject.ts` | B3 Handoff 注入 + **双路径查找**(chatId + activeSessionKey) + consumeHandoff + **buildAndStoreDualTrackIndex** | ✅ IMPLEMENTED |
-| `src/session-rotation/auto-trigger.ts` | checkAutoRotation / estimateSessionTokens | ✅ IMPLEMENTED |
-| `src/session-rotation/dual-track-index.ts` | **双轨索引构建**:MacroIndex(压缩会话摘要) + MicroIndex(任务段摘要) + formatDualTrackIndexForInjection | ✅ IMPLEMENTED |
-| `src/session-rotation/index.ts` | 模块导出(含 TaskPhase/CompressedPhaseResult) | ✅ IMPLEMENTED |
-| `src/agents/tools/rotate-session-tool.ts` | rotate_session 工具(ownerOnly, completeness 门控) | ✅ IMPLEMENTED |
-| `src/agents/pi-embedded-runner/run/attempt.ts` | B3 Handoff 注入 + 自动轮换检测 + **TaskSegmentTracker 集成** + **双轨索引构建** | ✅ IMPLEMENTED |
-| `src/agents/elysiaclaw-tools.ts` | rotate_session 四层注册 | ✅ IMPLEMENTED |
-| `src/agents/tool-catalog.ts` | rotate_session 工具目录 | ✅ IMPLEMENTED |
+| `src/session-rotation/handoff-types.ts` | HandoffPacket + TaskSegment(含 TaskPhase/CompressedPhaseResult) + 完整性断言 + formatHandoffForInjection | 📝 代码存在 |
+| `src/session-rotation/rotation-controller.ts` | 触发判断 + 安全点检测 + archive/spawn/inject 编排 + **CompactionSummary 生成** | 📝 代码存在(executeRotation 死代码,零生产调用者) |
+| `src/session-rotation/conversation-store.ts` | Conversation↔session 映射持久化(node:sqlite) + **双轨索引存储**(macroIndex/microIndex) + appendMacroIndexEntry | 📝 代码存在 |
+| `src/session-rotation/conversation-types.ts` | ConversationEntry / ConversationStoreData | 📝 代码存在 |
+| `src/session-rotation/task-segment-tracker.ts` | 任务段实时追踪 + **plan-todo-review-recall 四阶段** + compressCompletedPhase + classifyTaskType + 超时封口 | 📝 代码存在 |
+| `src/session-rotation/conversation-router.ts` | chat→Conversation→activeSession 间接映射 | 📝 代码存在 |
+| `src/session-rotation/handoff-inject.ts` | B3 Handoff 注入 + **双路径查找**(chatId + activeSessionKey) + consumeHandoff + **buildAndStoreDualTrackIndex** | 📝 代码存在 |
+| `src/session-rotation/auto-trigger.ts` | checkAutoRotation / estimateSessionTokens | 📝 代码存在(自动轮换只是提示文字,从不真轮换) |
+| `src/session-rotation/dual-track-index.ts` | **双轨索引构建**:MacroIndex(压缩会话摘要) + MicroIndex(任务段摘要) + formatDualTrackIndexForInjection | 📝 代码存在(MacroIndex 恒为空,见 #91) |
+| `src/session-rotation/index.ts` | 模块导出(含 TaskPhase/CompressedPhaseResult) | 📝 代码存在 |
+| `src/agents/tools/rotate-session-tool.ts` | rotate_session 工具(ownerOnly, completeness 门控) | 🔄 已接线待验证(违反 AgentTool 契约已修,见 #93) |
+| `src/agents/pi-embedded-runner/run/attempt.ts` | B3 Handoff 注入 + 自动轮换检测 + **TaskSegmentTracker 集成** + **双轨索引构建** | 🔄 已接线待验证(B4 RECALL 方向反了,见 #85) |
+| `src/agents/elysiaclaw-tools.ts` | rotate_session 四层注册 | ✅ 生产验证通过 |
+| `src/agents/tool-catalog.ts` | rotate_session 工具目录 | ✅ 生产验证通过 |
 | `src/sessions/session-id-resolution.ts` | chat→Conversation→active session 间接层 | 待接入 |
-| `src/agents/pi-embedded-runner/compact.ts` | 压缩阈值与轮换阈值统一;轮换触发 CONSOLIDATE | 待接入 |
-| `src/config/*`(Zod) | `sessionRotation.{enabled,triggers,maxWindowTokens}` | 待接入 |
+| `src/agents/pi-embedded-runner/compact.ts` | 压缩阈值与轮换阈值统一;轮换触发 CONSOLIDATE | 待接入(CONSOLIDATE 未接) |
+| `src/config/*`(Zod) | `sessionRotation.{enabled,triggers,maxWindowTokens}` | 待接入(安全点硬约束写死 0/false) |
 
 ---
 
@@ -344,4 +343,4 @@ interface ToolCallRecord {
 
 ---
 
-*相关文档:`CONTEXT-INJECTION-ARCHITECTURE.md`(分层注入/B3/B4)· `SUPERADMIN-AGENT-DESIGN.md`(记忆/CONSOLIDATE/状态机)· `TELEGRAM-UX-CONTEXT-PLAN.md`(WS-3 压缩×记忆)· `MEMORY-ACTIVATION-RUNBOOK.md`(记忆引擎已激活)· `ARCHITECTURE.md`*
+*相关文档:`CONTEXT-INJECTION-ARCHITECTURE.md`(分层注入/B3/B4)· `SUPERADMIN-AGENT-DESIGN.md`(记忆/CONSOLIDATE/状态机)· `TELEGRAM-UX-CONTEXT-PLAN.md`(WS-3 压缩×记忆)· `archive/MEMORY-ACTIVATION-RUNBOOK.md`(记忆引擎已激活)· `ARCHITECTURE.md`*

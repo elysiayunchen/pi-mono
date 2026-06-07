@@ -28,11 +28,9 @@
   - 阶段 5: 端到端验证 + 与压缩/CONSOLIDATE 统一 待续
 **pi-mono 统一版本**：0.64.0  
 **packages/ 精简**：mom/web-ui/pods 已删除（只剩 tui/ai/agent/coding-agent 4 个包）  
-**Tool Parity 进度**：3/16 = 18.75%
-- Task 0 (ToolDefinition 接口扩展): ✅ 已完成
-- Task 1 (GrepTool 参数补全): ✅ 已完成
-- Task 2 (BashTool 能力声明): ✅ 已完成
-- Task 3-16: 待执行
+**Tool Parity 进度**：14/17 = 82.4%（详见 `TOOL-PARITY-PLAN.md`）
+- Task 0-13: ✅ 全部完成（接口扩展 + Grep/Bash/Todo/Edit/Read/Write/Find/Ls/PlanMode/Task/Team + web_fetch注册 + WebSearch超预期5 provider）
+- Task 14-16: 待执行（AskUserQuestion / MCP协议 / 并行执行引擎）
 
 **跨会话记忆**：✅ 已完成 (2026-06-06) — 记忆引擎激活全流程
   - TS memory_search: 121 files, 508 chunks, pplx-embed-v1-4b (2560d), FTS trigram
@@ -53,7 +51,7 @@
 
 ## 🔴 核心目标 — 记忆引擎激活 ✅ 已完成 (2026-06-06)
 
-> 执行手册: `MEMORY-ACTIVATION-RUNBOOK.md`（T1-T6，已于 2026-06-06 全部完成）
+> 执行手册: `archive/MEMORY-ACTIVATION-RUNBOOK.md`（T1-T6，已于 2026-06-06 全部完成）
 > 总架构: `SUPERADMIN-AGENT-DESIGN.md`（Phase 1 完成，Phase 2 World Model 待启动）
 
 ### 完成内容

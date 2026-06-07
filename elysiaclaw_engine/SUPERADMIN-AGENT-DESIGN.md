@@ -5,7 +5,7 @@
 >
 > 本文档把"围绕超级计算机管理员打造 ElysiaClaw"的核心设计固化为定稿。
 > 范围:记忆架构诊断 + 四类记忆 + 认知循环状态机 + World Model 数字孪生。
-> **Phase 1 (记忆引擎激活)**: T1-T6 全部完成 — TS memory_search 已取代 Python session_search，RECALL 注入已激活。详见 `MEMORY-ACTIVATION-RUNBOOK.md`。
+> **Phase 1 (记忆引擎激活)**: T1-T6 全部完成 — TS memory_search 已取代 Python session_search，RECALL 注入已激活。详见 `archive/MEMORY-ACTIVATION-RUNBOOK.md`。
 > **Phase 2 (World Model 数字孪生)**: 待启动。
 > 标注约定:**KNOWN**=有代码/grep 证据;**PROPOSAL**=设计建议,未实现。
 > 深挖细节(probe 解析、状态机逐态、CONSOLIDATE 提炼)见文末「待深挖清单」。
@@ -274,7 +274,7 @@ worldModel: z.object({
   ├── DTS ×6 类型错误(pnpm build 阻塞,Pitfall #38/#63)
   └── 主模型可用性(owl-alpha 400)— CONSOLIDATE 的 LLM 提炼依赖
 
-阶段 1  激活记忆引擎(ROI 最高,不依赖模型)— 执行细节见 MEMORY-ACTIVATION-RUNBOOK.md
+阶段 1  激活记忆引擎(ROI 最高,不依赖模型)— 执行细节见 archive/MEMORY-ACTIVATION-RUNBOOK.md
   ├── ⚠️ 实测(2026-06-06):线上引擎 0 chunks 空置 · sources 仅 memory · Provider none · FTS ready
   │      → 性质不是"接对一个能用的系统",是"激活一个从未通电的引擎"
   ├── 1.1 开 config(Sacred):memorySearch.enabled + sources:[memory,sessions] + experimental.sessionMemory=true
@@ -316,7 +316,9 @@ worldModel: z.object({
 - **记忆回音壁**:自动沉淀 + 自动注入可能强化错误事实 → note 不给 high confidence + temporal-decay + 可纠错。
 - **别变垃圾桶**:World Model 只收 7 类对运维有用实体,不做通用 CMDB。
 - **多机**:host 字段预留,初期单机,不实现跨机聚合。
-- **状态机改造侵入性**:`attempt.ts` 2861 行,逐态包壳,不重写。
+- **状态机改造侵入性**:`attempt.ts` 2861 行,逐态包壳,不重写。⚠️ **审查风险标注**:包壳意味着隐式流程外加显式状态两套逻辑并存,调试复杂度会飙升。建议先拆分 attempt.ts(见 HANDOFF.md 残余技术债),再包壳。
+- **probe shell 成本未量化**:7 个 probe 每次全量跑的 shell 开销待实测,30 分钟周期是否合理需数据支撑。
+- **Phase 2 是多个已落地功能的前置依赖**:B2 ENVIRONMENT 注入需要 World Model 摘要、CONSOLIDATE 需要 `world_changes` 回写。当前 B2 实际只注入用户画像 summary,"环境快照"定位名不副实。
 
 ---
 
@@ -332,12 +334,12 @@ worldModel: z.object({
 
 ---
 
-*相关文档:**`MEMORY-ACTIVATION-RUNBOOK.md`(阶段1 执行手册,给执行 agent)** · `plan.md`(进化能力增量计划)· `ARCHITECTURE.md` · `PITFALLS.md`(#38/#44/#63)· `SYSTEM.md`*
+*相关文档:**`archive/MEMORY-ACTIVATION-RUNBOOK.md`(阶段1 执行手册,给执行 agent)** · `plan.md`(进化能力增量计划)· `ARCHITECTURE.md` · `PITFALLS.md`(#38/#44/#63)· `SYSTEM.md`*
 
 ---
 
 ## 附:文档分工
 
 - **本文档(SUPERADMIN-AGENT-DESIGN.md)= 总架构**:讲"为什么 / 是什么"(诊断、记忆模型、状态机、World Model、TS 优越性)。架构 agent 维护,变更需对齐设计意图。
-- **MEMORY-ACTIVATION-RUNBOOK.md = 执行手册**:讲"怎么做"(逐任务 SOP、命令、config diff、代码坐标、DoD、回滚)。执行 agent 照此落地。
+- **archive/MEMORY-ACTIVATION-RUNBOOK.md = 执行手册**:讲"怎么做"(逐任务 SOP、命令、config diff、代码坐标、DoD、回滚)。执行 agent 照此落地。
 - 二者必须一致:执行中发现架构假设不成立 → 回报架构 agent 修订本文档,不在 Runbook 里私自改方向。

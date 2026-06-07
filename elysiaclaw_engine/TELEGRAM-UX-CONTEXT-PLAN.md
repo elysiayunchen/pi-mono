@@ -1,9 +1,10 @@
 # ElysiaClaw — Telegram 输出体验 × 上下文/记忆协同 改造计划
 
-> 起草:2026-06-06 · 状态:**PROPOSAL,待启动** · 维护者:aoseluo(云尘 / 奈緒)
+> 起草:2026-06-06 · 状态:**部分实施中** · 维护者:aoseluo(云尘 / 奈緒)
 > 范围:Telegram 流式观感重构 + 压缩期可见性 + 上下文压缩与记忆引擎闭环
 > 标注约定:**KNOWN**=有代码/grep 证据;**PROPOSAL**=设计建议,未实现。
 > 关联文档:`SUPERADMIN-AGENT-DESIGN.md`(记忆/World Model 总架构)· `PITFALLS.md`(#70)· `SYSTEM.md`
+> 进度:WS-1(压缩可见性)✅生产验证通过 · WS-2(全流式输出)✅生产验证通过 · WS-3(压缩×记忆协同)=PROPOSAL,依赖记忆引擎+World Model
 
 ---
 
@@ -133,6 +134,7 @@ WS-3 压缩×记忆协同   ← 依赖记忆引擎(✅已激活)+ World Model(�
 - WS-1 / WS-2 可并行,均为渠道层改造,**不需要可用主模型**即可验证(用静默/思考观察)。
 - WS-3 的注入预算器(§2)可先做(纯逻辑);CONSOLIDATE 提炼(§1)等主模型恢复。
 - 与 `SUPERADMIN-AGENT-DESIGN.md` Phase 2 World Model 对齐:World Model 摘要注入纳入 WS-3 的统一预算器,不另起炉灶。
+- ⚠️ **审查建议**:WS-3 是三个工作流中最重要的(反身性空转的根因修复),但依赖最多(记忆引擎 + World Model + 可用模型)。建议单独拆为独立 Sprint,不与 WS-1/WS-2 并行,确保有足够时间处理依赖。
 
 ---
 
@@ -171,4 +173,4 @@ WS-3 压缩×记忆协同   ← 依赖记忆引擎(✅已激活)+ World Model(�
 
 ---
 
-*相关文档:`SUPERADMIN-AGENT-DESIGN.md`(记忆/World Model 总架构,WS-3 的上位设计)· `MEMORY-ACTIVATION-RUNBOOK.md`(记忆引擎已激活)· `PITFALLS.md` #70(tool lane 防抖)· `ARCHITECTURE.md` · `SYSTEM.md`*
+*相关文档:`SUPERADMIN-AGENT-DESIGN.md`(记忆/World Model 总架构,WS-3 的上位设计)· `archive/MEMORY-ACTIVATION-RUNBOOK.md`(记忆引擎已激活)· `PITFALLS.md` #70(tool lane 防抖)· `ARCHITECTURE.md` · `SYSTEM.md`*

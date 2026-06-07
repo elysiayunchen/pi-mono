@@ -1,6 +1,6 @@
 # ElysiaClaw — AI 接手文档
 
-> 最后更新: 2026-06-07 (**参与者持续性总架构落定** → [PARTICIPANT-CONTINUITY-ARCHITECTURE.md](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md);含 L0-L4 决策记录 D1-D10 + 现状审查 AS1-AS7 + DO-NOT-DRIFT。叠加序 8 深度审查 + 接线断链修复: 坑 #91-#94, tsgo 19→0, 134 测试全过)
+> 最后更新: 2026-06-07 (**设计审查完成** → 全引擎文档状态校正 + PITFALLS #85 新增 + 三级完成标注落地; **参与者持续性总架构落定** → [PARTICIPANT-CONTINUITY-ARCHITECTURE.md](./PARTICIPANT-CONTINUITY-ARCHITECTURE.md);含 L0-L4 决策记录 D1-D10 + 现状审查 AS1-AS7 + DO-NOT-DRIFT。叠加序 8 深度审查 + 接线断链修复: 坑 #91-#94, tsgo 19→0, 134 测试全过)
 > 当前维护者: aoseluo (云尘 / 奈緒)
 > 维护模式: AI 协作，独立维护，不与上游同步
 
@@ -18,7 +18,7 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 ### 架构
 - **12 层 Agent 框架**: 全部竣工（s01-s12.1）
 - **P 系列补丁**: P1-A/B/C + P2-A/B/D + P3-A/B 全部完成
-- **Tool Parity**: 11/16 = 68.75% (Task 0/1/2/3/4 框架层 + Task 5-11 批量能力声明 + Task 12 四层注册 + Task 13 elysiaclaw 超预期)
+- **Tool Parity**: 14/17 = 82.4% (Task 0-13 全部完成; Task 14-16 待执行)
 - **DTS 类型错误**: ✅ 全部修复 (2026-06-07)，`pnpm build` 干净通过
 - **子代理基础设施**: elysiaclaw 层完整实现（37 个文件）
 
@@ -97,6 +97,10 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - `computeInjectionBudget` 未接入运行时（SDK 用硬编码阈值，不随 1M 窗口缩放）
 - `input-classifier` 数据源偏窄（短陈述句落入 task，identity.name 提不出）
 - sessions chunks 47% CLAUDE.md 注入噪音
+- **设计-实现鸿沟**（PITFALLS #85）: 多个模块"代码+测试存在"但未接线生产路径（executeRotation 死代码 / CONSOLIDATE 未接 / 安全点硬约束写死 / B4 RECALL 方向反了 / 注入预算器未喂运行时）
+- **attempt.ts 复杂度失控**: 2861+ 行上帝文件，建议拆分为 `system-prompt-builder.ts` + `injection-coordinator.ts` + `rotation-trigger.ts`
+
+> ⚠️ **技术债统一维护**: 本节与 ROADMAP.md 的"残余技术债"有重叠但非完全一致。以本节为准，ROADMAP.md 仅保留框架级技术债。
 
 ---
 
@@ -105,16 +109,18 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 1.本文档 (HANDOFF.md) — 你在看这个
 2.elysiaclaw_engine/SYSTEM.md — 运行环境、构建部署、文件索引
 3.elysiaclaw_engine/ARCHITECTURE.md — 架构蓝图
-4.elysiaclaw_engine/PITFALLS.md — 70 个踩坑记录（必读）
-5.elysiaclaw_engine/SUPERADMIN-AGENT-DESIGN.md — 记忆架构总设计（Phase 1 完成，Phase 2 待启动）
-6.elysiaclaw_engine/MEMORY-ACTIVATION-RUNBOOK.md — 记忆引擎激活执行手册（已完成，参考用）
-7.elysiaclaw_engine/TELEGRAM-UX-CONTEXT-PLAN.md — Telegram 输出体验 × 上下文/记忆协同计划（PROPOSAL）
-8.elysiaclaw_engine/CONTEXT-INJECTION-ARCHITECTURE.md — 分层上下文注入架构（KV-cache 优化 + 注入预算，PROPOSAL）
-9.elysiaclaw_engine/SESSION-ROTATION-CONTINUITY.md — 会话轮换与跨会话任务延续（工作记忆周期化 + Handoff 双轨延续 + §4B 任务段实时打包/三级压缩，PROPOSAL）
-10.elysiaclaw_engine/KNOWLEDGE-BASE-EVOLUTION.md — 知识库与自我进化（索引化注入 + 输入分类 + 用户画像 + 技能进化，PROPOSAL）
+4.elysiaclaw_engine/PITFALLS.md — 70+ 踩坑记录（必读）
+5.elysiaclaw_engine/PARTICIPANT-CONTINUITY-ARCHITECTURE.md — 参与者持续性总架构（决策记录 + DO-NOT-DRIFT）
+6.elysiaclaw_engine/SUPERADMIN-AGENT-DESIGN.md — 记忆架构总设计（Phase 1 完成，Phase 2 待启动）
+7.elysiaclaw_engine/CONTEXT-INJECTION-ARCHITECTURE.md — 分层上下文注入架构（KV-cache 优化 + 注入预算）
+8.elysiaclaw_engine/SESSION-ROTATION-CONTINUITY.md — 会话轮换与跨会话任务延续（被 PARTICIPANT-CONTINUITY 统摄）
+9.elysiaclaw_engine/KNOWLEDGE-BASE-EVOLUTION.md — 知识库与自我进化
+10.elysiaclaw_engine/TELEGRAM-UX-CONTEXT-PLAN.md — Telegram 输出体验 × 上下文/记忆协同
 11.elysiaclaw_engine/SUBAGENT-CODE-DELEGATION.md — 子代理代码委派技术设计
-8.elysiaclaw_engine/ROADMAP.md — 中长期规划
-9.elysiaclaw_engine/SPRINT.md — Sprint 工作台
+12.elysiaclaw_engine/ROADMAP.md — 中长期规划
+13.elysiaclaw_engine/SPRINT.md — Sprint 工作台
+
+> 归档文档见 `archive/` 目录：DELEGATE-CODE-TASK-PLAN / MEMORY-ACTIVATION-RUNBOOK / USER-PITFALLS / CLAUD-CODE-COMPARISON
 
 ---
 
@@ -155,14 +161,10 @@ ElysiaClaw = elysiaclaw（多渠道 AI 助手平台）+ pi-mono（Agent 框架�
 - Telegram delegate_code_task 端到端验证（需可用模型）
 
 **Tool Parity 后续 todo（按 PLAN 优先级，2026-06-07 接力点）**：
-- Task 13 WebSearchTool（🔴 高，新能力，Brave API/SearXNG）— 未开工
-- Task 3 TodoWrite 结构重写（🟡 中，schema 对齐 content+status+priority + outputSchema）— 未开工
-- Task 4 EditTool replace_all（🟡 中）— 未开工
-- Task 5-11 Read/Write/Find/Ls/PlanMode/Task系列/Team系列 能力声明（🟢 低，可批量）— 未开工
 - Task 14 AskUserQuestionTool（🟡 中，Telegram inline keyboard）— 未开工
-- Task 15 MCP 协议集成 / Task 16 并行执行引擎（🟡 中，大工程，最后）— 未开工
-- **测试补强模式可复用**：本次 Task 1/2 用「真实工具端到端 + vi.mock 隔离副作用」两类测试落实，后续每个 Task 完成应同步补 `test/<tool>-*.test.ts`，勿只勾选标准不验证
-- **grep.ts:360-368 排序代码异味**（非已确认 bug）：重写时预建 path→mtime Map，详见 TOOL-PARITY-PLAN.md Task 1
+- Task 15 MCP 协议集成（🟡 中，大工程）— 未开工
+- Task 16 并行执行引擎（🟡 中，大工程，最后）— 未开工
+- **测试补强模式可复用**：每个 Task 完成应同步补 `test/<tool>-*.test.ts`，勿只勾选标准不验证
 
 
 ## 包管理规则（不可混用）

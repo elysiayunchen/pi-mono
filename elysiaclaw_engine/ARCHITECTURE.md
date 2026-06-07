@@ -4,8 +4,9 @@
 > 面向 AI 协作者和未来维护者。
 
 > **🧭 接手 agent 先读这里**:Part 1-8 是**已实现**的框架/工具架构。
-> **Part 9「认知架构演进蓝图」是 5 份关联设计文档(全部 PROPOSAL,未实施)的全景收口** ——
-> 含一张全景信息流图 + 文档定位 + **统一实施优先级总表(从哪起步)** + 概念索引 + 待修病灶清单。
+> **Part 9「认知架构演进蓝图」是 5 份关联设计文档的全景收口** ——
+> 含文档定位 + **统一实施优先级总表(从哪起步)** + 概念索引 + 待修病灶清单。
+> ⚠️ **Part 9 缺口**:全景信息流图（5 份文档交叉依赖可视化）尚未交付。当前 5 份文档各自交叉引用彼此，缺少一个上帝视角的合并视图。建议补充 Mermaid 依赖图。
 > 选下一步工作请直接看 **Part 9.3**;理解整体设计意图看 **Part 9.1**。
 > 设计文档:`KNOWLEDGE-BASE-EVOLUTION` · `CONTEXT-INJECTION-ARCHITECTURE` · `SESSION-ROTATION-CONTINUITY` · `SUPERADMIN-AGENT-DESIGN` · `TELEGRAM-UX-CONTEXT-PLAN`
 
@@ -355,6 +356,8 @@ Agent.runLoop()               ← agent-loop.ts
 *本文档描述截至 2026-06-07 的架构状态。工具注册四层链已全部修复（#56）。ToolDefinition 接口已扩展至 18 字段 (Task 0)。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。记忆引擎已激活（T1-T6 完成，TS memory_search 取代 Python session_search）。deploy.sh 已增强至 5 Guard/12 Step（含 extensions sync + dist 完整性校验 + E2E 验证）。elysiaclaw `pnpm build` 有 DTS 错误需绕过 (PITFALLS #38)。流式输出修复：toolcall_start/delta/end 事件接入 Tool Lane 流式渲染（building→built phase），reasoning 默认开启 stream。*
 
 ## Part 6 — Philosophy: Evolutionary Architecture & Semiotic Flow
+
+> ⚠️ **本节是设计哲学，非编码规范**。美学主张（如"变量应反映 Elysia 境界的秩序"）与工程约束的边界需明确区分——命名规范以可读性和一致性为准，哲学理念仅作为灵感参考。
 
 ### 6.1 Mapping & Entropy Control
 ElysiaClaw views code generation as a mapping from **Vague Intent (Set A)** to **Precise Syntax (Set B)**.

@@ -1,9 +1,10 @@
 # ElysiaClaw — 知识库与自我进化(Knowledge Base & Self-Evolution)
 
-> 起草:2026-06-06 · 状态:**PROPOSAL,待启动** · 维护者:aoseluo(云尘 / 奈緒)
+> 起草:2026-06-06 · 状态:**部分实施中** · 维护者:aoseluo(云尘 / 奈緒)
 > 范围:上下文=信息接收系统的范式 · 索引化轻量注入 · 输入分类(任务/闲聊)· 用户画像 · 技能进化 · 自我进化闭环
 > 定位:`CONTEXT-INJECTION-ARCHITECTURE.md`(注入分层)与 `SUPERADMIN-AGENT-DESIGN.md`(记忆/CONSOLIDATE)的上层范式;`SESSION-ROTATION-CONTINUITY.md`(任务轨)的非任务侧补全
 > 标注:**KNOWN**=代码证据;**INFERRED**=原理推断;**PROPOSAL**=设计建议
+> 进度:输入分类器 ✅生产验证通过 · 用户画像 ✅已落地(读路径+写路径闭环) · 技能进化 PROPOSAL · 索引化注入 ✅生产验证通过
 
 ---
 
@@ -72,9 +73,9 @@
 | 记忆(memory) | 事实/决策/偏好 | ✅ 引擎已激活 | Semantic |
 | 会话(sessions) | 历史对话 | ✅ 已索引 | Episodic |
 | skills | 技能/runbook | ⚠️ 只读不可写 | Procedural(进化空白) |
-| **用户画像(User Model)** 🆕 | 用户身份/偏好/关系/风格 | ❌ **真空白** | (CoALA 未独列,运维关键) |
+| **用户画像(User Model)** 🆕 | 用户身份/偏好/关系/风格 | 🔄 SQLite 持久化+B2 注入已落地,画像更新流待验证 | (CoALA 未独列,运维关键) |
 
-**两大缺口 = 用户画像(全新) + 技能进化(只读→可写)**。
+**两大缺口 = 技能进化(只读→可写)**。用户画像已落地但待验证,技能进化仍是 Procedural 记忆的缺口。
 
 ---
 
@@ -158,9 +159,9 @@ interface UserModel {
               索引化注入回认知(§五)→ 影响下一轮行为
 ```
 
-**技能进化(Skill Evolution,Procedural 缺口)**:反复成功的 runbook(部署/排查)→ 从 episode 提炼为 skill 草案 → 沙箱 dry-run + **轻量 HITL 审批**(见风险)→ 写入 skills。这是 `skills 只读→可写` 的破局。
+**技能进化(Skill Evolution,Procedural 缺口)**:反复成功的 runbook(部署/排查)→ 从 episode 提炼为 skill 草案 → 沙箱 dry-run + **轻量 HITL 审批**(见风险)→ 写入 skills。这是 `skills 只读→可写` 的破局。⚠️ **沙箱可行性待验证**:设计为复用 s12 Worktree,但 Worktree 是 git worktree(代码隔离),技能验证需要的是执行隔离,不是代码隔离。需评估是否需要独立沙箱机制(如 Docker/container)。
 
-**"内置非用户改善"**:画像更新、技能固化、索引化注入全在 agent loop 自动发生,用户**零配置**。这正是用户诉求——系统自带认知进化,不靠用户喂 CLAUDE.md。
+**"内置非用户改善"**:画像更新、技能固化、索引化注入全在 agent loop 自动发生,用户**零配置**。这正是用户诉求——系统自带认知进化,不靠用户喂 CLAUDE.md。⚠️ **与 HITL 审批的张力**:"内置"主张与"每个技能固化需用户确认"存在张力。建议明确分级：低风险偏好(如常用命令别名)全自动、高影响技能(如部署 runbook)需确认。
 
 ---
 
@@ -197,7 +198,7 @@ interface UserModel {
 | `SESSION-ROTATION-CONTINUITY.md` | 输入分类前置于 Task Segment;chat 不进任务轨走画像流 |
 | `SUPERADMIN-AGENT-DESIGN.md` | 用户画像 = 第 5 类记忆;技能进化 = Procedural 落地;CONSOLIDATE 扩展 |
 | `TELEGRAM-UX-CONTEXT-PLAN.md` | HITL 审批 UX 走 Telegram;画像/技能纠错入口 |
-| `MEMORY-ACTIVATION-RUNBOOK.md` | memory_search/get 已激活,本文复用为索引化底座 |
+| `archive/MEMORY-ACTIVATION-RUNBOOK.md` | memory_search/get 已激活,本文复用为索引化底座 |
 
 > **架构提示**:引擎现有 5 份关联设计,交叉引用已成网。**强烈建议下一步在 `ARCHITECTURE.md` 画一张总览图**(认知架构全景:输入→分类→任务轨/画像流→CONSOLIDATE→知识库三元组+画像→索引化注入→行为),否则碎片化风险上升。
 
@@ -219,4 +220,4 @@ interface UserModel {
 
 ---
 
-*相关文档:`CONTEXT-INJECTION-ARCHITECTURE.md` · `SESSION-ROTATION-CONTINUITY.md` · `SUPERADMIN-AGENT-DESIGN.md` · `TELEGRAM-UX-CONTEXT-PLAN.md` · `MEMORY-ACTIVATION-RUNBOOK.md` · `ARCHITECTURE.md`*
+*相关文档:`CONTEXT-INJECTION-ARCHITECTURE.md` · `SESSION-ROTATION-CONTINUITY.md` · `SUPERADMIN-AGENT-DESIGN.md` · `TELEGRAM-UX-CONTEXT-PLAN.md` · `archive/MEMORY-ACTIVATION-RUNBOOK.md` · `ARCHITECTURE.md`*

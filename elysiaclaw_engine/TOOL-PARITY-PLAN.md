@@ -8,8 +8,9 @@
 
 ## 总览
 
-当前状态：ElysiaClaw 31 工具，ToolDefinition 接口 7 字段
+当前状态：ElysiaClaw 31+ 工具，ToolDefinition 接口 18 字段
 目标状态：Claude Code 40+ 工具，Tool 接口 25+ 方法
+完成进度：14/17 Task（Task 0-13 ✅，Task 14-16 待执行）
 
 **策略**：先扩展接口层（Task 0），再逐工具迁移（Task 1-N），最后补全新工具。
 

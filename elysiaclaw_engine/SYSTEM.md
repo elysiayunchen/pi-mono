@@ -19,7 +19,7 @@
 
 ElysiaClaw **is not** the upstream OpenClaw. It is a personal AI assistant platform built on top of the pi-mono agent SDK, with extensive custom extensions implementing the full 12-layer Claude Code-inspired agent architecture.
 
-**delegate_code_task**: Sub-agent code analysis delegation tool (2026-06-05). Spawned via `spawnSubagentDirect()` with read-only tools. Main agent delegates multi-file code analysis to prevent context pollution. Replaces the deprecated Code Mode (`/code` `/exit`). See `elysiaclaw_engine/DELEGATE-CODE-TASK-PLAN.md`.
+**delegate_code_task**: Sub-agent code analysis delegation tool (2026-06-05). Spawned via `spawnSubagentDirect()` with read-only tools. Main agent delegates multi-file code analysis to prevent context pollution. Replaces the deprecated Code Mode (`/code` `/exit`). See `elysiaclaw_engine/archive/DELEGATE-CODE-TASK-PLAN.md`.
 
 ---
 
@@ -34,11 +34,13 @@ ElysiaClaw **is not** the upstream OpenClaw. It is a personal AI assistant platf
 | Telegram Bot | `@ElysiaClaw_Bot` |
 | Config Directory | `~/.elysiaclaw/` (migrated from `~/.openclaw/`) |
 | Data Directory | `~/.pi/agent/` |
-| Claude Code Source | `/home/elysia/pi-mono/claude-code-source-code-main/src` (local, for mechanism reference only) |
+| Claude Code Source | `/home/elysia/projects/pi-mono/claude-code-source-code-main/src` (local, for mechanism reference only) |
 
 **Claude Code source** (for mechanism reference only, not running code):
-`/home/elysia/pi-mono/claude-code-source-code-main/src` on elysiaserver.
+`/home/elysia/projects/pi-mono/claude-code-source-code-main/src` on elysiaserver.
 Source is available locally for reference — no SSH to Windows needed.
+
+> ⚠️ **路径注意**: 项目实际路径为 `/home/elysia/projects/pi-mono/`（非 `/home/elysia/pi-mono/`）。HANDOFF.md 已于 2026-06-05 修正。
 
 ---
 
@@ -161,6 +163,9 @@ npm test           # Run all tests (--workspaces --if-present)
 ```
 
 根 `package.json` version: `0.0.3` (monorepo 管理版本，各包版本独立为 0.64.0)
+
+> ⚠️ **版本号叙事混乱**: 根 `package.json` 为 `0.0.3`，各包为 `0.64.0`，elysiaclaw 全局安装为 `0.64.x`，HANDOFF.md 引用 `v2026.4.4`。这些版本号含义不同——`0.64` 是 pi-mono 上游版本锚点，`0.0.3` 是 monorepo 管理版本，`v2026.4.4` 是 HANDOFF 日期标记。引用版本时请注明是哪个版本。
+
 Compiler: `tsgo` (TypeScript Go compiler, v7.0.0-dev). **Not in PATH** — always use `npm run build`.
 
 ### elysiaclaw Build (Known Issue)
@@ -208,11 +213,12 @@ cd ~/pi-mono && ./deploy.sh
 2. Write files via Python — never heredoc (Pitfall #1)
 3. Use str.replace() not sed (Pitfall #2)
 4. Tool registration: four layers must match (Pitfall #51)
-5. Bot vs TUI: different tool paths (Pitfall #17/#54)
+5. **⚠️ Bot vs TUI 是全项目最重要的架构事实** — TUI 用 `createPiCodingTools`，Bot 用 `createElysiaClawCodingTools`，工具可用性、system prompt 构建、上下文压缩路径完全不同。新增/修改工具必须两边都验证 (Pitfall #17/#54)
 6. YAML indent-sensitive (Pitfall #30)
 7. After deploy verify gateway (Pitfall #22b)
 8. pnpm=elysiaclaw, npm=pi-mono, never mix (Pitfall #49/#52)
 9. elysiaclaw build needs manual deploy to global (Pitfall #53)
+10. **代码+测试存在 ≠ 完成** — 必须有生产路径实跑 + 端到端验证 (Pitfall #85)
 
 ---
 
@@ -275,18 +281,26 @@ All AI handoff documents live in a single directory:
 
 ~/projects/pi-mono/elysiaclaw_engine/
 ├── ARCHITECTURE.md
-├── CLAUD-CODE-COMPARISON.md
-├── DELEGATE-CODE-TASK-PLAN.md
+├── CONTEXT-INJECTION-ARCHITECTURE.md
 ├── HANDOFF.md
-├── MEMORY-ACTIVATION-RUNBOOK.md   ← 记忆引擎激活执行手册（T1-T6，已完成）
+├── KNOWLEDGE-BASE-EVOLUTION.md
+├── PARTICIPANT-CONTINUITY-ARCHITECTURE.md
 ├── PITFALLS.md
 ├── README.md
 ├── ROADMAP.md
+├── SESSION-ROTATION-CONTINUITY.md
 ├── SPRINT.md
 ├── SUBAGENT-CODE-DELEGATION.md
 ├── SUPERADMIN-AGENT-DESIGN.md    ← 超级计算机管理员 Agent 架构设计
 ├── SYSTEM.md ← you are here
-└── TOOL-PARITY-PLAN.md
+├── TELEGRAM-UX-CONTEXT-PLAN.md
+├── TOOL-PARITY-PLAN.md
+└── archive/
+    ├── CLAUD-CODE-COMPARISON.md
+    ├── DELEGATE-CODE-TASK-PLAN.md
+    ├── MEMORY-ACTIVATION-RUNBOOK.md
+    ├── USER-PITFALLS.md
+    └── sprint-history.md
 
 **Important**: This directory is NOT at the project root (`~/projects/pi-mono/`). It is inside `elysiaclaw_engine/`. Always use this path when reading or updating documentation.
 
@@ -300,4 +314,4 @@ All AI handoff documents live in a single directory:
 
 ---
 
-*Last updated: 2026-06-06. 记忆引擎激活全流程完成 (T1-T6)。deploy.sh 增强至 5 Guard / 12 Step（含 extensions sync + dist 完整性校验 + E2E 验证）。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。elysiaclaw build DTS errors (6, workaround in place, needs dedicated fix)。*
+*Last updated: 2026-06-07. 引擎文件维护归档：DELEGATE-CODE-TASK-PLAN / MEMORY-ACTIVATION-RUNBOOK / USER-PITFALLS / CLAUD-CODE-COMPARISON / sprint-history 移入 archive/。Tool Parity 14/17 完成。DTS 类型错误已全部修复。Code Mode 已废弃，由 delegate_code_task 子代理分发替代。*
