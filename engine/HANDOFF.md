@@ -1,54 +1,44 @@
 # HANDOFF — ElysiaClaw
-> 初始化日期：2026-06-08 | 会话：3（PLAN-09 P1 实施）
+> 初始化日期：2026-06-08 | 会话：5（PLAN-09 部署至生产环境）
 > 每次会话结束后重写此文件。
 
 
 ## ⚡ 立即恢复点
-> "从这里开始：执行 PLAN-09 P2（元压缩 + 图遍历检索）或 TASK-03（AskUserQuestionTool）。P1 已完成：computeInjectionBudget 接入运行时（按窗口比例缩放阈值），TaskSegment 封口产生 IndexNode + 硬边写入 conversation-store，B3 注入从认知图谱读 IndexNode，conversation-store 新增 index_nodes + edges 表。验证靠 `npm run check`。"
-> 入口：`elysiaclaw/src/session-rotation/`（图谱核心）、`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`（注入管线）。设计权威：`engine/plans/PLAN-09.md`。
+> "从这里开始：执行 TASK-06（PLAN-10 审计修复）。PLAN-09 P0+P1 已部署至生产环境（deploy.sh 5 guards 全部通过），index_nodes+edges 表已就绪，B3/B4/B5 append 注入已生效，rotation 残留代码已清除。下一步修复 contextPressureBudget 语义漂移（AC-1，1 行字段替换）。"
+> 入口：`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`（AC-1:1911，AC-2:2617），`elysiaclaw/src/session-rotation/conversation-store.ts`（AC-3:250-260）。设计权威：`engine/plans/PLAN-09.md` + `engine/plans/PLAN-10.md`。
 
 
 ## 本次会话总结
 ### ✅ 完成内容
-* PLAN-09 P1 全部完成（TASK-02）：
-  - `handoff-types.ts`：新增 IndexNode / HardEdge / NodeGrain / EdgeType 类型
-  - `conversation-store.ts`：新增 index_nodes + edges SQLite 表 + CRUD（insertIndexNode, getIndexNodesByConversation, insertEdge, getEdgesFrom/To, traverseGraph）
-  - `task-segment-tracker.ts`：封口时产生 IndexNode（grain=task）+ temporal/produces 硬边，通过 onSeal 回调写入 conversation-store
-  - `injection-budget.ts`：computeInjectionBudget 接入 attempt.ts 运行时，替代硬编码 estimateTextTokens 基线扣减
-  - `handoff-inject.ts`：新增 formatIndexNodesForInjection，B3 注入从 conversation-store 读 IndexNode
-  - `attempt.ts`：tracker 创建传入 conversationId + onSeal 回调；B3 注入增加认知图谱 IndexNode 来源
-  - `index.ts`：导出新类型和函数
-  - `npm run check` 499 文件零错误
+* Bot 实测日志审计：发现 PLAN-09 P0/P1 源码已构建但 **deploy.sh 未执行**，生产环境仍运行旧代码
+* 执行 deploy.sh → 5 guards 全部通过（G1 Config, G2 Patch, G3 Dist integrity, G4 Tool parity, G5 memory_search E2E）
+* 部署后验证：index_nodes (0→11 refs) ✅、B3 appendParts (0→10 refs) ✅、rotation 引用清零 (3→0 refs) ✅
+* engine 文件更新至会话 5，恢复点指向 TASK-06（PLAN-10 审计修复）
 ### ⚙️ 实现方式
-* 按 PLAN-09 spec AC-3~AC-6 逐项实现
-* tracker 通过 SealCallback 解耦，不直接依赖 conversation-store
-* conversation-store schema 变更用 CREATE TABLE IF NOT EXISTS 幂等
-* IndexNode 产生在 sealSegment 内部，onSeal 回调失败不阻塞封口
+* 对比 source dist vs deployed dist 内容哈希确认版本差异
+* 对比 conversation-store.db 表结构确认 index_nodes/edges 表缺失
+* grep 生产路径关键符号确认部署前后差异
 ### 🔜 建议下一步
-* TASK-03（AskUserQuestionTool — Telegram inline keyboard）
-* 或 TASK-04（attempt.ts 拆分重构）
-* 或 TASK-05（PLAN-09 P2：元压缩 + 图遍历检索）
+* TASK-06（PLAN-10 审计修复）：修复 contextPressureBudget 语义漂移（AC-1，1 行替换）→ traverseGraph 接入 B3 → HandoffPacket 死代码清理
 
 
 ## 本次会话中的决策
 | 决策 | 选择 | 放弃 | 原因 |
 |------|------|------|------|
-| tracker→store 耦合方式 | SealCallback 回调 | tracker 直接 import store | 解耦：tracker 不依赖 SQLite |
-| IndexNode 产生时机 | sealSegment 内部 | attempt.ts 封口后手动调用 | 封口是原子操作，节点应同步产生 |
-| 预算器接入方式 | 替换 estimateTextTokens | 保留双轨 | computeInjectionBudget 已充分测试，单轨更清晰 |
-| B3 IndexNode 来源 | 追加到 b3Blocks | 替换 dual-track index | 双轨互补：flat index + graph nodes |
+| 部署验证方式 | 逐项对比 source vs deployed dist | 仅看日志 | 日志无 PLAN-09 相关输出，需直接对比运行时代码 |
+| 恢复点方向 | 指向 TASK-06 | 指向 TASK-04/05 | TASK-06 AC-1 为 1 行修复，可快速交付后再推进重构 |
 
 
 ## 进行中的工作
-### 当前任务：PLAN-09 P1 已完成 → 下一步 TASK-03 或 TASK-05
-- **状态：** P1 代码改动已完成，npm run check 零错误
+### 当前任务：PLAN-09 P0/P1 部署完成 → 下一步 TASK-06
+- **状态：** 生产环境已运行 PLAN-09 P0/P1 代码，认知图谱基础设施就绪
 - **下一步操作：** 见 ⚡立即恢复点
-- **开始前需阅读的文件：** `engine/plans/PLAN-09.md`、`engine/SPRINT.md` TASK-03/05 详情
+- **开始前需阅读的文件：** `engine/plans/PLAN-10.md`、`engine/SPRINT.md` TASK-06 详情
 
 
 ## 上下文漂移警告
 - ⚠️ **`engine/plans/` 被 `.gitignore` 第 37 行忽略** —— PLAN-*.md 的统合改动在磁盘生效但未入 git
-- conversation-store.db 新增 index_nodes + edges 表，已有数据库会自动 CREATE IF NOT EXISTS
+- conversation-store.db 新增 index_nodes + edges 表，已有数据库会在下次写操作时自动 CREATE IF NOT EXISTS
 
 
 ## 会话历史
@@ -57,20 +47,18 @@
 | 1 | 2026-06-08 | 引擎文件 v5 深度重构：迁移至 engine/，创建 ENGINE_MAP + 8 文件 + 8 plan 登记 |
 | 2 | 2026-06-08 | 认知架构设计统合审定：PLAN-09 升 accepted 取代 01/02/08，PLAN-03/04 标正交子系统 |
 | 3 | 2026-06-08 | PLAN-09 P1 实施：IndexNode/HardEdge 类型 + conversation-store 图谱表 + tracker onSeal + computeInjectionBudget 接入 + B3 图谱注入 |
+| 4 | 2026-06-08 | 引擎文件同步更新：ENGINE_MAP revision 8，ROADMAP/ARCHITECTURE P1✅ 补齐 |
+| 5 | 2026-06-09 | PLAN-09 P0/P1 部署至生产：deploy.sh 执行 + 运行时代码对比验证 + engine 文件更新 |
 
 
 ## 引擎文件变更摘要
 | 文件 | 变更类型 | 变更内容 | 原因 |
 |------|---------|---------|------|
-| engine/HANDOFF.md | 更新 | 会话3：P1完成记录 | 反映代码变更 |
-| engine/CONTEXT.md | 更新 | 状态面板+已知不稳定项更新 | 反映P1完成 |
-| engine/SPRINT.md | 更新 | TASK-02标记完成 | 反映进度 |
-| elysiaclaw/src/session-rotation/handoff-types.ts | 修改 | 新增 IndexNode/HardEdge/NodeGrain/EdgeType 类型 | PLAN-09 P1 认知图谱 |
-| elysiaclaw/src/session-rotation/conversation-store.ts | 修改 | 新增 index_nodes + edges 表 + CRUD + traverseGraph | PLAN-09 P1 图谱持久化 |
-| elysiaclaw/src/session-rotation/task-segment-tracker.ts | 修改 | SealCallback + onSeal + buildIndexNodeSummary | PLAN-09 P1 封口产生节点 |
-| elysiaclaw/src/session-rotation/handoff-inject.ts | 修改 | formatIndexNodesForInjection | PLAN-09 P1 B3图谱注入 |
-| elysiaclaw/src/session-rotation/index.ts | 修改 | 导出新类型和函数 | PLAN-09 P1 公开API |
-| elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts | 修改 | computeInjectionBudget接入 + onSeal回调 + B3图谱注入 | PLAN-09 P1 运行时接线 |
+| engine/HANDOFF.md | 更新 | 会话 5：部署记录 + 恢复点指向 TASK-06 | 反映部署完成 |
+| engine/ENGINE_MAP.md | 更新 | PLAN-10 标记 + revision 更新 + PLAN-09 备注 P0/P1 部署 | 反映 TASK-06 登记 |
+| engine/SPRINT.md | 更新 | TASK-06 登记为第一优先级 | 反映 PLAN-10 审计结果 |
+| engine/ROADMAP.md | 更新 | M4 PLAN-09 备注部署状态 | 反映部署里程碑 |
+| engine/ARCHITECTURE.md | 更新 | 子系统① 部署标注 | 反映生产状态 |
 
 
 ## 交接检查清单

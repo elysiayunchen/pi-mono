@@ -29,7 +29,7 @@
 
 | File | Class | Read priority | Revision | Last verified |
 |------|-------|---------------|----------|---------------|
-| ENGINE_MAP.md | index | 0 | 1 | 2026-06-08 |
+| ENGINE_MAP.md | index | 0 | 2 | 2026-06-09 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
 | CONTEXT.md | irreducible | 2 | 1 | 2026-06-08 |
 | HANDOFF.md | irreducible | 3 | 1 | 2026-06-08 |
@@ -62,7 +62,8 @@
 | PLAN-06 | 子代理代码委派（delegate_code_task） | active | engine/plans/PLAN-06.md | engine/plans/PLAN-06.spec.md | AC 未全部验证，待 RECONCILE 确认 | 2026-06-08 |
 | PLAN-07 | Tool Parity（工具对标 Claude Code） | active | engine/plans/PLAN-07.md | engine/plans/PLAN-07.spec.md | 15/17 = 88.2%，Task 14 ✅，Task 15-16 待执行 | 2026-06-08 |
 | PLAN-08 | 参与者持续性架构（Participant Continuity） | superseded | engine/plans/PLAN-08.md | engine/plans/PLAN-08.spec.md | superseded-by: PLAN-09（L2 认知层重设计，L0/L1/L3/L4 方向保留） | 2026-06-08 |
-| PLAN-09 | 事件记忆与认知索引架构（Event Memory & Cognitive Index） | active | engine/plans/PLAN-09.md | engine/plans/PLAN-09.spec.md | 认知架构子系统①**权威**；统合并取代 01/02/08 L2，废除轮换，事件流+认知图谱；P0 ✅（注入修正+轮换废弃），P1-P3 待实施 | 2026-06-08 |
+| PLAN-09 | 事件记忆与认知索引架构（Event Memory & Cognitive Index） | active | engine/plans/PLAN-09.md | engine/plans/PLAN-09.spec.md | 认知架构子系统①**权威**；统合并取代 01/02/08 L2，废除轮换，事件流+认知图谱；P0 ✅（注入修正+轮换废弃），P1 ✅（预算器接入+IndexNode+硬边+图谱表+B3图谱注入），P0/P1 已部署至生产 ✅（2026-06-09），P2-P3 待实施 | 2026-06-09 |
+| PLAN-10 | 体验端落实验证与可维护性保障框架 | active | engine/plans/PLAN-10.md | engine/plans/PLAN-10.spec.md | 质量治理 plan；审计发现 contextPressureBudget 语义漂移（crit）、traverseGraph 未接入（high）、HandoffPacket 死代码（medium）→ 已登记 SPRINT TASK-06 | 2026-06-09 |
 
 [新 plan 追加到表格末尾。ID 按 PLAN‑[N+1] 递增。状态变更时直接改对应行。]
 [原设计文档已迁移至 `engine/plans/`，旧目录 `elysiaclaw_engine/` 已删除。]
@@ -89,7 +90,8 @@
 | PLAN-06 | ROADMAP:delegate_code_task, SPRINT:子代理分发实施, PITFALLS:#65-#68 | PLAN-06.spec:AC-1~AC-4 | elysiaclaw/src/agents/tools/delegate-code-task.ts |
 | PLAN-07 | ROADMAP:Tool Parity, SPRINT:Tool Parity Task 0-13, PITFALLS:#46-#56 | PLAN-07.spec:AC-1~AC-17 | packages/coding-agent/src/core/tools/, elysiaclaw/src/agents/pi-tools.ts |
 | PLAN-08 | SPRINT:W0闭环session-rotation, ROADMAP:参与者持续性, SYSTEM:协作协议 | PLAN-08.spec:AC-1~AC-7 | elysiaclaw/src/session-rotation/, elysiaclaw/src/participant/ |
-| PLAN-09 | SPRINT:PLAN-09-P0✅(注入修正+死代码清理)/P1(预算器+IndexNode)/P2(元压缩+图遍历)/P3(端到端验证), ROADMAP:事件记忆闭环(M4重定义), PITFALLS:#91→P0✅已删除/#92→P1封口/#93→P0✅已删除 | PLAN-09.spec:AC-1~AC-10 | elysiaclaw/src/session-rotation/(P0:rotation-controller/auto-trigger/rotate-session-tool已删除), elysiaclaw/src/context-engine/, elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts, elysiaclaw/src/memory/(图遍历基础) |
+| PLAN-09 | SPRINT:PLAN-09-P0✅(注入修正+死代码清理)/P1✅(预算器+IndexNode+图谱表+B3图谱注入)/P2(元压缩+图遍历)/P3(端到端验证), ROADMAP:事件记忆闭环(M4重定义), PITFALLS:#91→P0✅已删除/#92→P1✅封口+图谱表/#93→P0✅已删除 | PLAN-09.spec:AC-1~AC-10 | elysiaclaw/src/session-rotation/(P0:rotation-controller/auto-trigger/rotate-session-tool已删除; P1:index_nodes+edges表+CRUD+traverseGraph), elysiaclaw/src/context-engine/(P1:computeInjectionBudget接入运行时), elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts(P0:prepend→append; P1:onSeal回调+B3图谱注入), elysiaclaw/src/memory/(图遍历基础) |
+| PLAN-10 | 暂无派生执行条目（审计结论输出为 PLAN-10.spec AC-1~AC-4） | PLAN-10.spec:AC-1~AC-4 | elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts（AC-1:1911 / AC-2:2617-2634）, elysiaclaw/src/session-rotation/conversation-store.ts（AC-3:250-260 / AC-2:438）, elysiaclaw/src/session-rotation/dual-track-index.ts（AC-3:82-115）, elysiaclaw/src/session-rotation/handoff-types.ts（AC-3:105/146-156） |
 
 [plan 派生新条目时，在其行内追加。执行层条目用 `文件:锚点` 格式引用，NEVER 复制条目正文。]
 
@@ -121,9 +123,9 @@
 | SPRINT:W0闭环session-rotation | PLAN-08 |
 | ROADMAP:参与者持续性 | PLAN-08 |
 | SYSTEM:协作协议 | PLAN-08 |
-| SPRINT:PLAN-09-P0✅/P1/P2/P3 | PLAN-09 |
+| SPRINT:PLAN-09-P0✅/P1✅/P2/P3 | PLAN-09 |
 | ROADMAP:事件记忆闭环(M4重定义) | PLAN-09 |
-| PITFALLS:#91→P0✅已删除/#92→P1封口/#93→P0✅已删除 | PLAN-09 |
+| PITFALLS:#91→P0✅已删除/#92→P1✅封口+图谱表/#93→P0✅已删除 | PLAN-09 |
 
 
 ## 4. 完整性与新鲜度 (Integrity & Freshness)
@@ -131,8 +133,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 7 |
-| 上次 RECONCILE | 2026-06-08（PLAN-09 P0 完成：注入方向修正+轮换废弃，PLAN-09 accepted→active，P091/P093 根治，revision 7） |
+| 全局 revision | 11 |
+| 上次 RECONCILE | 2026-06-09（PLAN-09 P0/P1 部署至生产：deploy.sh 执行，5 guards 全部通过，验证 index_nodes 11 refs / B3 appendParts 10 refs / rotation 清零；PLAN-10 升 active，登记 SPRINT TASK-06；ENGINE_MAP §2/§4 更新） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 
