@@ -5,13 +5,38 @@ import * as path from "node:path";
 // Module-level cache: resolved dir -> file content (or null if no CLAUDE.md)
 const dirCache = new Map<string, string | null>();
 
+export interface LoadClaudeMdOptions {
+	/**
+	 * Optional upper boundary for directory traversal.
+	 * When provided, traversal stops BEFORE reaching this directory (exclusive).
+	 * For example, setting stopDir=/home/user/projects/pi-mono means
+	 * only CLAUDE.md files within that project tree are collected,
+	 * excluding home directory CLAUDE.md.
+	 */
+	stopDir?: string;
+}
+
 /**
  * Scan from `startDir` up to home/root, collect all CLAUDE.md files.
  * Returns concatenated content, or null if none found.
  * Results are cached per directory — subsequent calls with the same dir are free.
+ *
+ * @param startDir - Directory to start scanning from
+ * @param options.stopDir - Optional upper boundary. Traversal stops BEFORE this dir (exclusive).
+ *   If omitted, traversal goes up to home or filesystem root.
  */
-export async function loadClaudeMd(startDir: string): Promise<string | null> {
+export async function loadClaudeMd(startDir: string, options?: LoadClaudeMdOptions): Promise<string | null> {
+	return loadClaudeMdSync(startDir, options);
+}
+
+/**
+ * Synchronous version of loadClaudeMd.
+ * Scan from `startDir` up to home/root, collect all CLAUDE.md files.
+ * Returns concatenated content, or null if none found.
+ */
+export function loadClaudeMdSync(startDir: string, options?: LoadClaudeMdOptions): string | null {
 	const home = os.homedir();
+	const stopDir = options?.stopDir ? path.resolve(options.stopDir) : undefined;
 	const parts: string[] = [];
 	let current = path.resolve(startDir);
 	const visited = new Set<string>();
@@ -19,6 +44,9 @@ export async function loadClaudeMd(startDir: string): Promise<string | null> {
 	while (true) {
 		if (visited.has(current)) break;
 		visited.add(current);
+
+		// Stop BEFORE the boundary directory (exclusive)
+		if (stopDir && current === stopDir) break;
 
 		if (dirCache.has(current)) {
 			const cached = dirCache.get(current)!;

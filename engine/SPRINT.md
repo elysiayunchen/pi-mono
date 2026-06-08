@@ -38,7 +38,7 @@
 
 
 ## 优先级栈
-1. [TASK-01] PLAN-09 P0：注入方向修正 + 轮换机制废弃 — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool
+1. [TASK-01] ~~PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅ — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool，HandoffPacket废弃，auto-rotation移除，npm run check零错误+vitest全绿
 2. [TASK-02] PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode — computeInjectionBudget接入运行时，封口时写入IndexNode+硬边
 3. [TASK-03] Tool Parity Task 14: AskUserQuestionTool — Telegram inline keyboard 交互
 4. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
@@ -48,15 +48,16 @@
 ## 任务详情
 
 
-### TASK-01: PLAN-09 P0：注入方向修正 + 轮换机制废弃
+### TASK-01: PLAN-09 P0：注入方向修正 + 轮换机制废弃 ✅
+- **状态：** 已完成（2026-06-08）
 - **用户可见的变化：** 无直接用户可见变化，但上下文利用率和KV-cache命中率提升
 - **完成标准：**
-  1. B3/B4/B5 append到effectivePrompt末尾（用户消息之后），不prepend
-  2. rotation-controller.ts / auto-trigger.ts / rotate-session-tool.ts 已删除或标注废弃
-  3. HandoffPacket废弃，handoff-inject.ts改造为索引头注入器
-  4. attempt.ts中auto-rotation逻辑全部移除
-  5. grep rotate/rotation/handoff零命中（除注释/废弃标注）
-  6. `npm run check`零错误，相关vitest全绿
+  1. ✅ B3/B4/B5 append到effectivePrompt末尾（用户消息之后），不prepend
+  2. ✅ rotation-controller.ts / auto-trigger.ts / rotate-session-tool.ts 已删除，HandoffPacket标注废弃
+  3. ✅ HandoffPacket废弃，handoff-inject.ts改造为索引头注入器（resolveIndexHeadBlockForSession）
+  4. ✅ attempt.ts中auto-rotation逻辑全部移除，tool-catalog.ts rotate_session条目清理
+  5. ✅ grep验证：生产路径无功能性rotation/handoff调用，仅保留注释/废弃标注
+  6. ✅ `npm run check`零错误，vitest 13/13全绿
 - **验证方法：** verify → PLAN-09.spec:AC-1, AC-2, AC-9
 - **约束：** 不能破坏现有session数据；不能影响gateway稳定性
 - **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + `elysiaclaw/src/session-rotation/`

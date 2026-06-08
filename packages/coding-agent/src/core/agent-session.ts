@@ -72,7 +72,7 @@ import {
 } from "./extensions/index.js";
 import { getFileHistory } from "./file-history.js";
 import { runPreToolUseHooks } from "./hooks/pre-tool-use.js";
-import { loadClaudeMd } from "./knowledge/claude-md-loader.js";
+import { loadClaudeMdSync } from "./knowledge/claude-md-loader.js";
 import type { BashExecutionMessage, CustomMessage } from "./messages.js";
 import type { ModelRegistry } from "./model-registry.js";
 import { checkDangerousCommand, checkPermission, type ToolPermissionContext } from "./permissions/rule-engine.js";
@@ -234,6 +234,9 @@ const THINKING_LEVELS: ThinkingLevel[] = ["off", "minimal", "low", "medium", "hi
 /** Thinking levels including xhigh (for supported models) */
 const THINKING_LEVELS_WITH_XHIGH: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh"];
 
+/** Max chars for CLAUDE.md content injected into context. */
+const CLAUDE_MD_MAX_CHARS = 15_000;
+
 // ============================================================================
 // AgentSession Class
 // ============================================================================
@@ -295,6 +298,10 @@ export class AgentSession {
 	private _customTools: ToolDefinition[];
 	private _baseToolDefinitions: Map<string, ToolDefinition> = new Map();
 	private _cwd: string;
+	/** Cached CLAUDE.md content: null = not loaded yet, false = no CLAUDE.md found, string = content */
+	private _claudeMdContent: string | false | null = null;
+	/** Whether CLAUDE.md has been injected into the message stream (B3, once per session). */
+	private _claudeMdInjected = false;
 	private _extensionRunnerRef?: { current?: ExtensionRunner };
 	private _initialActiveToolNames?: string[];
 	private _baseToolsOverride?: Record<string, AgentTool>;
@@ -988,6 +995,24 @@ export class AgentSession {
 	}
 
 	/**
+	 * Project-level CLAUDE.md content for B3 WORKING SET injection.
+	 * Lazy-loaded once per session, truncated to CLAUDE_MD_MAX_CHARS.
+	 * Returns null if no CLAUDE.md files found.
+	 */
+	get claudeMdContent(): string | null {
+		if (this._claudeMdContent !== null) {
+			return this._claudeMdContent === false ? null : this._claudeMdContent;
+		}
+		const raw = loadClaudeMdSync(this._cwd, { stopDir: this._cwd });
+		if (!raw) {
+			this._claudeMdContent = false;
+			return null;
+		}
+		this._claudeMdContent = raw.length > CLAUDE_MD_MAX_CHARS ? raw.slice(0, CLAUDE_MD_MAX_CHARS) : raw;
+		return this._claudeMdContent;
+	}
+
+	/**
 	 * Inject a task-notification into the host session.
 	 * Called by AutonomousRunner when a background teammate finishes.
 	 */
@@ -1248,16 +1273,6 @@ export class AgentSession {
 		const expandPromptTemplates = options?.expandPromptTemplates ?? true;
 		setCurrentSessionId(this.sessionId);
 
-		// Skip for extension-origin messages
-		if (options?.source !== "extension") {
-			// [P1-B] CLAUDE.md lazy-load: prepend project memory to user text
-			const _cwd = process.cwd();
-			const _claudeMdContent = await loadClaudeMd(_cwd);
-			if (_claudeMdContent) {
-				const _memHeader = `<project-memory>\n${_claudeMdContent}\n</project-memory>\n\n`;
-				text = _memHeader + text;
-			}
-		}
 		initTeammateRunner(this.sessionId, this._modelRegistry, () => this.model);
 		initAutonomousRunner(this.sessionId, (msg) => this.injectNotification(msg));
 
@@ -1294,6 +1309,17 @@ export class AgentSession {
 		if (expandPromptTemplates) {
 			expandedText = this._expandSkillCommand(expandedText);
 			expandedText = expandPromptTemplate(expandedText, [...this.promptTemplates]);
+		}
+
+		// B3 WORKING SET: Inject CLAUDE.md once per session into the message stream.
+		// Injected after template expansion, before streaming check — so both sync and streaming
+		// paths carry CLAUDE.md on the first turn. Placed at B3 position per PLAN-01 §3.1.
+		if (!this._claudeMdInjected && options?.source !== "extension") {
+			this._claudeMdInjected = true;
+			const claudeContent = this.claudeMdContent;
+			if (claudeContent) {
+				expandedText = `<project-memory>\n${claudeContent}\n</project-memory>\n\n${expandedText}`;
+			}
 		}
 
 		// If streaming, queue via steer() or followUp() based on option
