@@ -1152,3 +1152,48 @@ blockStreamingDefault="on" (elysiaclaw.json:357)
 | `elysiaclaw/src/agents/pi-embedded-subscribe.handlers.messages.ts` | text_delta → onPartialReply 转发 |
 | `elysiaclaw/src/auto-reply/reply/agent-runner-execution.ts` | onPartialReply 处理 |
 | `elysiaclaw/src/auto-reply/reply/reply-delivery.ts` | 块回复交付处理 |
+
+---
+
+## Sprint 20: 流式管线加固 — 4 项增强 + 参数校准 (2026-06-08) ✅ 已完成（已部署验证）
+
+**Sprint 目标**: 修复流式管线的健壮性缺陷，使流式输出在生产中可靠工作。包含参数校准阶段：发现并回滚 3 项未提交的激进参数。
+
+**开始/完成**: 2026-06-08
+
+### 阶段一：管线加固（4 项代码修复）
+
+| ID | 问题 | 文件 | 修复 |
+|----|------|------|------|
+| P1 | `disableBlockStreaming` 可为 `undefined`，agent 回退到模糊 blockStreamingDefault | `bot-message-dispatch.ts:403` | `undefined` → `false` |
+| P2 | `renderTelegramHtmlText` 产出空 HTML 时静默终止流式 | `draft-stream.ts:278-284` | 渲染失败降级为纯文本，跳过 parse_mode |
+| P3 | 流式发送失败后无诊断手段 | `draft-stream.ts:83,153,356,390,468` | 新增 `streamFailed()` 诊断字段 |
+| P4 | 清理时对已完成 lane 重复 `stop()` 创建再删除，产生闪烁 | `bot-message-dispatch.ts:844,877` | 已完成 lane 跳过 `stop()` |
+| D1 | 推理流接线诊断 | `bot-message-dispatch.ts` | 两点 `logVerbose` 诊断日志（推理接收 + lane 更新） |
+
+### 阶段二：参数校准（3 项回滚）
+
+部署后用户反馈 Telegram 输出"混乱不堪"——思考模块与回答产生信息乱流。排查发现根因是 **3 项未提交的激进参数**在测试时一起生效：
+
+| 参数 | 提交值 | 未提交值 | 回滚至 | 影响 |
+|------|--------|---------|--------|------|
+| `DEFAULT_THROTTLE_MS` | 1000ms | 500ms | **1000ms** | 消息编辑频率从 2Hz 降回 1Hz，消除抖动 |
+| `minInitialChars` | 30 | 30→15→8 | **30** | 首条预览有足够内容才显示，消除碎片化 |
+| 4096 截断 | stop+warn | truncate+continue | **stop** | 避免截断导致的字面断裂和 API 错误 |
+
+### 验证
+
+| 检查项 | 结果 |
+|-------|------|
+| draft-stream 测试（31 项） | ✅ 全部通过 |
+| 参数校准 | `DEFAULT_THROTTLE_MS=1000` `minInitialChars=30` `maxChars=stop` |
+| 部署 | 5 Guard 全部通过，gateway 正常，Telegram ON |
+| 推理流/回答分离验证 | 待用户端到端测试 |
+
+### 涉及的关键代码文件
+
+| 文件 | 作用 |
+|------|------|
+| `elysiaclaw/src/telegram/bot-message-dispatch.ts` | P1/P4/D1: 流式开关确定性 + 清理跳过已完成 lane + 诊断日志 |
+| `elysiaclaw/src/telegram/draft-stream.ts` | P2/P3: HTML 降级 + streamFailed 诊断 |
+| `elysiaclaw/src/telegram/draft-stream.test.ts` | 测试：maxChars 行为（截断→停止已回滚，测试与 git HEAD 一致） |

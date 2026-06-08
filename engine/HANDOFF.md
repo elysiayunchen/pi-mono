@@ -4,8 +4,8 @@
 
 
 ## ⚡ 立即恢复点
-> "从这里开始：序 8 Conversation 层 + Handoff 阶段 5 端到端验证（需要可用模型才能进行）。如果模型不可用，做 Tool Parity Task 14（AskUserQuestion）或 attempt.ts 拆分重构。"
-> 入口：`elysiaclaw/src/session-rotation/`（11 文件，123 测试），`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`
+> "从这里开始：执行 PLAN-09 P0 — 注入方向修正（attempt.ts 中 B3/B4/B5 由 prepend 改 append 到 effectivePrompt 末尾）+ 轮换死代码清理（删除 session-rotation/ 的 rotation-controller/auto-trigger/rotate-session-tool，改造 handoff-inject 为索引头注入器，清理 attempt.ts 中 35 处 rotation/handoff 引用）。不依赖模型可用性，验证靠 `npm run check` + vitest。"
+> 入口：`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`，`elysiaclaw/src/session-rotation/`。设计权威：`engine/plans/PLAN-09.md` §六/§十/§十一 + `engine/ARCHITECTURE.md §11`。
 
 
 ## 本次会话总结
@@ -35,13 +35,14 @@
 
 
 ## 进行中的工作
-### 当前任务：序 8 Conversation 层 + Handoff 阶段 5
-- **状态：** 阶段 1-4 完成（11 文件，123 测试），阶段 5 待续
-- **下一步操作：** 端到端验证 — 需要可用模型，部署后跑出首条 conversation db
-- **开始前需阅读的文件：** `engine/plans/PLAN-02.md`（Session Rotation）、`engine/plans/PLAN-08.md`（Participant Continuity）、`elysiaclaw/src/session-rotation/`、`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`
+### 当前任务：PLAN-09 P0 — 注入方向修正 + 轮换死代码清理
+- **状态：** 认知架构设计统合审定完成（PLAN-09 accepted，取代 01/02/08 L2），P0 代码改动待执行
+- **下一步操作：** 见 ⚡立即恢复点；不依赖模型，先做注入方向修正再清死代码
+- **开始前需阅读的文件：** `engine/plans/PLAN-09.md`（权威，尤其 §六/§十/§十一/§十五）、`engine/ARCHITECTURE.md §11`（全景）、`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`、`elysiaclaw/src/session-rotation/`
 
 
 ## 上下文漂移警告
+- ⚠️ **`engine/plans/` 被 `.gitignore` 第 37 行忽略** —— PLAN-*.md 的统合改动（PLAN-09→accepted、01/02/08→superseded 声明、PLAN-09 §十五）在磁盘生效但**未入 git**。下次 clone/换机会丢失。需 owner 决定是否纳入版本控制（`git add -f` 或改 .gitignore）。
 - ARCHITECTURE.md derivable 章节（§2-5, §8-10）为 stub，CLI-LEAN 下按需从代码现生
 - SOURCEMAP.md 为 stub，CLI-LEAN 下按需从代码现生
 
@@ -50,6 +51,7 @@
 | 会话 | 日期 | 关键变更 |
 |------|------|---------|
 | 1 | 2026-06-08 | 引擎文件 v5 深度重构：迁移至 engine/，创建 ENGINE_MAP + 8 文件 + 8 plan 登记 |
+| 2 | 2026-06-08 | 认知架构设计统合审定：PLAN-09 升 accepted 取代 01/02/08，PLAN-03/04 标正交子系统，ARCHITECTURE §11 全景图新增，元数据漂移校正，PITFALLS #091 解决路径改 PLAN-09 P0 |
 
 
 ## 引擎文件变更摘要

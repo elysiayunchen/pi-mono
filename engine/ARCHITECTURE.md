@@ -73,11 +73,11 @@
 
 5. **记忆引擎：TS 取代 Python** → **原因：** Python session_search 每次 `spawnSync` 冷启进程做 SQLite LIKE，而现成 TS 引擎支持向量检索 + hybrid + mmr → **后果：** `memory_search` 全面取代 `session_search`，RECALL 注入激活（每轮 system prompt 自动召回 top-5）；Python 代码已清理
 
-6. **认知架构：分层注入 + KV-cache 优化** → **原因：** RECALL 注入在 system prompt 内部（`attempt.ts:1781`），每轮变化导致稳定前缀 KV-cache 全失效 → **后果：** B0-B4 五带分层注入，钉 cache 锚点，易变内容下沉到锚点之后；序 1-7 已完成，序 8 进行中
+6. **认知架构：分层注入 + KV-cache 优化** → **原因：** RECALL 注入在 system prompt 内部（`attempt.ts:1781`），每轮变化导致稳定前缀 KV-cache 全失效 → **后果：** B0-B5 六带分层注入（B0 IDENTITY / B1 CAPABILITY / B2 ENVIRONMENT / B3 INDEX HEADS / B4 ACTIVE TASK / B5 RECALL）；B0-B2 稳定前缀钉 cache 锚点，B3/B4/B5 一律 append 到 effectivePrompt 末尾（同时满足 R1 前缀缓存 + R5 recency）。详见 PLAN-09 §六（注入方向修正 prepend→append 为 P0 任务）
 
-7. **会话轮换：双轨延续（Handoff + RECALL）** → **原因：** 纯靠记忆检索延续任务会准确性塌陷（设计红线）→ **后果：** 精确执行状态走结构化 Handoff Packet (B3)，背景知识走 memory_search 召回 (B4)；双轨索引（MacroIndex + MicroIndex）
+7. **延续机制：事件流 + 认知图谱索引（取代会话轮换）** → **原因：** 会话轮换（窗口满→硬切换→重注入提示词→Handoff 交接）有三重问题——重付 B0-B2 稳定前缀成本、"窗口"概念向模型层泄漏（违反 I3）、Handoff/安全点/CONSOLIDATE 五条管线纠缠。早期 PLAN-02"双轨 Handoff"设计已废弃 → **后果：** 对模型而言会话不存在，交互是一条永不中断的事件流；TaskSegment 封口产生 IndexNode（索引头只增累积在 B3），当前任务完整细节按需替换 B4；延续靠索引头本身 + 硬边图遍历，不靠轮换/Handoff。**权威：PLAN-09（accepted），取代 PLAN-01/02/08 L2**
 
-8. **参与者持续性：persistent identity 绑定** → **原因：** 对模型而言"会话/窗口"不存在，唯一单元是 Participant → **后果：** 连续性绑 participant_id；群聊双写；认知图谱只增不减；工作空间只留 active task
+8. **参与者持续性：persistent identity 绑定** → **原因：** 对模型而言"会话/窗口"不存在，唯一单元是 Participant → **后果：** 连续性绑 participant_id；群聊双写；认知图谱只增不减（I2）；工作空间只留 active task（I1）；窗口对模型透明（I3）。身份/协作/安全层（L0/L1/L3/L4）方向保留（PLAN-08，含决策 D1-D10），L2 认知层实现从"轮换+Handoff"改为"事件流+认知图谱"（PLAN-09）
 
 
 ## 7. 数据模型  [混合：约束/不变量 = irreducible，schema 位置 = derivable]
@@ -85,14 +85,14 @@
 ### 7.1 核心数据约束与不变量  [irreducible]
 | 约束 | 说明 |
 |------|------|
-| Session 绑定 | 每个 Telegram chat 绑定一个 Conversation，Conversation 下可有多个 Session（轮换） |
-| 双轨延续 | Handoff Packet（精确状态）必须与 RECALL（背景召回）同时存在，缺一不可 |
+| 事件流单元 | 对模型而言会话/窗口不存在，交互是一条永不中断的事件流（绑 participant_id）；框架层 session 仅为存储分片，对模型透明（I3）。⚠️ 早期"chat→Conversation→多 Session 轮换"模型已废弃（PLAN-09） |
+| 事件记忆不变式 | I1 工作空间单任务 · I2 索引只增（认知图谱节点/硬边只追加） · I3 窗口对模型透明 · I4 双形态延续（精确轨=索引头，模糊轨=语义召回） · I5 Participant 为连续性主键。违反任一 = 跑偏，非优化 |
 | 记忆引擎 | memory_search 支持 source: memory + sessions，向量检索 + FTS trigram + hybrid |
 | 用户画像 | SQLite 持久化，双路径更新（heuristic + LLM 提炼），identity 空对象不触发变更 |
 | 工具注册四层 | L1(allTools) → L2(pi-tools.ts) → L3(tool-catalog.ts) → L4(elysiaclaw.json)，四层必须一致 |
 | 上下文压缩 | 三层压缩链：snipDeadMessages → microcompact → autoCompactMessages，阈值 80k-90k |
-| 注入预算 | B2+B3+B4 注入量计入压缩触发阈值，杜绝"注入→爆窗→压缩→丢注入"反身性空转 |
-| KV-cache 锚点 | B0-B2 构成稳定前缀，B3-B4 在锚点之后，易变内容不能出现在稳定内容之前 |
+| 注入预算 | B2-B5 注入量计入压缩触发阈值，杜绝"注入→爆窗→压缩→丢注入"反身性空转；预算随模型窗口按比例缩放（PLAN-09 P1 接入运行时） |
+| KV-cache 锚点 | B0-B2 构成稳定前缀，B3/B4/B5 append 到 effectivePrompt 末尾（锚点之后），易变内容不能出现在稳定内容之前 |
 
 ### 7.2 Schema 位置  [derivable]
 > [derivable — CLI‑LEAN 下按需现生，见 ENGINE_MAP §0]
@@ -120,3 +120,64 @@
 > cd ~/pi-mono && ./deploy.sh      # 一键部署
 > elysiaclaw gateway restart        # 重启 Gateway
 > ```
+
+
+## 11. 认知架构全景  [irreducible]
+> 统合审定 2026-06-08：认知架构 = **3 个正交子系统 + 1 个身份层**。PLAN-09（accepted）为子系统①的权威设计，取代 PLAN-01/02/08 L2。本节是常驻总图，任何认知架构改动先对齐本图；细节见各 PLAN。
+
+### 11.1 子系统分解
+
+| # | 子系统 | 职责 | 权威 plan | 状态 |
+|---|--------|------|-----------|------|
+| ① | **上下文与事件记忆** | 注入分层 B0-B5 + 事件流 + 认知图谱（节点+边） | PLAN-09 (accepted) | P0-P3 待实施 |
+| ② | **记忆与世界模型** | 语义记忆引擎(向量+FTS+hybrid) + World Model 数字孪生 + CONSOLIDATE | PLAN-03 | Phase1 ✅ / Phase2 待启 |
+| ③ | **知识库与自我进化** | 输入分类 + 用户画像 + 技能进化 + 索引化注入范式 | PLAN-04 | 分类/画像 ✅ / 进化 PROPOSAL |
+| ④ | **身份与协作** | Participant 主键 + L0/L1/L3/L4 + 决策 D1-D10 | PLAN-08 (L0/L1/L3/L4) | 设计锁定，待落地 |
+
+**被取代的草案地质层**：PLAN-01（注入分层 → 并入①）· PLAN-02（会话轮换 → 废弃，TaskSegment/压缩并入①）· PLAN-08 L2（轮换 → 被①重设计）。三者 superseded，保留作历史依据，NEVER 据此动代码。
+
+### 11.2 数据流全景
+
+```
+┌──── 输入：永不中断的事件流（绑 participant_id ④，私聊/群/跨渠道统一）────┐
+│                                                                          │
+用户/agent 消息 ─→ [③ 输入分类器] ─┬─ task ──────────→ [① 事件流: TaskSegment 实时打包]
+                                   ├─ chat/affective ─→ [③ 用户画像流]
+                                   └─ meta ──────────→ [③ 偏好/规则]
+                                                             │ TaskSegment 封口（① 提供时机）
+                                                             ▼
+                                                   ┌─ CONSOLIDATE 沉淀 ─┐
+                          ┌────────────────────────┼────────────────────┼─────────────┐
+                          ▼                         ▼                    ▼             │
+                  ② 语义记忆引擎            ② World Model        ③ 用户画像/技能       │
+                  (向量+FTS+hybrid)         (数字孪生+7 probes)   (SQLite)            │
+                          │                         │                    │             │
+                          └──────── 索引化注入回认知（① B0-B5）──────────┘             │
+                                                    ▼                                  │
+  B0 IDENTITY · B1 CAPABILITY · B2 ENVIRONMENT(②World Model 摘要)                       │
+  ══════════════════ CACHE ANCHOR（前缀缓存断点）══════════════════                     │
+  effectivePrompt 末尾 append：B3 INDEX HEADS(①认知图谱索引头,只增 I2)                  │
+                              B4 ACTIVE TASK(当前任务完整细节,替换 I1)                   │
+                              B5 RECALL(②语义召回 + ①图遍历)                            │
+                                                    ▼                                  │
+        模型在 active task 工作空间继续（I1 单任务 · I3 窗口透明）─────────────────────┘
+                                  （封口 → 回到 CONSOLIDATE，闭环）
+```
+
+### 11.3 子系统接口契约（统合关键 — 改任一接口需同步对侧 plan）
+
+| 接口 | 提供方 | 消费方 | 内容 |
+|------|--------|--------|------|
+| B2 注入源 | ② World Model | ① B2 ENVIRONMENT | 机器现状紧凑摘要（服务/端口/磁盘/版本），慢变 30min |
+| B5 RECALL 底座 | ② src/memory | ① B5 | 向量近邻 top-k 语义召回 |
+| 图谱软边 | ② src/memory | ① 认知图谱 | 查询时向量近邻动态生成，**绝不入库**（D4 硬边持久/软边不存） |
+| CONSOLIDATE 时机 | ① TaskSegment 封口 | ②③ | 封口信号 → ② 写记忆 + ③ 更新画像/固化技能 |
+| 输入分流 | ③ 输入分类器 | ① 事件流 | task 进事件流，chat/affective/meta 进画像流（偏向判 task，误判不对称） |
+| 索引化注入策略 | ③ | ① B5 | 索引为主 + 强相关预取（score 分级，避免多轮往返） |
+| 身份主键 | ④ participant_id | ①②③ | 所有连续线、记忆、画像的归属键 |
+
+### 11.4 不可推翻的不变式（跨子系统，违反即跑偏）
+
+**I1** 工作空间单任务 · **I2** 索引只增 · **I3** 窗口对模型透明 · **I4** 双形态延续（精确轨=索引头，模糊轨=图+语义，模糊轨绝不单独承载精确任务状态）· **I5** Participant 为连续性主键。
+
+**本项目反复踩的陷阱（同构，必防）**：① "模块+测试齐全 ≠ 完成"，完成定义 = 生产路径实跑 + 端到端验证；② 死代码伪装成功能（executeRotation）；③ 声明性文档乐观偏差，见 ✅ 先 grep 生产调用者；④ 断言冒充检查（安全判据必须真求值）。详见 PITFALLS #91-94。

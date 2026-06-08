@@ -118,7 +118,7 @@
 | P088 | 🟡 | task-segment-tracker completeToolCall 按工具名匹配 | data | Resolved |
 | P089 | 🟡 | handoff-inject 轮换后查找失败 | data | Resolved |
 | P090 | 🟡 | rotate-session-tool 错误处理不一致 | api | Resolved |
-| P091 | 🔴 | executeRotation 死代码：仅定义+导出+测试，零生产调用 | arch | Active |
+| P091 | 🔴 | executeRotation 死代码：仅定义+导出+测试，零生产调用 | arch | Active（根治=PLAN-09 P0 删除轮换） |
 | P092 | 🔴 | buildAndStoreDualTrackIndex 覆盖抹掉 macro | data | Resolved |
 | P093 | 🔴 | rotate_session 违反 AgentTool 框架契约 | api | Resolved |
 | P094 | 🟡 | attempt.ts inputClassification 重复声明 | api | Resolved |
@@ -1019,11 +1019,11 @@
 ### P091 — executeRotation 死代码：仅定义+导出+测试，零生产调用
 - **严重程度：** 🔴 CRITICAL
 - **类别：** arch
-- **状态：** Active
+- **状态：** Active → 解决路径变更（设计层已决，待 PLAN-09 P0 执行）
 - **你能观察到的现象：** 序8 设计为'双轨延续'（Macro=压缩会话摘要 + Micro=任务段），但真实运行下 `macroIndex` 恒为 `[]`，只有 Micro 轨工作
 - **根因：** `rotation-controller.ts` 的 `executeRotation` 是死代码——仅被 `index.ts` 导出和 23 个测试覆盖，无任何运行时调用者
 - **错误做法：** 测试覆盖即认为已接入
-- **正确做法：** 提取共享纯函数 `buildMacroEntryFromHandoff()`，让 `rotate_session` 工具在 `updateActiveSession` 后调 `appendMacroIndexEntry`
+- **正确做法（已更新 2026-06-08）：** ~~提取共享纯函数让 rotate_session 接线~~ 已作废——[PLAN-09](plans/PLAN-09.md) 审定后，整个会话轮换机制被废弃。P091 的根治路径 = **PLAN-09 P0 直接删除 executeRotation/rotation-controller/auto-trigger，不再接线**。延续改走"事件流+认知图谱索引"，双轨索引升级为认知图谱（IndexNode+边）。
 - **发现时间：** 来自采访
 
 ### P092 — buildAndStoreDualTrackIndex 覆盖抹掉 macro

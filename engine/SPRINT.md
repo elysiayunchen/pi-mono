@@ -34,34 +34,53 @@
 | 17 | 架构优化 Sprint | 2026-04-05 | BUG-1~4 修复 + deploy.sh 守卫 |
 | 18 | Code Mode Phase 0 最小可行补丁 | 2026-04-05 | attempt.ts /code /exit 检测 |
 | 19 | 流式输出修复 — blockStreamingDefault 错误抑制 | 2026-06-08 | 根因定位 + 配置修复 + 端到端验证 |
+| 20 | 流式管线加固 + 参数校准（已部署） | 2026-06-08 | 4 修复 + 诊断日志 + 3 激进参数回滚 + 部署验证 |
 
 
 ## 优先级栈
-1. [TASK-01] 序 8 阶段 5 端到端验证 — 会话轮换全流程生产验证，需可用模型
-2. [TASK-02] Tool Parity Task 14: AskUserQuestionTool — Telegram inline keyboard 交互
-3. [TASK-03] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + rotation-trigger.ts
-4. [TASK-04] CONSOLIDATE 回写接线 — 修复 executeRotation 死代码，接入生产路径
-5. [TASK-05] 注入预算器升级 — 接入运行时，随 1M 窗口缩放
+1. [TASK-01] PLAN-09 P0：注入方向修正 + 轮换机制废弃 — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool
+2. [TASK-02] PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode — computeInjectionBudget接入运行时，封口时写入IndexNode+硬边
+3. [TASK-03] Tool Parity Task 14: AskUserQuestionTool — Telegram inline keyboard 交互
+4. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
+5. [TASK-05] PLAN-09 P2：元压缩 + 图遍历检索 — L2.5 task→session聚合，图遍历检索闭环
 
 
 ## 任务详情
 
 
-### TASK-01: 序 8 阶段 5 端到端验证
-- **用户可见的变化：** 会话轮换功能在生产环境可用，任务跨 session 延续不丢失
-- **完成标准：** 
-  1. 部署后跑出首条 conversation db
-  2. rotate_session 工具在生产环境成功调用
-  3. B3 Handoff 注入 + B4 RECALL 在新会话中正常工作
-  4. Task Segment 追踪从 plan→todo→review→recall 全流程闭环
-- **验证方法：** verify → PLAN-02.spec:AC-5~AC-8
-- **约束：** 不能影响现有 session 数据；不能破坏 gateway 稳定性
-- **起点：** `elysiaclaw/src/session-rotation/` → `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`
-- **前置依赖：** 可用模型（当前阻塞）
-- **风险：** 模型不可用导致无法验证；轮换逻辑可能影响现有 session 管理
+### TASK-01: PLAN-09 P0：注入方向修正 + 轮换机制废弃
+- **用户可见的变化：** 无直接用户可见变化，但上下文利用率和KV-cache命中率提升
+- **完成标准：**
+  1. B3/B4/B5 append到effectivePrompt末尾（用户消息之后），不prepend
+  2. rotation-controller.ts / auto-trigger.ts / rotate-session-tool.ts 已删除或标注废弃
+  3. HandoffPacket废弃，handoff-inject.ts改造为索引头注入器
+  4. attempt.ts中auto-rotation逻辑全部移除
+  5. grep rotate/rotation/handoff零命中（除注释/废弃标注）
+  6. `npm run check`零错误，相关vitest全绿
+- **验证方法：** verify → PLAN-09.spec:AC-1, AC-2, AC-9
+- **约束：** 不能破坏现有session数据；不能影响gateway稳定性
+- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + `elysiaclaw/src/session-rotation/`
+- **前置依赖：** 无
+- **风险：** 注入方向改变可能影响模型行为，需充分测试
 
 
-### TASK-02: Tool Parity Task 14: AskUserQuestionTool
+### TASK-02: PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode
+- **用户可见的变化：** 上下文利用率提升，任务封口后索引头自动注入B3
+- **完成标准：**
+  1. computeInjectionBudget在运行时被调用，预算随窗口缩放
+  2. TaskSegment封口后IndexNode写入conversation-store
+  3. 硬边（temporal/produces）自动产生
+  4. B3注入内容来自conversation-store的IndexNode
+  5. conversation-store增加edges表
+  6. `npm run check`零错误，相关vitest全绿
+- **验证方法：** verify → PLAN-09.spec:AC-3, AC-4, AC-5, AC-6
+- **约束：** 不能降低现有压缩效果
+- **起点：** `elysiaclaw/src/context-engine/injection-budget.ts` + `elysiaclaw/src/session-rotation/task-segment-tracker.ts`
+- **前置依赖：** TASK-01完成
+- **风险：** 预算参数选择不当可能导致过早或过晚压缩
+
+
+### TASK-03: Tool Parity Task 14: AskUserQuestionTool
 - **用户可见的变化：** Agent 在需要用户决策时通过 Telegram inline keyboard 询问，用户点击按钮回复
 - **完成标准：** agent 能发起问题、渲染 inline keyboard、接收用户选择并继续执行
 - **验证方法：** verify → PLAN-07.spec:AC-14
@@ -71,53 +90,42 @@
 - **风险：** inline keyboard callback 处理需要新增 Telegram update handler
 
 
-### TASK-03: attempt.ts 拆分重构
+### TASK-04: attempt.ts 拆分重构
 - **用户可见的变化：** 无直接用户可见变化，但代码可维护性大幅提升
 - **完成标准：**
-  1. `attempt.ts` 拆分为 3 个文件：system-prompt-builder.ts / injection-coordinator.ts / rotation-trigger.ts
+  1. `attempt.ts` 拆分为 3 个文件：system-prompt-builder.ts / injection-coordinator.ts / index-head-injector.ts
   2. 所有现有测试通过
   3. 类型检查零错误
   4. 生产部署后功能无回归
 - **验证方法：** `npm run check` + `npm test` + deploy.sh 后 E2E 验证
 - **约束：** 不能改变任何外部行为；不能破坏现有 API 契约
 - **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`（2861+ 行）
-- **前置依赖：** 无（纯重构）
+- **前置依赖：** TASK-01完成（P0注入方向修正后拆分更清晰）
 - **风险：** 大文件拆分容易引入回归；需要充分的测试覆盖
 
 
-### TASK-04: CONSOLIDATE 回写接线
-- **用户可见的变化：** 会话轮换时正确沉淀任务状态到记忆引擎
+### TASK-05: PLAN-09 P2：元压缩 + 图遍历检索
+- **用户可见的变化：** 长对话中B3索引头自动聚合，RECALL能搜到关联的已归档内容
 - **完成标准：**
-  1. executeRotation 接入生产调用路径
-  2. MacroIndex 真实构建并存储（修复 PITFALLS #91/#92）
-  3. 自动轮换安全点运行时真检查（修复 PITFALLS #93）
-- **验证方法：** verify → PLAN-02.spec:AC-3, PLAN-08.spec:AC-1~AC-3
-- **约束：** 不能影响现有 session 管理
-- **起点：** `elysiaclaw/src/session-rotation/rotation-controller.ts` → `attempt.ts`
-- **前置依赖：** TASK-01（端到端验证）为先决条件
-- **风险：** 涉及 session 生命周期，出错可能导致数据丢失
-
-
-### TASK-05: 注入预算器升级
-- **用户可见的变化：** 上下文利用率提升，减少不必要的压缩
-- **完成标准：**
-  1. `computeInjectionBudget` 接入运行时，替换硬编码阈值
-  2. 注入预算随 1M 窗口缩放
-  3. B2/B3/B4 按配置比例分配
-- **验证方法：** verify → PLAN-01.spec:AC-5
-- **约束：** 不能降低现有压缩效果
-- **起点：** `elysiaclaw/src/context-engine/` → `packages/coding-agent/src/core/sdk.ts`
-- **前置依赖：** 无（纯逻辑增强）
-- **风险：** 预算参数选择不当可能导致过早或过晚压缩
+  1. B3索引头超预算时自动触发元压缩（task→session节点聚合）
+  2. 图遍历能从入口节点扩展到关联节点
+  3. RECALL结果包含图遍历关联的索引头
+  4. `npm run check`零错误，相关vitest全绿
+- **验证方法：** verify → PLAN-09.spec:AC-7, AC-8
+- **约束：** 元压缩只替换B3注入内容，IndexNode和边仍在图谱中
+- **起点：** 新增meta-compression.ts + 升级dual-track-index.ts
+- **前置依赖：** TASK-02完成
+- **风险：** 元压缩丢信息（缓解：IndexNode仍在图谱中可回查）
 
 
 ## 阻塞中的任务
-- TASK-01：阻塞于主模型不可用（OpenRouter owl-alpha 不可用）
+- TASK-05（PLAN-09 P2）：阻塞于TASK-02完成
+- 端到端生产验证：阻塞于主模型不可用（OpenRouter owl-alpha 不可用）
 
 
 ## 本冲刺不做的事
-- World Model Phase 2（PLAN-03）— 等待序 8 闭环
+- World Model Phase 2（PLAN-03）— 等待 PLAN-09 P0-P1 闭环
 - 技能进化 Skill Evolution（PLAN-04）— 等待 World Model
 - MCP 协议集成（Tool Parity Task 15）— 大工程，排在 Task 14 之后
 - 并行执行引擎（Tool Parity Task 16）— 大工程，最后做
-- 参与者持续性 W1-W5（PLAN-08）— 等待 W0 闭环
+- 参与者持续性 W1-W5（PLAN-08 L0/L1/L3/L4）— 等待 PLAN-09 L2 闭环

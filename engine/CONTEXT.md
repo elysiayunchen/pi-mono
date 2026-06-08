@@ -6,16 +6,16 @@
 | 维度 | 状态 |
 |------|------|
 | 构建 | ✅ 正常（`npm run build` 通过，`npm run check` 零错误） |
-| 上次完成 | 流式输出修复（blockStreamingDefault="off" 配置修复，2026-06-08） |
-| 进行中 | 序 8 Conversation+Handoff 阶段 5（端到端验证，待可用模型） |
+| 上次完成 | 流式管线加固 + 参数校准 + 已部署（Sprint 20: P1-P4 + 诊断日志 + 激进参数回滚，2026-06-08） |
+| 进行中 | 认知架构统合审定完成（PLAN-09 accepted）；下一步 PLAN-09 P0：注入方向修正(prepend→append) + 轮换死代码清理（不依赖模型） |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
-| 产品目标完成度 | 约 70% — 12 层 Agent 框架竣工，认知架构演进至序 8，Tool Parity 82.4% |
+| 产品目标完成度 | 约 70% — 12 层 Agent 框架竣工，认知架构统合为 3 正交子系统+身份层（ARCHITECTURE §11），Tool Parity 82.4% |
 
 
 ## 当前状态概述
 ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行在 `elysiaserver` (Ubuntu 24.04)，通过 Telegram Bot `@ElysiaClaw_Bot` 交互。项目维护者为 aoseluo（云尘 / 奈緒），采用 AI 协作开发模式，独立维护，不与上游 OpenClaw 同步。
 
-当前处于认知架构演进的关键阶段：序 1-7（分层注入、压缩可见性、全流式、工具结果驱逐、注入预算器、输入分类器、用户画像）已全部完成；序 8（会话轮换与跨会话延续）阶段 1-4 代码落地，待端到端验证。上方有参与者持续性总架构（PLAN-08）统摄后续方向。
+当前处于认知架构演进的关键阶段：序 1-7（分层注入、压缩可见性、全流式、工具结果驱逐、注入预算器、输入分类器、用户画像）已全部完成。认知架构经**统合审定（2026-06-08）**收敛为 3 个正交子系统 + 身份层（见 ARCHITECTURE §11 全景）：子系统①「上下文与事件记忆」以 **PLAN-09（accepted，事件流+认知图谱）** 为权威，取代早期 PLAN-01/02/08 L2 的"分层注入+会话轮换+Handoff"草案地质层；②记忆/World Model（PLAN-03）、③知识库/进化（PLAN-04）、④身份/协作（PLAN-08 L0/L1/L3/L4）为协同子系统。下一步执行 PLAN-09 P0（注入方向修正 + 轮换死代码清理），不依赖模型可用性。
 
 
 ## 当前假设
@@ -58,7 +58,8 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
+1. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
+2. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
 2. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
 3. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
 4. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
@@ -66,9 +67,10 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 已知不稳定项
-- executeRotation 死代码：仅定义+导出+测试，零生产调用（PITFALLS #91）
-- CONSOLIDATE 未接入生产：MacroIndex 真实路径恒空，双轨退化单轨（PITFALLS #92）
-- 自动轮换假自动：pendingToolCalls:0, hasActiveBackgroundLane:false 写死（PITFALLS #93）
+- ⚠️ 以下 3 项轮换相关债 = PLAN-09 P0 整体删除会话轮换后消失（不再单独修）：
+- executeRotation 死代码：仅定义+导出+测试，零生产调用（PITFALLS #91，根治=P0 删除）
+- CONSOLIDATE 未接入生产：MacroIndex 真实路径恒空，双轨退化单轨（PITFALLS #92，升级为认知图谱）
+- 自动轮换假自动：pendingToolCalls:0, hasActiveBackgroundLane:false 写死（PITFALLS #93，随轮换废弃）
 - 注入预算器用简化版：运行时用硬编码阈值，不随 1M 窗口缩放
 - 输入分类器数据源偏窄：短陈述句落入 task，identity.name 提不出
 - sessions chunks 47% CLAUDE.md 注入噪音

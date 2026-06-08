@@ -1,5 +1,5 @@
 # ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-08 | Revision: 1 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-08 | Revision: 4 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -46,7 +46,7 @@
 
 | File | Irreducible sections（常驻） | Derivable sections（CLI 现生） |
 |------|------------------------------|--------------------------------|
-| ARCHITECTURE.md | §0 产品简史, §1 项目身份, §6 关键架构决策, §7 数据约束与不变量（含 Bot/TUI 双轨架构差异） | §2 技术栈, §3 目录结构, §4 包/服务地图, §5 核心数据流, §8 日志与可观测性, §9 外部依赖, §10 快速启动 |
+| ARCHITECTURE.md | §0 产品简史, §1 项目身份, §6 关键架构决策, §7 数据约束与不变量（含 Bot/TUI 双轨架构差异）, §11 认知架构全景（3 正交子系统+身份层，统合权威图） | §2 技术栈, §3 目录结构, §4 包/服务地图, §5 核心数据流, §8 日志与可观测性, §9 外部依赖, §10 快速启动 |
 
 
 ## 2. Plan 注册表 (Plan Registry)
@@ -54,20 +54,22 @@
 
 | ID | Title | Status | Plan path | Spec twin | 备注 | Last verified |
 |----|-------|--------|-----------|-----------|------|---------------|
-| PLAN-01 | 分层上下文注入架构（Context Injection） | active | engine/plans/PLAN-01.md | engine/plans/PLAN-01.spec.md | 序 1-7 已完成，B0-B4 五带注入模型 | 2026-06-08 |
-| PLAN-02 | 会话轮换与跨会话延续（Session Rotation） | active | engine/plans/PLAN-02.md | engine/plans/PLAN-02.spec.md | 序 8 阶段 1-4 完成，阶段 5 待续 | 2026-06-08 |
-| PLAN-03 | 超级计算机管理员 Agent（World Model + Memory） | active | engine/plans/PLAN-03.md | engine/plans/PLAN-03.spec.md | Phase 1 记忆引擎 ✅，Phase 2 World Model 待启动 | 2026-06-08 |
-| PLAN-04 | 知识库与自我进化 | proposed | engine/plans/PLAN-04.md | engine/plans/PLAN-04.spec.md | 上层范式，序 6-7/11-12 依赖 | 2026-06-08 |
+| PLAN-01 | 分层上下文注入架构（Context Injection） | superseded | engine/plans/PLAN-01.md | engine/plans/PLAN-01.spec.md | superseded-by: PLAN-09（事件记忆+全索引统合） | 2026-06-08 |
+| PLAN-02 | 会话轮换与跨会话延续（Session Rotation） | superseded | engine/plans/PLAN-02.md | engine/plans/PLAN-02.spec.md | superseded-by: PLAN-09（轮换机制废弃，TaskSegment+压缩保留） | 2026-06-08 |
+| PLAN-03 | 超级计算机管理员 Agent（World Model + Memory） | active | engine/plans/PLAN-03.md | engine/plans/PLAN-03.spec.md | 正交子系统②；Phase 1 记忆引擎 ✅，Phase 2 World Model 待启动 | 2026-06-08 |
+| PLAN-04 | 知识库与自我进化 | active | engine/plans/PLAN-04.md | engine/plans/PLAN-04.spec.md | 正交子系统③；输入分类/用户画像 ✅，技能进化 PROPOSAL | 2026-06-08 |
 | PLAN-05 | Telegram UX × 上下文/记忆协同 | active | engine/plans/PLAN-05.md | engine/plans/PLAN-05.spec.md | WS-1/WS-2/WS-3 已完成 | 2026-06-08 |
 | PLAN-06 | 子代理代码委派（delegate_code_task） | active | engine/plans/PLAN-06.md | engine/plans/PLAN-06.spec.md | AC 未全部验证，待 RECONCILE 确认 | 2026-06-08 |
 | PLAN-07 | Tool Parity（工具对标 Claude Code） | active | engine/plans/PLAN-07.md | engine/plans/PLAN-07.spec.md | 14/17 = 82.4%，Task 14-16 待执行 | 2026-06-08 |
-| PLAN-08 | 参与者持续性架构（Participant Continuity） | proposed | engine/plans/PLAN-08.md | engine/plans/PLAN-08.spec.md | 统摄序 8 及后续，W0-W5 待落地 | 2026-06-08 |
+| PLAN-08 | 参与者持续性架构（Participant Continuity） | superseded | engine/plans/PLAN-08.md | engine/plans/PLAN-08.spec.md | superseded-by: PLAN-09（L2 认知层重设计，L0/L1/L3/L4 方向保留） | 2026-06-08 |
+| PLAN-09 | 事件记忆与认知索引架构（Event Memory & Cognitive Index） | accepted | engine/plans/PLAN-09.md | engine/plans/PLAN-09.spec.md | 认知架构子系统①**权威**；统合并取代 01/02/08 L2，废除轮换，事件流+认知图谱；待 P0-P3 实施 | 2026-06-08 |
 
 [新 plan 追加到表格末尾。ID 按 PLAN‑[N+1] 递增。状态变更时直接改对应行。]
 [原设计文档已迁移至 `engine/plans/`，旧目录 `elysiaclaw_engine/` 已删除。]
 
 **Status 定义：**
 - `proposed` —— 已录入，尚未派生任务
+- `accepted` —— 设计已审定为权威方向（方向锁定、不可推翻），但尚未全部落地；介于 proposed 与 active 之间，可据此派生执行任务并清理冲突代码
 - `active` —— 已派生执行层条目，进行中
 - `done` —— 已落实并通过验证：其 spec twin 关联的全部验收标准（AC）均验证通过
 - `superseded` —— 被后续 plan 取代；备注列记 `superseded-by: PLAN-XX`，NEVER 删除原 plan 与其 twin
@@ -87,6 +89,7 @@
 | PLAN-06 | ROADMAP:delegate_code_task, SPRINT:子代理分发实施, PITFALLS:#65-#68 | PLAN-06.spec:AC-1~AC-4 | elysiaclaw/src/agents/tools/delegate-code-task.ts |
 | PLAN-07 | ROADMAP:Tool Parity, SPRINT:Tool Parity Task 0-13, PITFALLS:#46-#56 | PLAN-07.spec:AC-1~AC-17 | packages/coding-agent/src/core/tools/, elysiaclaw/src/agents/pi-tools.ts |
 | PLAN-08 | SPRINT:W0闭环session-rotation, ROADMAP:参与者持续性, SYSTEM:协作协议 | PLAN-08.spec:AC-1~AC-7 | elysiaclaw/src/session-rotation/, elysiaclaw/src/participant/ |
+| PLAN-09 | SPRINT:PLAN-09-P0(注入修正+死代码清理)/P1(预算器+IndexNode)/P2(元压缩+图遍历)/P3(端到端验证), ROADMAP:事件记忆闭环(M4重定义), PITFALLS:#91→P0废弃/#92→P1封口/#93→P0废弃 | PLAN-09.spec:AC-1~AC-10 | elysiaclaw/src/session-rotation/(废弃), elysiaclaw/src/context-engine/, elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts, elysiaclaw/src/memory/(图遍历基础) |
 
 [plan 派生新条目时，在其行内追加。执行层条目用 `文件:锚点` 格式引用，NEVER 复制条目正文。]
 
@@ -118,6 +121,9 @@
 | SPRINT:W0闭环session-rotation | PLAN-08 |
 | ROADMAP:参与者持续性 | PLAN-08 |
 | SYSTEM:协作协议 | PLAN-08 |
+| SPRINT:PLAN-09-P0/P1/P2/P3 | PLAN-09 |
+| ROADMAP:事件记忆闭环(M4重定义) | PLAN-09 |
+| PITFALLS:#91→P0废弃/#92→P1封口/#93→P0废弃 | PLAN-09 |
 
 
 ## 4. 完整性与新鲜度 (Integrity & Freshness)
@@ -125,8 +131,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 3 |
-| 上次 RECONCILE | 2026-06-08（旧目录 elysiaclaw_engine/ 删除，归档迁移至 engine/archive/，规范文件迁移至 engine/，全项目引用更新） |
+| 全局 revision | 6 |
+| 上次 RECONCILE | 2026-06-08（设计统合审定：PLAN-09 升 accepted 并取代 01/02/08，PLAN-03/04 标注正交子系统，ARCHITECTURE §11 认知架构全景新增，PITFALLS #091 解决路径改为 PLAN-09 P0，revision 6） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 
