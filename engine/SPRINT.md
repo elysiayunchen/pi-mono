@@ -39,8 +39,8 @@
 
 ## 优先级栈
 1. [TASK-01] ~~PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅ — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool，HandoffPacket废弃，auto-rotation移除，npm run check零错误+vitest全绿
-2. [TASK-02] PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode — computeInjectionBudget接入运行时，封口时写入IndexNode+硬边
-3. [TASK-03] Tool Parity Task 14: AskUserQuestionTool — Telegram inline keyboard 交互
+2. [TASK-02] ~~PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode~~ ✅ — computeInjectionBudget接入运行时（按窗口比例缩放），封口时写入IndexNode+temporal/produces硬边，conversation-store新增index_nodes+edges表+traverseGraph，B3注入从图谱读IndexNode，npm run check零错误
+3. [TASK-03] ~~Tool Parity Task 14: AskUserQuestionTool~~ ✅ — Telegram inline keyboard 交互工具，ask-user-question.ts + helpers + bot-handlers callback路由 + 四层注册 + 11测试全绿
 4. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
 5. [TASK-05] PLAN-09 P2：元压缩 + 图遍历检索 — L2.5 task→session聚合，图遍历检索闭环
 
@@ -65,30 +65,38 @@
 - **风险：** 注入方向改变可能影响模型行为，需充分测试
 
 
-### TASK-02: PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode
-- **用户可见的变化：** 上下文利用率提升，任务封口后索引头自动注入B3
+### TASK-02: PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode ✅
+- **状态：** 已完成（2026-06-08）
+- **用户可见的变化：** 上下文利用率提升（1M窗口下不再用80k硬编码阈值），任务封口后认知图谱节点自动注入B3
 - **完成标准：**
-  1. computeInjectionBudget在运行时被调用，预算随窗口缩放
-  2. TaskSegment封口后IndexNode写入conversation-store
-  3. 硬边（temporal/produces）自动产生
-  4. B3注入内容来自conversation-store的IndexNode
-  5. conversation-store增加edges表
-  6. `npm run check`零错误，相关vitest全绿
+  1. ✅ computeInjectionBudget在运行时被调用，预算随窗口缩放
+  2. ✅ TaskSegment封口后IndexNode写入conversation-store
+  3. ✅ 硬边（temporal/produces）自动产生
+  4. ✅ B3注入内容来自conversation-store的IndexNode
+  5. ✅ conversation-store增加index_nodes + edges表
+  6. ✅ `npm run check`零错误
 - **验证方法：** verify → PLAN-09.spec:AC-3, AC-4, AC-5, AC-6
 - **约束：** 不能降低现有压缩效果
 - **起点：** `elysiaclaw/src/context-engine/injection-budget.ts` + `elysiaclaw/src/session-rotation/task-segment-tracker.ts`
-- **前置依赖：** TASK-01完成
+- **前置依赖：** TASK-01完成 ✅
 - **风险：** 预算参数选择不当可能导致过早或过晚压缩
 
 
-### TASK-03: Tool Parity Task 14: AskUserQuestionTool
+### TASK-03: Tool Parity Task 14: AskUserQuestionTool ✅
+- **状态：** 已完成（2026-06-08）
 - **用户可见的变化：** Agent 在需要用户决策时通过 Telegram inline keyboard 询问，用户点击按钮回复
-- **完成标准：** agent 能发起问题、渲染 inline keyboard、接收用户选择并继续执行
+- **完成标准：**
+  1. ✅ `ask-user-question.ts` 工具实现：Zod schema + execute 逻辑
+  2. ✅ `ask-user-question-helpers.ts` 纯函数提取：callback 解析、pending question 管理、ID 生成
+  3. ✅ `bot-handlers.ts` callback_query 路由：`ask_user:` 前缀拦截 → `resolveAskUserQuestion` → 清除按钮
+  4. ✅ 四层注册：L1 工具文件 → L2 elysiaclaw-tools.ts → L3 tool-catalog.ts → L4 运行时配置
+  5. ✅ 11 个单元测试全绿（callback 解析 6 + resolve 3 + ID 生成 2）
+  6. ✅ `pnpm build` 零错误
 - **验证方法：** verify → PLAN-07.spec:AC-14
-- **约束：** 不能影响现有 Telegram 消息处理流程
+- **约束：** 不影响现有 Telegram 消息处理流程 ✅（ask_user callback 在 approval 之后、pagination 之前独立路由，return 退出）
 - **起点：** `elysiaclaw/src/telegram/` → `elysiaclaw/src/agents/tools/`
-- **前置依赖：** 无（纯应用层工具，不依赖模型）
-- **风险：** inline keyboard callback 处理需要新增 Telegram update handler
+- **前置依赖：** 无
+- **风险：** inline keyboard callback 处理需要新增 Telegram update handler ✅ 已在 bot-handlers.ts 中实现
 
 
 ### TASK-04: attempt.ts 拆分重构

@@ -60,7 +60,7 @@
 | PLAN-04 | 知识库与自我进化 | active | engine/plans/PLAN-04.md | engine/plans/PLAN-04.spec.md | 正交子系统③；输入分类/用户画像 ✅，技能进化 PROPOSAL | 2026-06-08 |
 | PLAN-05 | Telegram UX × 上下文/记忆协同 | active | engine/plans/PLAN-05.md | engine/plans/PLAN-05.spec.md | WS-1/WS-2/WS-3 已完成 | 2026-06-08 |
 | PLAN-06 | 子代理代码委派（delegate_code_task） | active | engine/plans/PLAN-06.md | engine/plans/PLAN-06.spec.md | AC 未全部验证，待 RECONCILE 确认 | 2026-06-08 |
-| PLAN-07 | Tool Parity（工具对标 Claude Code） | active | engine/plans/PLAN-07.md | engine/plans/PLAN-07.spec.md | 14/17 = 82.4%，Task 14-16 待执行 | 2026-06-08 |
+| PLAN-07 | Tool Parity（工具对标 Claude Code） | active | engine/plans/PLAN-07.md | engine/plans/PLAN-07.spec.md | 15/17 = 88.2%，Task 14 ✅，Task 15-16 待执行 | 2026-06-08 |
 | PLAN-08 | 参与者持续性架构（Participant Continuity） | superseded | engine/plans/PLAN-08.md | engine/plans/PLAN-08.spec.md | superseded-by: PLAN-09（L2 认知层重设计，L0/L1/L3/L4 方向保留） | 2026-06-08 |
 | PLAN-09 | 事件记忆与认知索引架构（Event Memory & Cognitive Index） | active | engine/plans/PLAN-09.md | engine/plans/PLAN-09.spec.md | 认知架构子系统①**权威**；统合并取代 01/02/08 L2，废除轮换，事件流+认知图谱；P0 ✅（注入修正+轮换废弃），P1-P3 待实施 | 2026-06-08 |
 

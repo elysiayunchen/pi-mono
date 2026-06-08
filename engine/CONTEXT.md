@@ -5,17 +5,16 @@
 ## 状态面板
 | 维度 | 状态 |
 |------|------|
-| 构建 | ✅ 正常（`npm run build` 通过，`npm run check` 零错误） |
-| 上次完成 | 流式管线加固 + 参数校准 + 已部署（Sprint 20: P1-P4 + 诊断日志 + 激进参数回滚，2026-06-08） |
-| 进行中 | 认知架构统合审定完成（PLAN-09 accepted）；下一步 PLAN-09 P0：注入方向修正(prepend→append) + 轮换死代码清理（不依赖模型） |
+| 构建 | ✅ 正常（`npm run check` 零错误，499 文件） |
+| 上次完成 | TASK-03 AskUserQuestionTool：Telegram inline keyboard 交互工具（2026-06-08） |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
-| 产品目标完成度 | 约 70% — 12 层 Agent 框架竣工，认知架构统合为 3 正交子系统+身份层（ARCHITECTURE §11），Tool Parity 82.4% |
+| 产品目标完成度 | 约 74% — 12 层 Agent 框架竣工，认知架构 P0+P1 完成，Tool Parity 88.2% |
 
 
 ## 当前状态概述
 ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行在 `elysiaserver` (Ubuntu 24.04)，通过 Telegram Bot `@ElysiaClaw_Bot` 交互。项目维护者为 aoseluo（云尘 / 奈緒），采用 AI 协作开发模式，独立维护，不与上游 OpenClaw 同步。
 
-当前处于认知架构演进的关键阶段：序 1-7（分层注入、压缩可见性、全流式、工具结果驱逐、注入预算器、输入分类器、用户画像）已全部完成。认知架构经**统合审定（2026-06-08）**收敛为 3 个正交子系统 + 身份层（见 ARCHITECTURE §11 全景）：子系统①「上下文与事件记忆」以 **PLAN-09（accepted，事件流+认知图谱）** 为权威，取代早期 PLAN-01/02/08 L2 的"分层注入+会话轮换+Handoff"草案地质层；②记忆/World Model（PLAN-03）、③知识库/进化（PLAN-04）、④身份/协作（PLAN-08 L0/L1/L3/L4）为协同子系统。下一步执行 PLAN-09 P0（注入方向修正 + 轮换死代码清理），不依赖模型可用性。
+当前处于认知架构演进的关键阶段：序 1-7 已全部完成。认知架构经统合审定收敛为 3 个正交子系统 + 身份层。PLAN-09 P0（注入方向修正 + 轮换废弃）和 P1（预算器接入 + IndexNode + 硬边 + B3图谱注入）均已完成。TASK-03（AskUserQuestionTool）已完成——Telegram inline keyboard 交互工具，支持 agent 发起问题、用户点击按钮回复、callback 路由和超时处理。下一步执行 TASK-04（attempt.ts 拆分重构）或 TASK-05（PLAN-09 P2 元压缩+图遍历检索）。
 
 
 ## 当前假设
@@ -67,11 +66,9 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 已知不稳定项
-- ⚠️ 以下 3 项轮换相关债 = PLAN-09 P0 整体删除会话轮换后消失（不再单独修）：
-- executeRotation 死代码：仅定义+导出+测试，零生产调用（PITFALLS #91，根治=P0 删除）
-- CONSOLIDATE 未接入生产：MacroIndex 真实路径恒空，双轨退化单轨（PITFALLS #92，升级为认知图谱）
-- 自动轮换假自动：pendingToolCalls:0, hasActiveBackgroundLane:false 写死（PITFALLS #93，随轮换废弃）
-- 注入预算器用简化版：运行时用硬编码阈值，不随 1M 窗口缩放
+- ~~注入预算器用简化版~~ ✅ P1已修复：computeInjectionBudget接入运行时，按窗口比例缩放
+- ~~conversation-store 无 edges 表~~ ✅ P1已修复：新增 index_nodes + edges 表
+- ~~TaskSegment 封口不产生 IndexNode~~ ✅ P1已修复：onSeal回调写入图谱
 - 输入分类器数据源偏窄：短陈述句落入 task，identity.name 提不出
 - sessions chunks 47% CLAUDE.md 注入噪音
 - delegate_code_task Telegram 端到端验证未完成（需可用模型）
@@ -80,7 +77,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 ## 待解决问题
 - [ ] [Q-01] 序 8 阶段 5 端到端验证 — 需要可用模型才能进行
-- [ ] [Q-02] Tool Parity Task 14-16（AskUserQuestion / MCP / 并行执行）— 优先级排序
+- [ ] [Q-02] Tool Parity Task 15-16（MCP / 并行执行）— 优先级排序
 - [ ] [Q-03] attempt.ts 拆分重构时机 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + rotation-trigger.ts
 - [ ] [Q-04] World Model Phase 2 启动时机 — 阻塞项：序 8 闭环 + 模型可用
 - [ ] [Q-05] 参与者持续性 W0-W5 路线确认 — 需架构师排优先级

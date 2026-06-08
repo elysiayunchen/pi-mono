@@ -325,9 +325,9 @@ Code Mode (`/code` `/exit`) 已废弃，由子代理分发替代。核心设计�
 
 全仓类型错误清零，`npm run check` 不再阻塞。
 
-### 4.8 Tool Parity 进度 — 14/17 = 82.4%
+### 4.8 Tool Parity 进度 — 15/17 = 88.2%
 
-已完成：Task 0-13（接口扩展 + Grep/Bash/Todo/Edit/Read/Write/Find/Ls/PlanMode/Task/Team + web_fetch 注册 + WebSearch 超预期 5 provider）
+已完成：Task 0-14（接口扩展 + Grep/Bash/Todo/Edit/Read/Write/Find/Ls/PlanMode/Task/Team + web_fetch 注册 + WebSearch 超预期 5 provider + AskUserQuestionTool inline keyboard）
 
 ---
 
@@ -538,7 +538,7 @@ AI 协作者接手时的标准阅读顺序：
 | `computeInjectionBudget` 未接入运行时 | SDK 用硬编码阈值，不随 1M 窗口缩放 | 🟡 中 | W0-T5 注入预算器升级 |
 | `input-classifier` 数据源偏窄 | 短陈述句落入 task，identity.name 提不出 | 🟡 中 | 扩展分类特征 |
 | stripPluginOnlyAllowlist 时序问题 | cosmetic，不影响功能 | 🟢 低 | 低优先 |
-| Tool Parity 剩余 Task 14/15/16 | AskUserQuestion / MCP / 并行执行 | 🟡 中 | 按 PLAN 优先级逐步实施 |
+| Tool Parity 剩余 Task 15/16 | MCP / 并行执行 | 🟡 中 | 按 PLAN 优先级逐步实施 |
 | attempt.ts 复杂度失控 | 2861+ 行上帝文件 | 🔴 高 | 拆分为 system-prompt-builder + injection-coordinator + rotation-trigger |
 | 设计-实现鸿沟 | 多模块"代码+测试存在"但未接线生产路径 | 🔴 高 | W0 闭环 |
 
@@ -592,7 +592,7 @@ AI 协作者接手时的标准阅读顺序：
 
 | 优先级 | 任务 | 内容 | 卡点 |
 |---|---|---|---|
-| 🟡 中 | Task 14 | AskUserQuestionTool (Telegram inline keyboard) | 需 Telegram Bot API inline keyboard 交互 |
+| 🟡 中 | Task 14 | ~~AskUserQuestionTool~~ ✅ (Telegram inline keyboard) | 已完成：ask-user-question.ts + helpers + bot-handlers callback路由 + 四层注册 |
 | 🟡 中 | Task 15 | MCP 协议集成 | 最复杂，需读 MCP SDK 文档，可能需多个 Sprint |
 | 🟡 中 | Task 16 | 并行执行引擎 | 依赖 Task 0 能力声明；需 StreamingToolExecutor |
 | 🟢 低 | Task 5-11 | Read/Write/Find/Ls/PlanMode 等能力声明 | ✅ 已全部完成 |
@@ -647,7 +647,7 @@ AI 协作者接手时的标准阅读顺序：
 | KNOWLEDGE-BASE-EVOLUTION.md | 知识库与自我进化（索引化注入 + 输入分类 + 用户画像） |
 | TELEGRAM-UX-CONTEXT-PLAN.md | Telegram 输出体验 × 上下文协同计划 |
 | SUBAGENT-CODE-DELEGATION.md | 子代理代码委派技术设计 |
-| TOOL-PARITY-PLAN.md | Tool Parity 迁移计划（14/17 完成） |
+| TOOL-PARITY-PLAN.md | Tool Parity 迁移计划（15/17 完成） |
 | archive/DELEGATE-CODE-TASK-PLAN.md | 子代理代码委派实施计划（已完成） |
 | archive/MEMORY-ACTIVATION-RUNBOOK.md | 记忆引擎激活执行手册（已完成） |
 | archive/CLAUD-CODE-COMPARISON.md | Claude Code vs ElysiaClaw 逐层对标 |

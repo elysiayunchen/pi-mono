@@ -5,12 +5,12 @@
 ## 完成定义 (v1.0)
 1. ✅ 12 层 Agent 框架全部竣工（s01-s12.1）
 2. ✅ P 系列补丁全部完成（P1-A/B/C, P2-A/B/D, P3-A/B）
-3. ✅ Tool Parity 达到 80%+（14/17 = 82.4%）
+3. ✅ Tool Parity 达到 80%+（15/17 = 88.2%）
 4. ✅ 记忆引擎激活（TS memory_search + RECALL 注入）
 5. ✅ 序 1-7 统一实施全部完成（分层注入 + 压缩可见性 + 全流式 + 工具驱逐 + 注入预算 + 输入分类 + 用户画像）
 6. 🔄 序 8 事件记忆与认知索引架构（PLAN-09 统合，P0 ✅，P1-P3 待实施）
 7. [ ] 序 9-12 认知架构闭环（元压缩 → 图遍历检索 → 技能进化 → World Model）
-8. [ ] Tool Parity 100%（Task 14/15/16 完成）
+8. [ ] Tool Parity 100%（Task 15/16 完成）
 9. [ ] 参与者持续性架构落地（W0-W5，L0/L1/L3/L4）
 10. [ ] 端到端生产验证全部通过
 
@@ -39,7 +39,7 @@
 
 ### M5: Tool Parity 100%
 - **目标：** 工具链完整对标 Claude Code
-- **关键交付物：** AskUserQuestionTool (Task 14) + MCP 协议集成 (Task 15) + 并行执行引擎 (Task 16)
+- **关键交付物：** ~~AskUserQuestionTool (Task 14)~~ ✅ + MCP 协议集成 (Task 15) + 并行执行引擎 (Task 16)
 - **成功指标：** 17/17 工具全部完成并生产验证
 - **已知风险：** Task 15/16 为大工程，可能需要数周
 
@@ -58,7 +58,7 @@
 
 ## 功能积压
 ### Tool Parity
-- [FB-01] AskUserQuestionTool (Task 14) — 优先级：中
+- [FB-01] ~~AskUserQuestionTool (Task 14)~~ ✅ — 优先级：中
 - [FB-02] MCP 协议集成 (Task 15) — 优先级：中
 - [FB-03] 并行执行引擎 (Task 16) — 优先级：中
 

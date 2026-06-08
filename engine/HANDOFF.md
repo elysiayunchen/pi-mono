@@ -1,72 +1,76 @@
 # HANDOFF — ElysiaClaw
-> 初始化日期：2026-06-08 | 会话：1（引擎文件 v5 重构）
+> 初始化日期：2026-06-08 | 会话：3（PLAN-09 P1 实施）
 > 每次会话结束后重写此文件。
 
 
 ## ⚡ 立即恢复点
-> "从这里开始：执行 PLAN-09 P0 — 注入方向修正（attempt.ts 中 B3/B4/B5 由 prepend 改 append 到 effectivePrompt 末尾）+ 轮换死代码清理（删除 session-rotation/ 的 rotation-controller/auto-trigger/rotate-session-tool，改造 handoff-inject 为索引头注入器，清理 attempt.ts 中 35 处 rotation/handoff 引用）。不依赖模型可用性，验证靠 `npm run check` + vitest。"
-> 入口：`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`，`elysiaclaw/src/session-rotation/`。设计权威：`engine/plans/PLAN-09.md` §六/§十/§十一 + `engine/ARCHITECTURE.md §11`。
+> "从这里开始：执行 PLAN-09 P2（元压缩 + 图遍历检索）或 TASK-03（AskUserQuestionTool）。P1 已完成：computeInjectionBudget 接入运行时（按窗口比例缩放阈值），TaskSegment 封口产生 IndexNode + 硬边写入 conversation-store，B3 注入从认知图谱读 IndexNode，conversation-store 新增 index_nodes + edges 表。验证靠 `npm run check`。"
+> 入口：`elysiaclaw/src/session-rotation/`（图谱核心）、`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`（注入管线）。设计权威：`engine/plans/PLAN-09.md`。
 
 
 ## 本次会话总结
 ### ✅ 完成内容
-* 引擎文件系统 v5 深度重构：从 `elysiaclaw_engine/` 迁移至 `engine/`，按 ENGINE_FILE_SYSTEM_v5.md 规范重建。旧目录已删除。
-* 创建 ENGINE_MAP.md（索引层）+ 9 个引擎文件 + plans/ 目录（8 plan + 8 spec twin）
-* 8 个 plan 登记到 ENGINE_MAP §2，原始设计文档完整迁移至 `engine/plans/`，内容与原始文档 diff 全部通过
-* 知识类别分类：irreducible / mixed / derivable 按 v5 规范标注
+* PLAN-09 P1 全部完成（TASK-02）：
+  - `handoff-types.ts`：新增 IndexNode / HardEdge / NodeGrain / EdgeType 类型
+  - `conversation-store.ts`：新增 index_nodes + edges SQLite 表 + CRUD（insertIndexNode, getIndexNodesByConversation, insertEdge, getEdgesFrom/To, traverseGraph）
+  - `task-segment-tracker.ts`：封口时产生 IndexNode（grain=task）+ temporal/produces 硬边，通过 onSeal 回调写入 conversation-store
+  - `injection-budget.ts`：computeInjectionBudget 接入 attempt.ts 运行时，替代硬编码 estimateTextTokens 基线扣减
+  - `handoff-inject.ts`：新增 formatIndexNodesForInjection，B3 注入从 conversation-store 读 IndexNode
+  - `attempt.ts`：tracker 创建传入 conversationId + onSeal 回调；B3 注入增加认知图谱 IndexNode 来源
+  - `index.ts`：导出新类型和函数
+  - `npm run check` 499 文件零错误
 ### ⚙️ 实现方式
-* 基于 ENGINE_FILE_SYSTEM_v5.md 规范，结合 ElysiaClaw 项目现状（12 层 Agent 框架、认知架构演进、95+ 踩坑记录）
-* 采用 CLI-LEAN profile（直接文件访问），irreducible 文件完整生成，derivable 章节为 stub
-* Plan 内容直接复制原始设计文档，保持原设定不变，仅添加 4 行元数据头
+* 按 PLAN-09 spec AC-3~AC-6 逐项实现
+* tracker 通过 SealCallback 解耦，不直接依赖 conversation-store
+* conversation-store schema 变更用 CREATE TABLE IF NOT EXISTS 幂等
+* IndexNode 产生在 sealSegment 内部，onSeal 回调失败不阻塞封口
 ### 🔜 建议下一步
-* 运行 RECONCILE 对账：验证新引擎文件与代码库的一致性
-* 序 8 阶段 5 端到端验证（如果模型可用）
-* 或：Tool Parity Task 14（AskUserQuestion）
-* 或：attempt.ts 拆分重构（降低复杂度）
+* TASK-03（AskUserQuestionTool — Telegram inline keyboard）
+* 或 TASK-04（attempt.ts 拆分重构）
+* 或 TASK-05（PLAN-09 P2：元压缩 + 图遍历检索）
 
 
 ## 本次会话中的决策
 | 决策 | 选择 | 放弃 | 原因 |
 |------|------|------|------|
-| 引擎文件位置 | `/engine/`（项目根目录） | `elysiaclaw_engine/`（旧位置，已删除） | 遵循 v5 规范，统一路径 |
-| Profile | CLI-LEAN | WEB-FULL | 用户使用 Trae IDE/Claude Code，可直接读代码 |
-| 设计文档归属 | 迁移至 `engine/plans/` 作为 plan | 保留在旧目录 | 符合 v5 规范 plan 管理 |
-| 知识类别 | 严格按 v5 分类 | 全部保留 | 符合 CLI-LEAN 只持久化 irreducible 的原则 |
+| tracker→store 耦合方式 | SealCallback 回调 | tracker 直接 import store | 解耦：tracker 不依赖 SQLite |
+| IndexNode 产生时机 | sealSegment 内部 | attempt.ts 封口后手动调用 | 封口是原子操作，节点应同步产生 |
+| 预算器接入方式 | 替换 estimateTextTokens | 保留双轨 | computeInjectionBudget 已充分测试，单轨更清晰 |
+| B3 IndexNode 来源 | 追加到 b3Blocks | 替换 dual-track index | 双轨互补：flat index + graph nodes |
 
 
 ## 进行中的工作
-### 当前任务：PLAN-09 P0 — 注入方向修正 + 轮换死代码清理
-- **状态：** 认知架构设计统合审定完成（PLAN-09 accepted，取代 01/02/08 L2），P0 代码改动待执行
-- **下一步操作：** 见 ⚡立即恢复点；不依赖模型，先做注入方向修正再清死代码
-- **开始前需阅读的文件：** `engine/plans/PLAN-09.md`（权威，尤其 §六/§十/§十一/§十五）、`engine/ARCHITECTURE.md §11`（全景）、`elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`、`elysiaclaw/src/session-rotation/`
+### 当前任务：PLAN-09 P1 已完成 → 下一步 TASK-03 或 TASK-05
+- **状态：** P1 代码改动已完成，npm run check 零错误
+- **下一步操作：** 见 ⚡立即恢复点
+- **开始前需阅读的文件：** `engine/plans/PLAN-09.md`、`engine/SPRINT.md` TASK-03/05 详情
 
 
 ## 上下文漂移警告
-- ⚠️ **`engine/plans/` 被 `.gitignore` 第 37 行忽略** —— PLAN-*.md 的统合改动（PLAN-09→accepted、01/02/08→superseded 声明、PLAN-09 §十五）在磁盘生效但**未入 git**。下次 clone/换机会丢失。需 owner 决定是否纳入版本控制（`git add -f` 或改 .gitignore）。
-- ARCHITECTURE.md derivable 章节（§2-5, §8-10）为 stub，CLI-LEAN 下按需从代码现生
-- SOURCEMAP.md 为 stub，CLI-LEAN 下按需从代码现生
+- ⚠️ **`engine/plans/` 被 `.gitignore` 第 37 行忽略** —— PLAN-*.md 的统合改动在磁盘生效但未入 git
+- conversation-store.db 新增 index_nodes + edges 表，已有数据库会自动 CREATE IF NOT EXISTS
 
 
 ## 会话历史
 | 会话 | 日期 | 关键变更 |
 |------|------|---------|
 | 1 | 2026-06-08 | 引擎文件 v5 深度重构：迁移至 engine/，创建 ENGINE_MAP + 8 文件 + 8 plan 登记 |
-| 2 | 2026-06-08 | 认知架构设计统合审定：PLAN-09 升 accepted 取代 01/02/08，PLAN-03/04 标正交子系统，ARCHITECTURE §11 全景图新增，元数据漂移校正，PITFALLS #091 解决路径改 PLAN-09 P0 |
+| 2 | 2026-06-08 | 认知架构设计统合审定：PLAN-09 升 accepted 取代 01/02/08，PLAN-03/04 标正交子系统 |
+| 3 | 2026-06-08 | PLAN-09 P1 实施：IndexNode/HardEdge 类型 + conversation-store 图谱表 + tracker onSeal + computeInjectionBudget 接入 + B3 图谱注入 |
 
 
 ## 引擎文件变更摘要
 | 文件 | 变更类型 | 变更内容 | 原因 |
 |------|---------|---------|------|
-| engine/ENGINE_MAP.md | 新增 | 索引层，profile=CLI-LEAN，8 文件 + 8 plan 注册 | v5 规范核心文件 |
-| engine/SYSTEM.md | 新增 | 从原 SYSTEM.md 提取重组，含 Prime Directives、协作协议、维护协议 | 不可重建知识 |
-| engine/CONTEXT.md | 新增 | 新建，合成当前状态快照 | v5 规范要求，原无此文件 |
-| engine/HANDOFF.md | 新增 | 本文件，会话交接 | v5 规范要求 |
-| engine/SPRINT.md | 新增 | 从原 SPRINT.md 提取重组，含当前活跃 sprint | 不可重建知识 |
-| engine/ROADMAP.md | 新增 | 从原 ROADMAP.md 提取重组，含里程碑和路线图 | 不可重建知识 |
-| engine/PITFALLS.md | 新增 | 从原 PITFALLS.md 提取重组，含 95+ 条坑记录 | 不可重建知识 |
-| engine/ARCHITECTURE.md | 新增 | 从原 ARCHITECTURE.md 提取，irreducible 章节完整，derivable 为 stub | mixed 文件 |
-| engine/SOURCEMAP.md | 新增 | derivable stub，CLI-LEAN 下按需现生 | v5 规范要求 |
-| engine/plans/ | 新增 | 8 个 plan 文件 + 骨架 spec twin | v5 规范 plan 管理 |
+| engine/HANDOFF.md | 更新 | 会话3：P1完成记录 | 反映代码变更 |
+| engine/CONTEXT.md | 更新 | 状态面板+已知不稳定项更新 | 反映P1完成 |
+| engine/SPRINT.md | 更新 | TASK-02标记完成 | 反映进度 |
+| elysiaclaw/src/session-rotation/handoff-types.ts | 修改 | 新增 IndexNode/HardEdge/NodeGrain/EdgeType 类型 | PLAN-09 P1 认知图谱 |
+| elysiaclaw/src/session-rotation/conversation-store.ts | 修改 | 新增 index_nodes + edges 表 + CRUD + traverseGraph | PLAN-09 P1 图谱持久化 |
+| elysiaclaw/src/session-rotation/task-segment-tracker.ts | 修改 | SealCallback + onSeal + buildIndexNodeSummary | PLAN-09 P1 封口产生节点 |
+| elysiaclaw/src/session-rotation/handoff-inject.ts | 修改 | formatIndexNodesForInjection | PLAN-09 P1 B3图谱注入 |
+| elysiaclaw/src/session-rotation/index.ts | 修改 | 导出新类型和函数 | PLAN-09 P1 公开API |
+| elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts | 修改 | computeInjectionBudget接入 + onSeal回调 + B3图谱注入 | PLAN-09 P1 运行时接线 |
 
 
 ## 交接检查清单
