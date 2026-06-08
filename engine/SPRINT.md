@@ -35,6 +35,7 @@
 | 18 | Code Mode Phase 0 最小可行补丁 | 2026-04-05 | attempt.ts /code /exit 检测 |
 | 19 | 流式输出修复 — blockStreamingDefault 错误抑制 | 2026-06-08 | 根因定位 + 配置修复 + 端到端验证 |
 | 20 | 流式管线加固 + 参数校准（已部署） | 2026-06-08 | 4 修复 + 诊断日志 + 3 激进参数回滚 + 部署验证 |
+| 21 | 流式输出修复 — Tool Update 进度传播 + Reasoning 默认值修正 | 2026-06-09 | partialResult 传播修复 + reasoningMode 默认 stream + update 阶段显式处理 |
 
 
 ## 优先级栈

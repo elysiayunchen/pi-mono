@@ -1,5 +1,5 @@
 # ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-08 | Revision: 4 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-09 | Revision: 5 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -29,11 +29,11 @@
 
 | File | Class | Read priority | Revision | Last verified |
 |------|-------|---------------|----------|---------------|
-| ENGINE_MAP.md | index | 0 | 2 | 2026-06-09 |
+| ENGINE_MAP.md | index | 0 | 5 | 2026-06-09 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
 | CONTEXT.md | irreducible | 2 | 1 | 2026-06-08 |
 | HANDOFF.md | irreducible | 3 | 1 | 2026-06-08 |
-| SPRINT.md | irreducible | 4 | 1 | 2026-06-08 |
+| SPRINT.md | irreducible | 4 | 2 | 2026-06-09 |
 | ROADMAP.md | irreducible | 5 | 1 | 2026-06-08 |
 | PITFALLS.md | irreducible | 6 | 1 | 2026-06-08 |
 | ARCHITECTURE.md | mixed | 7 | 1 | 2026-06-08 |
@@ -86,7 +86,7 @@
 | PLAN-02 | SPRINT:序8阶段1-4/健全性修复/深度审查, ROADMAP:序8-9, PITFALLS:#87-#94 | PLAN-02.spec:AC-1~AC-8 | elysiaclaw/src/session-rotation/, elysiaclaw/src/agents/tools/rotate-session-tool.ts |
 | PLAN-03 | ROADMAP:记忆引擎激活/World Model, SPRINT:记忆引擎激活T1-T6, PITFALLS:memory相关 | PLAN-03.spec:AC-1~AC-6 | elysiaclaw/src/memory/, elysiaclaw/src/agents/tools/memory-tool.ts |
 | PLAN-04 | ROADMAP:序6-7/11-12, SPRINT:用户画像/输入分类器 | PLAN-04.spec:AC-1~AC-4 | elysiaclaw/src/user-model/, elysiaclaw/src/context-engine/input-classifier.ts |
-| PLAN-05 | ROADMAP:序2-3, SPRINT:流式输出修复/压缩可见性, PITFALLS:#95 | PLAN-05.spec:AC-1~AC-3 | elysiaclaw/src/telegram/, elysiaclaw/src/agents/pi-embedded-runner/ |
+| PLAN-05 | ROADMAP:序2-3, SPRINT:流式输出修复/压缩可见性/SPRINT-21 Tool Update 进度传播, PITFALLS:#95 | PLAN-05.spec:AC-1~AC-3 | elysiaclaw/src/telegram/bot-message-dispatch.ts, elysiaclaw/src/auto-reply/reply/agent-runner-execution.ts, elysiaclaw/src/agents/pi-embedded-subscribe.handlers.tools.ts, elysiaclaw/src/agents/pi-embedded-subscribe.ts, elysiaclaw/src/agents/pi-embedded-runner/ |
 | PLAN-06 | ROADMAP:delegate_code_task, SPRINT:子代理分发实施, PITFALLS:#65-#68 | PLAN-06.spec:AC-1~AC-4 | elysiaclaw/src/agents/tools/delegate-code-task.ts |
 | PLAN-07 | ROADMAP:Tool Parity, SPRINT:Tool Parity Task 0-13, PITFALLS:#46-#56 | PLAN-07.spec:AC-1~AC-17 | packages/coding-agent/src/core/tools/, elysiaclaw/src/agents/pi-tools.ts |
 | PLAN-08 | SPRINT:W0闭环session-rotation, ROADMAP:参与者持续性, SYSTEM:协作协议 | PLAN-08.spec:AC-1~AC-7 | elysiaclaw/src/session-rotation/, elysiaclaw/src/participant/ |
@@ -133,8 +133,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 11 |
-| 上次 RECONCILE | 2026-06-09（PLAN-09 P0/P1 部署至生产：deploy.sh 执行，5 guards 全部通过，验证 index_nodes 11 refs / B3 appendParts 10 refs / rotation 清零；PLAN-10 升 active，登记 SPRINT TASK-06；ENGINE_MAP §2/§4 更新） |
+| 全局 revision | 12 |
+| 上次 RECONCILE | 2026-06-09（SPRINT-21：流式输出修复 — Tool Update 进度传播 + Reasoning 默认值修正；ENGINE_MAP §1/§4 更新） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 
