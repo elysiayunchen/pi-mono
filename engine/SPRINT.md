@@ -36,10 +36,11 @@
 | 19 | 流式输出修复 — blockStreamingDefault 错误抑制 | 2026-06-08 | 根因定位 + 配置修复 + 端到端验证 |
 | 20 | 流式管线加固 + 参数校准（已部署） | 2026-06-08 | 4 修复 + 诊断日志 + 3 激进参数回滚 + 部署验证 |
 | 21 | 流式输出修复 — Tool Update 进度传播 + Reasoning 默认值修正 | 2026-06-09 | partialResult 传播修复 + reasoningMode 默认 stream + update 阶段显式处理 |
+| 22 | PLAN-10 审计修复 — contextPressureBudget + traverseGraph + 死代码清理 | 2026-06-09 | AC-1:injectionTokens语义修复 + AC-2:traverseGraph 1-hop接入B3 + AC-3:~150行死代码删除 + AC-4:6条IndexNode测试 + BFS off-by-one修复 |
 
 
 ## 优先级栈
-1. [TASK-06] PLAN-10 审计修复（crit:p1）— contextPressureBudget 语义漂移修复（attempt.ts:1911） + traverseGraph 接入 B3 注入 + HandoffPacket 死代码清理（~150 行）+ 测试迁移
+1. [TASK-06] ~~PLAN-10 审计修复（crit:p1）~~ ✅ — AC-1:contextPressureBudget语义修复(injectionTokens) + AC-2:traverseGraph接入B3(1-hop) + AC-3:HandoffPacket死代码清理(~150行) + AC-4:测试迁移(6条IndexNode/Edge/traverseGraph) + BFS off-by-one修复
 2. [TASK-01] ~~PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅ — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool，HandoffPacket废弃，auto-rotation移除，npm run check零错误+vitest全绿
 3. [TASK-02] ~~PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode~~ ✅ — computeInjectionBudget接入运行时（按窗口比例缩放），封口时写入IndexNode+temporal/produces硬边，conversation-store新增index_nodes+edges表+traverseGraph，B3注入从图谱读IndexNode，npm run check零错误
 4. [TASK-03] ~~Tool Parity Task 14: AskUserQuestionTool~~ ✅ — Telegram inline keyboard 交互工具，ask-user-question.ts + helpers + bot-handlers callback路由 + 四层注册 + 11测试全绿
@@ -50,20 +51,16 @@
 ## 任务详情
 
 
-### TASK-06: PLAN-10 审计修复（crit:p1）
-- **状态：** 待执行（2026-06-09）
+### TASK-06: PLAN-10 审计修复（crit:p1） ✅
+- **状态：** 已完成（2026-06-09）
 - **来源 plan：** [PLAN-10](plans/PLAN-10.md) 体验端落实验证与可维护性保障框架
 - **用户可见的变化：** 修复 contextPressureBudget 语义漂移后压缩阈值恢复正常，大窗口上下文利用率提升；traverseGraph 接入后 B3 注入从全量改为图展开（减少噪声）
 - **完成标准（对应 PLAN-10.spec AC-1~AC-4）：**
-  1. AC-1 (crit): `attempt.ts:1911` 传递 `injectionBudgetResult.injectionTokens` 替代 `effectivePressureThreshold`，断言 `90k - injectionTokens` 不再总是地板值 30k
-  2. AC-2 (high): `traverseGraph` 接入 B3 注入，从最新 IndexNode 为入口做 1-hop 图展开后注入 B3
-  3. AC-3 (medium): 清理 HandoffPacket 死代码 — 删除 `consumeHandoffPacket`、`buildMacroIndexFromHandoff`、`validateHandoffCompleteness`/`formatHandoffForInjection`；`lastHandoffPacketJson` 列标注废弃；删除 `handoff-types.test.ts`
-  4. AC-4 (low): `conversation-store.test.ts` 迁移：consumeHandoffPacket 测试 → IndexNode CRUD 测试（insertIndexNode/getIndexNodesByConversation/insertEdge/traverseGraph，≥5 条）
-- **验证方法：** `npm run check` 零错误 + vitest 全绿 + grep 死代码符号生产路径零引用
-- **约束：** AC-1 为 1 行字段替换，5 分钟内可完成；AC-2 需验证注入 token 预算不影响 B3 总量；AC-3 不改变现有外部行为
-- **起点：** `attempt.ts:1906-1911`（AC-1） + `attempt.ts:2617-2634`（AC-2） + `session-rotation/conversation-store.ts:250-260`（AC-3）
-- **前置依赖：** TASK-01/02/03 已完成
-- **风险：** crit 低；traverseGraph 接入需确保展开节点不在当前 conversation 时有 guard
+  1. ✅ AC-1 (crit): `attempt.ts:1911` 传递 `injectionBudgetResult.injectionTokens` 替代 `effectivePressureThreshold`
+  2. ✅ AC-2 (high): `traverseGraph` 接入 B3 注入，从最新 IndexNode 为入口做 1-hop 图展开后注入 B3；同时修复 BFS off-by-one（`hop < maxHops` → `hop <= maxHops`）
+  3. ✅ AC-3 (medium): 清理 HandoffPacket 死代码 — 删除 `consumeHandoffPacket`、`validateHandoffCompleteness`/`formatHandoffForInjection`、`buildMacroEntryFromHandoff`、`resolveHandoffBlockForSession`/`consumeHandoffBlockForSession`/`consumeDualTrackIndexBlockForSession`；`lastHandoffPacketJson` 标注 `@deprecated`；删除 `handoff-types.test.ts`
+  4. ✅ AC-4 (low): `conversation-store.test.ts` 迁移：6 条 IndexNode/Edge/traverseGraph 测试替代 consumeHandoffPacket 测试
+- **验证方法：** `npm run check` 零错误 + vitest 78/78 全绿 + grep 死代码符号生产路径零引用
 
 
 ### TASK-01: PLAN-09 P0：注入方向修正 + 轮换机制废弃 ✅
