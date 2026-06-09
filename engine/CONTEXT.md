@@ -6,11 +6,11 @@
 | 维度 | 状态 |
 |------|------|
 | 构建 | ✅ 正常（`npm run check` 零新增错误，500 文件） |
-| 测试 | ✅ cognitive-memory 111/111 全绿 + attempt 64/64 全绿 + Telegram Bot 94/94 全绿 + meta-compression 22/22 全绿 |
-| 上次完成 | P080 缓解 + P082 确认修复 + TASK-04 attempt.ts 拆分重构 Step 1-3（3576→2359 行） |
-| 当前优先 | TASK-21 PLAN-13 M9（端到端验证+部署） |
-| 阻塞 | Telegram 交互验证 P102 temporal edge 创建 — 需用户通过 Telegram 交互触发 |
-| 产品目标完成度 | 约 82% — 认知架构 M0-M8 完成 + P080/P082 修复 + TASK-04 拆分重构 Step 1-3 |
+| 测试 | ✅ cognitive-memory 111/111 + attempt 149/149 + Telegram Bot 867/867 全绿（上游 18 修复后） + meta-compression 22/22 |
+| 上次完成 | 流式空白 bug 修复 + 分块参数调优（短句模式）+ 上游 Telegram 测试 18→0 修复 + 部署 5 guards 全绿 |
+| 当前优先 | TASK-21 PLAN-13 M9（端到端验证 — 通过日志调查落实） |
+| 阻塞 | Telegram 代理节点不可达 — 需用户更新代理订阅 |
+| 产品目标完成度 | 约 85% — 认知架构 M0-M8 完成 + 流式空白修复 + 测试全绿 + 部署验证 |
 
 
 ## 当前状态概述
@@ -75,7 +75,8 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. **P080 缓解 + P082 确认修复 + TASK-04 拆分重构**（2026-06-10 会话24）：P080 连续失败检测改 toolName 匹配 + OpenAI/Responses API 错误标记 `❌ Tool error:` + nudge 不重置计数器；P082 确认 wrapToolDefinition 已修复（16 扩展字段逐字段传播），PITFALLS 更新为 Resolved；attempt.ts 拆分重构 Step 1-3（3576→2359 行，-34%），提取 tool-call-repair.ts + ollama-compat.ts + system-prompt-builder.ts + injection-coordinator.ts；部署 5 guards 全绿，175 测试全绿
+1. **流式空白 bug 修复 + 分块参数调优 + 上游测试修复 + 部署**（2026-06-10 会话26）：Telegram 流式输出 tool 调用时用户发消息导致大片空白（archivedToolPreviewIds 归档+清理修复）；分块参数调优为短句模式（draft-chunking minChars 200→80/maxChars 800→300/breakPreference→sentence, block-streaming MIN 800→200/MAX 1200→500/breakPreference→sentence）；上游 Telegram 测试 18→0 修复（fetch.test.ts 15 + audit.test.ts 2 + topic-agentid.test.ts 1）；部署 5 guards 全绿，gateway pid 814440，memory 122 files / 1373 chunks
+2. **P080 缓解 + P082 确认修复 + TASK-04 拆分重构**（2026-06-10 会话24）：P080 连续失败检测改 toolName 匹配 + OpenAI/Responses API 错误标记 `❌ Tool error:` + nudge 不重置计数器；P082 确认 wrapToolDefinition 已修复（16 扩展字段逐字段传播），PITFALLS 更新为 Resolved；attempt.ts 拆分重构 Step 1-3（3576→2359 行，-34%），提取 tool-call-repair.ts + ollama-compat.ts + system-prompt-builder.ts + injection-coordinator.ts；部署 5 guards 全绿，175 测试全绿
 2. **P102 修复 + TASK-19 M7 C3 元压缩**（2026-06-10 会话23）：P102 temporal 边永不创建 bug 修复（onSeal 回调 fallback getLatestIndexNode）；meta-compression.ts 新建（22 测试全绿）；rebuildCompressedTaskIds 进程重启恢复；只压缩已完成/已中止 task；session title 从 LLM 摘要提取
 3. **TASK-18 PLAN-13 M6 — 统一预算阈值**（2026-06-10）：injection-budget.ts 新增 computeCompactThreshold(W, compactRatio) + DEFAULT_COMPACT_RATIO=0.8 + MIN_COMPACT_THRESHOLD=20_000；sdk.ts CreateAgentSessionOptions 新增 contextWindowTokens 选项，compactThreshold 动态计算替代硬编码 80k/90k（fallback 路径保留向后兼容）；attempt.ts/compact.ts 传递 contextWindowTokens。injection-budget 测试 14/14 全绿，npm run check 零回归。
 2. **TASK-20 PLAN-13 M8 — 命名收尾**（2026-06-10）：session-rotation/→cognitive-memory/，handoff-types→cognitive-types，handoff-inject→index-head-injector。npm run check 零回归。
@@ -100,7 +101,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 ## 已知不稳定项
 - **session 机制已废弃** — 传统 session JSONL 降级为调试备份，统一记忆模型为认知工作集 (PLAN-13)
 - `~/.pi/agent/sessions/` 不再参与索引和认知注入
-- ⚠️ **Telegram Bot 测试全部通过** — TASK-07 P3 完成：4 个 MediaPaths 超时（fetch.ts sourceFetch 默认 globalThis.fetch）+ 1 个 named-account DM 断言修正（测试改为验证 DM 正确路由），94/94 全绿
+- ⚠️ **Telegram Bot 测试全部通过** — TASK-07 P3 完成 + 会话26 上游 18 修复：fetch.test.ts 15（globalThis.fetch 替换）+ audit.test.ts 2（同方案）+ topic-agentid.test.ts 1（pickFirstExistingAgentId mock），867/867 全绿
 - ~~注入预算器用简化版~~ ✅ P1已修复：computeInjectionBudget接入运行时，按窗口比例缩放
 - ~~conversation-store 无 edges 表~~ ✅ P1已修复：新增 index_nodes + edges 表
 - ~~TaskSegment 封口不产生 IndexNode~~ ✅ P1已修复：onSeal回调写入图谱

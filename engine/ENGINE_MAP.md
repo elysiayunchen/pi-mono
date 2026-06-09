@@ -1,5 +1,5 @@
 # ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-10 | Revision: 15 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-10 | Revision: 16 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -29,7 +29,7 @@
 
 | File | Class | Read priority | Revision | Last verified |
 |------|-------|---------------|----------|---------------|
-| ENGINE_MAP.md | index | 0 | 15 | 2026-06-10 |
+| ENGINE_MAP.md | index | 0 | 16 | 2026-06-10 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
 | CONTEXT.md | irreducible | 2 | 6 | 2026-06-10 |
 | HANDOFF.md | irreducible | 3 | 6 | 2026-06-10 |
@@ -147,8 +147,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 25 |
-| 上次 RECONCILE | 2026-06-10（P080 Mitigated + P082 Resolved + TASK-04 attempt.ts 拆分重构 Step 1-3 + TASK-19 M7 完成 + P102 修复；175 测试全绿，5 guards 部署全绿） |
+| 全局 revision | 26 |
+| 上次 RECONCILE | 2026-06-10（流式空白 bug 修复 + 分块参数调优 + 上游 Telegram 测试 18→0 修复 + 部署 5 guards 全绿；867 测试全绿） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 
