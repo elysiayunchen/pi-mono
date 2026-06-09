@@ -1,5 +1,5 @@
 # ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-09 | Revision: 9 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-09 | Revision: 10 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -32,10 +32,10 @@
 | ENGINE_MAP.md | index | 0 | 8 | 2026-06-09 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
 | CONTEXT.md | irreducible | 2 | 3 | 2026-06-09 |
-| HANDOFF.md | irreducible | 3 | 2 | 2026-06-09 |
+| HANDOFF.md | irreducible | 3 | 3 | 2026-06-09 |
 | SPRINT.md | irreducible | 4 | 3 | 2026-06-09 |
 | ROADMAP.md | irreducible | 5 | 2 | 2026-06-09 |
-| PITFALLS.md | irreducible | 6 | 1 | 2026-06-08 |
+| PITFALLS.md | irreducible | 6 | 2 | 2026-06-09 |
 | ARCHITECTURE.md | mixed | 7 | 3 | 2026-06-09 |
 | SOURCEMAP.md | derivable | 8 | 1 | 2026-06-08 |
 

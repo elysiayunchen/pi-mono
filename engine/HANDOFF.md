@@ -1,29 +1,33 @@
 # HANDOFF — ElysiaClaw
-> 初始化日期：2026-06-09 | 会话：13（TASK-12 PLAN-13 M0 实施）
+> 初始化日期：2026-06-09 | 会话：14（TASK-12 PLAN-13 M0 审查 + 问题录入）
 > 每次会话结束后重写此文件。
 
 
 ## ⚡ 立即恢复点
-> "TASK-12 PLAN-13 M0 已完成：task 边界改控制流。M1/M2/M4 可并行启动。"
-> 入口：`engine/plans/PLAN-13.branch.md`（M1/M2/M4 实现指导）+ `engine/plans/PLAN-13.md`（设计权威）+ `engine/plans/PLAN-13.spec.md`（验收标准）。
+> "TASK-12 PLAN-13 M0 完成 + 审查完成，P096–P100 已录入 PITFALLS。M1/M2/M4 可并行启动。"
+> 入口：`engine/plans/PLAN-13.branch.md`（M1/M2/M4 实现指导）+ `engine/plans/PLAN-13.md`（设计权威）+ `engine/plans/PLAN-13.spec.md`（验收标准）+ `engine/PITFALLS.md`（问题清单）。
 
 
 ## 本次会话总结
 ### ✅ 完成内容
-* **TASK-12 PLAN-13 M0 — 修地基：task 边界改控制流**
-  * `handoff-types.ts`：ToolCallRecord.status 新增 `"pending_approval"` 值
-  * `task-segment-tracker.ts`：startSegment 仅无 active 段时开新段（有 active 段返回现有段）；新增 isQuiescent 方法（4 条件：!hasPendingTodos && !hasRunningTools && !hasPendingApprovals && hasFinalReply）；sealSegment 新增 quiescence guard（非强制且未休止时拒绝封口，force: true 跳过检查）；新增 setToolCallPendingApproval / getActiveSegmentId 方法；SealSegmentParams 新增 force 字段
-  * `attempt.ts`：模块级 taskTrackerRegistry（按 sessionKey 持久化 tracker，跨回合复用）；输入到达三路分支（无 active→开新段 / 休止→封旧开新 / 未休止→追加）；回合结束不再无条件封口（正常完成只记录 finalReply，仅 compaction/abort/error 时 force seal）；移除 classifyInput 对 startSegment 的门控
-  * 测试：60 个全绿（新增 isQuiescent 7 + sealSegment quiescence guard 3 + setToolCallPendingApproval 3 + getActiveSegmentId 3 + 更新现有 5 个 seal 调用加 force: true + 更新 auto-seal 测试为"返回现有段"行为）
-* **引擎文件更新**：CONTEXT.md（状态面板+迁移链+不稳定项+待解决问题+最近完成）
-### ⚙️ 实现方式
-* 读取 PLAN-13.md + PLAN-13.branch.md M0 章节 + 现有代码，按 7 步精确改动方向实施
-* 3 个源文件改造 + 1 个测试文件更新
-* `npm run check` 确认零新增类型错误（27 个已有错误全在无关文件）
-* vitest 60/60 全绿
+* **TASK-12 PLAN-13 M0 — 最终审查**
+  * 所有调用点检查：所有 sealSegment 调用都已加 `force: true` 参数；startSegment/三路分支逻辑正确；taskTrackerRegistry 注册表正确复用
+  * 维护性与潜在 bug 排查：发现 5 个维护性问题，**全部录入 PITFALLS**（P096–P100），5 个问题均不阻塞 M1
+  * `npm run check` 类型检查零新增错误，现有错误均在无关文件；测试全绿（60/60）
+  * 确认 M0 符合 PLAN-13.branch.md 设计要求，验收标准全满足
+* **引擎文件更新**
+  * PITFALLS.md：总数更新为 100 条；新增 P096–P100，全量详情录入；表头时间戳更新
+  * CONTEXT.md：状态面板更新"上次完成"；迁移链更新 M0 状态为"完成+已审查"；不稳定项新增 M0 问题列表
+  * ENGINE_MAP.md：PITFALLS 版本更新；全局 revision 从 9→10
+* **问题清单**（均 Active，详见 PITFALLS 全文）
+  - P096 🟡：`setToolCallPendingApproval` 无生产调用者（M0 死代码）→ M1/M2 审批接入时解决
+  - P097 🟡：`taskTrackerRegistry Map` 永不清理（内存泄漏风险）→ M3 LRU 阶段解决
+  - P098 🟡：`activeSeg.body.finalReply` 跨模块直接赋值（紧耦合）→ 后续封装 `setFinalReply` 解决
+  - P099 🔵：dual-track index 双写（onSeal + attempt.ts 均调用）→ M3 删除 dual-track 时自然消除
+  - P100 🟡：`onSeal` 闭包捕获空 `conversationId`，输入到达密封路径无 index 写入兜底 → 后续需添加兜底
 ### 🔜 建议下一步
 * TASK-13 PLAN-13 M1（C2 索引头改模型写）—— 休止 seal 时 LLM 自述 goal/outcome/关键决策
-* TASK-14 PLAN-13 M2（B3 单路径）—— 删 resolveIndexHeadBlockForSession，只走 IndexNode
+* TASK-14 PLAN-13 M2（B3 单路径）—— 删 `resolveIndexHeadBlockForSession`，只走 IndexNode
 * TASK-16 PLAN-13 M4（动态滑动窗口）—— seal 后裁剪老 raw 消息，recency 锚保留
 * 以上三者均只依赖 M0，可并行
 * TASK-07 PLAN-11 Bot 测试修复（与 PLAN-13 正交）
@@ -32,10 +36,14 @@
 ## 本次会话中的决策
 | 决策 | 选择 | 放弃 | 原因 |
 |------|------|------|------|
-| tracker 生命周期 | 模块级 Map 注册表（按 sessionKey 持久化） | 每次调用新建 | tracker 需跨回合复用，否则无法追踪 active 段 |
-| 输入到达时 active 段处理 | 三路分支（无/休止/未休止） | 仅"有则追加" | 休止段应封口开新段，否则新任务会混入旧段 |
-| 回合结束封口策略 | 仅 force seal（compaction/abort/error） | 保留无条件封口 | 正常完成时任务可能未休止，下一输入决定是否封口 |
-| classifyInput 门控 | 完全移除对 startSegment 的门控 | 保留部分门控 | 输入分类器只应分流画像，不应控制任务边界 |
+| 问题记录方式 | 立即录入 PITFALLS 完整条目 | 推迟记录 | PITFALLS 是唯一权威问题清单，发现即录入更完整，避免遗忘 |
+| M0 交付判定 | ✅ 完成审查并准备交付 M1 | 立即修复问题 | 5 个问题均为维护性低/中风险，无阻断性 bug；按设计 M0 仅做基础铺设，API 预留合理 |
+
+## 上次会话遗留决策
+* tracker 生命周期：模块级 Map 注册表（按 sessionKey 持久化）
+* 输入到达时 active 段处理：三路分支（无/休止/未休止）
+* 回合结束封口策略：仅 force seal（compaction/abort/error）
+* classifyInput 门控：完全移除对 startSegment 的门控
 
 ## 进行中的工作
 ### 当前任务：TASK-13/14/16 可并行（均只依赖 M0）
@@ -68,22 +76,23 @@
 | 11 | 2026-06-09 | PLAN-13 详细分支计划 + 引擎文件完善：ARCHITECTURE §11 PLAN-13 权威+四层缓存+I6+单路径原则；CONTEXT 迁移链表+不稳定项+Q-06；SPRINT 详细实现指导 |
 | 12 | 2026-06-09 | PLAN-13 详细分支方案审核：Q-06~Q-10 全部回答 + C1-C4 补充纳入 + spec B1-B4 修正 + ROADMAP M4 更新为 PLAN-13 + branch.md draft→reviewed |
 | 13 | 2026-06-09 | TASK-12 PLAN-13 M0 实施：task 边界改控制流（3 源文件 + 1 测试文件 + 引擎文件更新）|
+| 14 | 2026-06-09 | TASK-12 PLAN-13 M0 审查：维护性排查 → 发现 5 问题（P096–P100）→ 全量录入 PITFALLS + 引擎文件同步
 
 
 ## 引擎文件变更摘要
 | 文件 | 变更类型 | 变更内容 | 原因 |
 |------|---------|---------|------|
-| engine/CONTEXT.md | 状态更新 | 状态面板（上次完成+当前优先）+ 迁移链（M0→✅完成）+ 不稳定项（startSegment 已修复）+ 待解决问题（A1✅）+ 最近完成事项 | 反映 M0 完成 |
-| engine/HANDOFF.md | 会话记录 | 会话13记录 | 会话交接 |
-| engine/SPRINT.md | 状态更新 | TASK-12 状态→✅完成 | 反映 M0 完成 |
-| engine/ENGINE_MAP.md | 版本更新 | 全局 revision 21→22 | 反映引擎文件变更 |
+| engine/PITFALLS.md | 问题录入 | 总数 94→100；新增 P096–P100 全量条目+索引；刷新时间戳 | M0 审查发现 5 问题，立即录入 |
+| engine/CONTEXT.md | 状态更新 | 状态面板"上次完成"含 M0 审查；迁移链概述标"完成+已审查"；不稳定项新增 P096–P100 | 反映 M0 审查完成 |
+| engine/HANDOFF.md | 会话记录 | 重写为会话14；记录审查决策+问题清单 | 会话交接 |
+| engine/ENGINE_MAP.md | 版本更新 | 全局 revision 9→10；PITFALLS 文件 revision 1→2 | 反映引擎文件变更 |
 
 
 ## 交接检查清单
 - [x] 恢复点足够具体，能立即行动
 - [x] 所有修改过的文件已列出
 - [x] 待解决问题已记录
-- [x] 新发现的陷阱已记录到 PITFALLS.md（本次无新陷阱）
+- [x] 新发现的陷阱已记录到 PITFALLS.md（P096–P100，5 条新增）
 - [x] 上下文漂移警告已标注
 - [x] 会话历史表已更新
 - [x] ENGINE_MAP 已更新（revision / 关系图）

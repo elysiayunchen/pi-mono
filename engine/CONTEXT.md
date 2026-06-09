@@ -7,7 +7,7 @@
 |------|------|
 | 构建 | ✅ 正常（`npm run check` 零错误，499 文件） |
 | 测试 | ⚠️ Telegram Bot 31/65 文件失败（28 文件 pi-tui 导入错误 + 3 条 fetch 断言失败） |
-| 上次完成 | TASK-12 PLAN-13 M0 完成（task 边界改控制流：startSegment 仅无 active 段时开新段 + isQuiescent 休止判定 + sealSegment quiescence guard + attempt.ts 三路分支 + 模块级 tracker 注册表）|
+| 上次完成 | TASK-12 PLAN-13 M0 完成 + M0 审查（P096–P100 已录入 PITFALLS）|
 | 当前优先 | TASK-13 PLAN-13 M1（C2 索引头改模型写）/ TASK-14 PLAN-13 M2（B3 单路径）/ TASK-16 PLAN-13 M4（动态滑动窗口）— 三者均只依赖 M0，可并行 / TASK-07 PLAN-11 Bot 测试修复 |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
 | 产品目标完成度 | 约 74% — 12 层 Agent 框架竣工，认知架构 P0+P1 完成，Tool Parity 88.2% |
@@ -16,7 +16,7 @@
 ## 当前状态概述
 ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行在 `elysiaserver` (Ubuntu 24.04)，通过 Telegram Bot `@ElysiaClaw_Bot` 交互。项目维护者为 aoseluo（云尘 / 奈緒），采用 AI 协作开发模式，独立维护，不与上游 OpenClaw 同步。
 
-当前处于认知架构演进的关键阶段：序 1-7 已全部完成。**传统 session 机制已彻底废除**，统一记忆模型为认知工作集（PLAN-13，取代 PLAN-09/12）。PLAN-09 P0/P1 已完成并部署。PLAN-13 执行计划已派生为 TASK-12~TASK-21（M0-M9 迁移链），**M0 已完成**（task 边界改控制流），M1/M2/M4 可并行启动。
+当前处于认知架构演进的关键阶段：序 1-7 已全部完成。**传统 session 机制已彻底废除**，统一记忆模型为认知工作集（PLAN-13，取代 PLAN-09/12）。PLAN-09 P0/P1 已完成并部署。PLAN-13 执行计划已派生为 TASK-12~TASK-21（M0-M9 迁移链），**M0 已完成 + 已审查**（task 边界改控制流，P096–P100 已录入），M1/M2/M4 可并行启动。
 
 ### PLAN-13 迁移链状态
 | 步骤 | TASK | 状态 | 关键改动 | 前置 |
@@ -75,14 +75,15 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. TASK-12 PLAN-13 M0 完成 — task 边界改控制流：startSegment 仅无 active 段时开新段 + isQuiescent 休止判定(4条件) + sealSegment quiescence guard(force参数) + attempt.ts 三路分支(无active→开新/休止→封旧开新/未休止→追加) + 模块级 tracker 注册表 + 回合结束不再无条件封口 + ToolCallRecord 新增 pending_approval 状态 + 60 测试全绿（2026-06-09）
-2. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
-3. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
-4. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
-5. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
-6. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
-7. tsgo 全仓类型检查 53→0 清零（2026-06-07）
-8. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
+1. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
+2. TASK-12 PLAN-13 M0 完成 — task 边界改控制流：startSegment 仅无 active 段时开新段 + isQuiescent 休止判定(4条件) + sealSegment quiescence guard(force参数) + attempt.ts 三路分支(无active→开新/休止→封旧开新/未休止→追加) + 模块级 tracker 注册表 + 回合结束不再无条件封口 + ToolCallRecord 新增 pending_approval 状态 + 60 测试全绿（2026-06-09）
+3. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
+4. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
+5. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
+6. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
+7. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
+8. tsgo 全仓类型检查 53→0 清零（2026-06-07）
+9. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
 
 
 ## 已知不稳定项
@@ -96,7 +97,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 - sessions chunks 47% CLAUDE.md 注入噪音
 - delegate_code_task Telegram 端到端验证未完成（需可用模型）
 - attempt.ts 复杂度失控：2861+ 行，建议拆分（TASK-04）
-- ⚠️ **startSegment 每回合开闭** — ✅ M0 已修复：startSegment 仅无 active 段时开新段，sealSegment 仅休止/强制时封，回合结束不再无条件封口
+- ⚠️ **P096–P100 M0 审查发现的 5 个维护性问题** — 3 个 arch（P096 死代码/P097 内存泄漏/P098 紧耦合）、2 个 data（P099 双写/P100 onSeal 无兜底），均不阻塞 M1，详见 PITFALLS + PLAN-13.branch.md 审查章节
 - ⚠️ **B3 注入双路径** — resolveIndexHeadBlockForSession + IndexNode 并存（PLAN-13 M2 统一为单路径）
 - ⚠️ **autoCompact 不感知 seal** — 压缩产物为不透明 blob，不利用已封 task 的 B3 头（PLAN-13 M5 修复目标）
 - ⚠️ **80k/90k 双阈值硬编码** — 不随模型窗口缩放（PLAN-13 M6 修复目标）

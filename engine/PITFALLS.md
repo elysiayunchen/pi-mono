@@ -1,5 +1,5 @@
 # PITFALLS — ElysiaClaw
-> 94 条记录 | Last updated: 2026-06-08
+> 99 条记录 | Last updated: 2026-06-09
 > ⚠️ 修改代码库前必读。
 
 ## 严重程度说明
@@ -123,6 +123,11 @@
 | P093 | 🔴 | rotate_session 违反 AgentTool 框架契约 | api | Resolved |
 | P094 | 🟡 | attempt.ts inputClassification 重复声明 | api | Resolved |
 | P095 | 🔴 | blockStreamingDefault='on' 抑制流式草稿预览 | config | Resolved |
+| P096 | 🟡 | setToolCallPendingApproval 无生产调用者（M0 死代码） | arch | Active |
+| P097 | 🟡 | taskTrackerRegistry Map 永不清理（内存泄漏风险） | arch | Active |
+| P098 | 🟡 | activeSeg.body.finalReply 跨模块直接赋值（紧耦合） | arch | Active |
+| P099 | 🔵 | dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex） | data | Active |
+| P100 | 🟡 | tracker 创建时 conversationId 为空阻塞 onSeal → 输入到达密封路径无 index 写入兜底 | data | Active |
 
 ## 条目
 
@@ -1065,6 +1070,56 @@
 - **错误做法：** 保留默认 blockStreamingDefault='on'
 - **正确做法：** `elysiaclaw.json` L357 `blockStreamingDefault` 从 `'on'` 改为 `'off'`。需重启服务生效
 - **发现时间：** 来自采访
+
+### P096 — setToolCallPendingApproval 无生产调用者（M0 死代码）
+- **严重程度：** 🟡 MEDIUM
+- **类别：** arch
+- **状态：** Active
+- **你能观察到的现象：** `setToolCallPendingApproval` 仅在测试中调用（`task-segment-tracker.test.ts:787`），整个 `src/` 目录下无任何生产代码调用它
+- **根因：** M0 是基础铺设阶段，`pending_approval` 状态是 API 预留但尚未在审批流程中接线。`isQuiescent` 中的 `hasPendingApprovals` 检查在 M0 中始终为 false
+- **错误做法：** 依赖生产环境中 `pending_approval` 阻止 seal（当前无效）
+- **正确做法：** M1/M2 审批流程接入时，需要在 `attempt.ts` 工具调用流中检测需审批的工具并调用 `setToolCallPendingApproval`。M0 阶段可接受，因 API 设计和测试覆盖已完整
+- **发现时间：** 2026-06-09（TASK-12 M0 审查）
+
+### P097 — taskTrackerRegistry Map 永不清理（内存泄漏风险）
+- **严重程度：** 🟡 MEDIUM
+- **类别：** arch
+- **状态：** Active
+- **你能观察到的现象：** 长期运行后内存占用持续增长，废弃 session 的 tracker 及内部 segments Map 永不释放
+- **根因：** `attempt.ts:L175` `taskTrackerRegistry` 是 `Map<string, TaskSegmentTracker>`，只有 `set` 没有 `delete`。`startTimeoutSealLoop` 的 `setInterval` 在 `finally` 块中通过 `stopTimeoutSeal` 正确清理，但 segments 数据本身不会释放
+- **错误做法：** 依赖该 Map 自行清理
+- **正确做法：** M3 阶段考虑添加 LRU 淘汰或基于 session TTL 的清理机制。当前风险较低（Node.js 单线程 + 实际 session 数量有限）
+- **发现时间：** 2026-06-09（TASK-12 M0 审查）
+
+### P098 — activeSeg.body.finalReply 跨模块直接赋值（紧耦合）
+- **严重程度：** 🟡 MEDIUM
+- **类别：** arch
+- **状态：** Active
+- **你能观察到的现象：** `attempt.ts:L3109` 直接修改 tracker 返回的 segment 内部对象 `activeSeg.body.finalReply = lastAssistantText.slice(0, 500)`
+- **根因：** `getActiveSegment()` 返回的是 tracker 内部的同一内存引用，attempt.ts 利用这一点直接写入 finalReply。如果 TaskSegment body 结构变更，attempt.ts 和 task-segment-tracker.ts 两处都需同步修改
+- **错误做法：** 在 tracker 不暴露写入方法的情况下持续跨模块直接操作内部状态
+- **正确做法：** 后续可在 tracker 上暴露 `setFinalReply(segmentId, text)` 方法封装此操作。当前 TypeScript 类型系统可捕获结构漂移，风险较低
+- **发现时间：** 2026-06-09（TASK-12 M0 审查）
+
+### P099 — dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex）
+- **严重程度：** 🔵 INFO
+- **类别：** data
+- **状态：** Active
+- **你能观察到的现象：** force-seal 路径上 `buildAndStoreDualTrackIndex` 被调用两次：一次在 `sealSegment` → `onSeal` 回调中，一次在 `attempt.ts` seal 路径之后
+- **根因：** `onSeal` 回调是 tracker 创建时注入的通用回调，而 attempt.ts 的 force-seal 路径额外调用了 `buildAndStoreDualTrackIndex` 作为兜底（处理 conversationId 创建时序问题）。两次写入同一份数据，后者覆盖前者
+- **错误做法：** 依赖双写行为（M2/M3 删 dual-track 后会自然消除此问题）
+- **正确做法：** M3 删除 dual-track 时一并清理此冗余。当前无害（幂等覆盖），仅浪费一次 I/O
+- **发现时间：** 2026-06-09（TASK-12 M0 审查）
+
+### P100 — tracker 创建时 conversationId 为空阻塞 onSeal → 输入到达密封路径无 index 写入兜底
+- **严重程度：** 🟡 MEDIUM
+- **类别：** data
+- **状态：** Active
+- **你能观察到的现象：** 用户发新消息且旧段休止时 `sealSegment` 成功封口，但 dual-track index 未写入（`onSeal` 回调因 `conversationId` 为空被跳过）
+- **根因：** `onSeal` 中的 `conversationId` 在 tracker 创建时闭包捕获（`attempt.ts:L1462`），若 `resolveSessionKeyViaConversation` 首次返回空 `conversationId`，则此后所有密封的 `onSeal` 都不会写 index。force-seal 路径（error/abort/compaction）有兜底 `buildAndStoreDualTrackIndex` 调用，但**输入到达密封路径（休止→封旧开新）没有兜底**
+- **错误做法：** 假设 `resolveSessionKeyViaConversation` 永远返回有效 conversationId
+- **正确做法：** 在输入到达密封路径（`attempt.ts:L1486` `sealSegment` 之后）也加上兜底 `buildAndStoreDualTrackIndex` 调用，与 force-seal 路径对齐。或改为在 `startSegment` 时惰性创建 conversationId
+- **发现时间：** 2026-06-09（TASK-12 M0 审查）
 
 ### 新条目模板
 ```markdown
