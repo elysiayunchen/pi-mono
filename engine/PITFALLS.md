@@ -1,5 +1,5 @@
 # PITFALLS — ElysiaClaw
-> 99 条记录 | Last updated: 2026-06-09
+> 101 条记录 | Last updated: 2026-06-09
 > ⚠️ 修改代码库前必读。
 
 ## 严重程度说明
@@ -128,6 +128,7 @@
 | P098 | 🟡 | activeSeg.body.finalReply 跨模块直接赋值（紧耦合） | arch | Active |
 | P099 | 🔵 | dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex） | data | Active |
 | P100 | 🟡 | tracker 创建时 conversationId 为空阻塞 onSeal → 输入到达密封路径无 index 写入兜底 | data | Active |
+| P101 | 🟠 | Vitest vi.mock 只在测试文件中被 hoist，非测试文件中的 vi.mock 不生效 | testing | Active |
 
 ## 条目
 
@@ -1120,6 +1121,16 @@
 - **错误做法：** 假设 `resolveSessionKeyViaConversation` 永远返回有效 conversationId
 - **正确做法：** 在输入到达密封路径（`attempt.ts:L1486` `sealSegment` 之后）也加上兜底 `buildAndStoreDualTrackIndex` 调用，与 force-seal 路径对齐。或改为在 `startSegment` 时惰性创建 conversationId
 - **发现时间：** 2026-06-09（TASK-12 M0 审查）
+
+### P101 — Vitest vi.mock 只在测试文件中被 hoist，非测试文件中的 vi.mock 不生效
+- **严重程度：** 🟠 HIGH
+- **类别：** testing
+- **状态：** Active
+- **你能观察到的现象：** 在 harness 文件（非 `*.test.ts`）中调用 `vi.mock("grammy")`，测试文件导入该 harness 后 grammy mock 不生效——Bot 构造函数仍是原始 grammy.Bot，spy 未被调用
+- **根因：** Vitest 4.x 只 hoist **测试文件中**的 `vi.mock()` 调用。非测试文件中的 `vi.mock()` 不会被提升到模块解析之前执行，导致 mock 注册晚于被 mock 模块的导入
+- **错误做法：** 在 harness/helper 文件中调用 `vi.mock()`，期望测试文件导入 harness 后 mock 自动生效
+- **正确做法：** (1) 在测试文件中直接调用 `vi.mock()`，使用异步工厂函数动态导入 harness 获取 spy 变量；(2) harness 中的 spy 变量必须用 `vi.hoisted()` 包裹，确保在 `vi.mock` 工厂执行时已初始化
+- **发现时间：** 2026-06-09（TASK-07 PLAN-11 Bot 测试修复）
 
 ### 新条目模板
 ```markdown

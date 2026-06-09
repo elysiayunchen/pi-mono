@@ -1,5 +1,5 @@
 # ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-09 | Revision: 10 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-09 | Revision: 11 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -35,7 +35,7 @@
 | HANDOFF.md | irreducible | 3 | 3 | 2026-06-09 |
 | SPRINT.md | irreducible | 4 | 3 | 2026-06-09 |
 | ROADMAP.md | irreducible | 5 | 2 | 2026-06-09 |
-| PITFALLS.md | irreducible | 6 | 2 | 2026-06-09 |
+| PITFALLS.md | irreducible | 6 | 3 | 2026-06-09 |
 | ARCHITECTURE.md | mixed | 7 | 3 | 2026-06-09 |
 | SOURCEMAP.md | derivable | 8 | 1 | 2026-06-08 |
 
@@ -146,8 +146,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 22 |
-| 上次 RECONCILE | 2026-06-09（TASK-12 PLAN-13 M0 完成：task 边界改控制流，3 源文件+1 测试文件+引擎文件更新） |
+| 全局 revision | 23 |
+| 上次 RECONCILE | 2026-06-09（TASK-07 PLAN-11 Bot 测试修复 P1+P2：grammy mock hoisting + fetch.test.ts 全绿 + loadWebMedia mock 补齐） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 

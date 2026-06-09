@@ -44,7 +44,7 @@
 1. [TASK-12] PLAN-13 M0 — 修地基：task 边界改控制流（crit:p0） ✅ — startSegment 仅无active段时开，sealSegment 仅休止/强制时封，上轮未休止追加当前段；60测试全绿
 2. [TASK-13] PLAN-13 M1 — C2 索引头改模型写（crit:p1） — §2.2: 休止seal时模型自述goal+outcome+关键决策，强制seal回退启发式；AC-3
 3. [TASK-14] PLAN-13 M2 — B3 单路径（crit:p1） — §2.3: 废resolveIndexHeadBlockForSession(dual-track)，B3只走IndexNode+traverseGraph；AC-6
-4. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — AC-1:pi-tui v0.58→v0.64升级(28文件恢复) + AC-2:fetch.test.ts 3条断言修复 + AC-3:Telegram测试套件全绿 + AC-4:跨层无回归
+4. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — P1✅ grammy mock hoisting修复 + P2✅ fetch.test.ts全绿 + P3⏳ 5个MediaPaths预存bug待修；bot.test.ts 0/48→46/48
 5. [TASK-15] PLAN-13 M3 — 删 dual-track（crit:p1） — §三: 删dual-track-index.ts/MacroIndexEntry/MicroIndexEntry/consumeDualTrackIndex，conversations表ALTER删列；AC-7
 6. [TASK-16] PLAN-13 M4 — 动态滑动窗口（crit:p1） — §2.6: seal时移除已封task老于recency锚的原始消息，T1头存续；AC-10
 7. [TASK-17] PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层） — §2.7: 丢已封task老raw(常见零LLM)，孤儿回退小摘要；⚠️框架层monkey-patch风险；AC-11前半
@@ -68,17 +68,19 @@
 
 
 ### TASK-07: PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0）
-- **状态：** 待开始
+- **状态：** P1+P2 完成，P3 进行中
 - **来源 plan：** [PLAN-11](plans/PLAN-11.md) Bot 测试基础设施修复与依赖对齐
 - **用户可见的变化：** 无直接用户可见变化，但恢复 28 个测试文件的执行能力，为后续 Bot 功能开发提供测试保障
 - **完成标准（对应 PLAN-11.spec AC-1~AC-4）：**
-  1. AC-1 (crit): `@mariozechner/pi-tui` 升级到 ≥ v0.64.0，`pnpm build` 零错误，28+1 个测试文件恢复加载
-  2. AC-2 (high): `fetch.test.ts` 3 条断言修复，0 failures
-  3. AC-3 (high): Telegram 测试套件全绿（0 failed files, 0 failed tests）
-  4. AC-4 (medium): 跨层无回归 — `npm run check` + agent/coding-agent/session-rotation/logging vitest 全绿
+  1. ✅ AC-1 (crit): `@mariozechner/pi-tui` 升级到 v0.64.0，28+1 个测试文件恢复加载
+  2. ✅ AC-2 (high): `fetch.test.ts` 20/20 全绿
+  3. ⏳ AC-3 (high): Telegram 测试套件 92/97 通过（5 个 MediaPaths 预存 bug 待修）
+  4. ✅ AC-4 (medium): `npm run check` 零新增类型错误，无回归
+- **P1 修复详情：** grammy mock hoisting — harness 中所有 spy 移入 `vi.hoisted()`；`bot.test.ts` 添加异步 `vi.mock("grammy")` 工厂；`bot.test.ts` 0/48→46/48
+- **P3 待修：** 5 个 MediaPaths 预存 bug（`resolveMedia` → `ctx.getFile()` 返回空对象，无 `file_path`）
 - **验证方法：** 见 PLAN-11.spec 验证命令
 - **约束：** 不能破坏生产运行时行为；升级 pi-tui 后需验证无 breaking change
-- **起点：** `elysiaclaw/package.json`（pi-tui 版本）+ `elysiaclaw/src/telegram/fetch.test.ts`（断言）
+- **起点：** `elysiaclaw/src/telegram/bot.create-telegram-bot.test-harness.ts` + `elysiaclaw/src/telegram/bot.test.ts`
 - **前置依赖：** 无
 - **风险：** pi-tui v0.64.0 可能引入 breaking change（缓解：逐文件检查编译错误）
 

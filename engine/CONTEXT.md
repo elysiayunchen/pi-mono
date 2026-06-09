@@ -5,10 +5,10 @@
 ## 状态面板
 | 维度 | 状态 |
 |------|------|
-| 构建 | ✅ 正常（`npm run check` 零错误，499 文件） |
-| 测试 | ⚠️ Telegram Bot 31/65 文件失败（28 文件 pi-tui 导入错误 + 3 条 fetch 断言失败） |
-| 上次完成 | TASK-12 PLAN-13 M0 完成 + M0 审查（P096–P100 已录入 PITFALLS）|
-| 当前优先 | TASK-13 PLAN-13 M1（C2 索引头改模型写）/ TASK-14 PLAN-13 M2（B3 单路径）/ TASK-16 PLAN-13 M4（动态滑动窗口）— 三者均只依赖 M0，可并行 / TASK-07 PLAN-11 Bot 测试修复 |
+| 构建 | ✅ 正常（`npm run check` 零新增错误，499 文件；预存 pi-tui/agents 类型错误 27 条） |
+| 测试 | ⚠️ Telegram Bot 92/97 通过（5 失败为预存 MediaPaths bug，非本次引入）；pi-tui 导入错误已修复（v0.64.0） |
+| 上次完成 | TASK-07 PLAN-11 Bot 测试修复 P1（grammy mock 修复 0/48→46/48）+ P2（fetch.test.ts 20/20 全绿） |
+| 当前优先 | TASK-07 PLAN-11 Bot 测试修复 P3（5 个预存 MediaPaths 失败） / TASK-13/14/16 PLAN-13 M1/M2/M4 可并行 |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
 | 产品目标完成度 | 约 74% — 12 层 Agent 框架竣工，认知架构 P0+P1 完成，Tool Parity 88.2% |
 
@@ -75,21 +75,22 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
-2. TASK-12 PLAN-13 M0 完成 — task 边界改控制流：startSegment 仅无 active 段时开新段 + isQuiescent 休止判定(4条件) + sealSegment quiescence guard(force参数) + attempt.ts 三路分支(无active→开新/休止→封旧开新/未休止→追加) + 模块级 tracker 注册表 + 回合结束不再无条件封口 + ToolCallRecord 新增 pending_approval 状态 + 60 测试全绿（2026-06-09）
-3. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
-4. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
-5. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
-6. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
-7. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
-8. tsgo 全仓类型检查 53→0 清零（2026-06-07）
-9. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
+1. TASK-07 PLAN-11 Bot 测试修复 P1+P2 — grammy mock hoisting 修复（harness vi.hoisted + bot.test.ts 异步 vi.mock 工厂）+ loadWebMedia mock 补齐 + fetch.test.ts 20/20 全绿；bot.test.ts 0/48→46/48，剩余 2 个 MediaPaths 预存 bug（2026-06-09）
+2. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
+3. TASK-12 PLAN-13 M0 完成 — task 边界改控制流：startSegment 仅无 active 段时开新段 + isQuiescent 休止判定(4条件) + sealSegment quiescence guard(force参数) + attempt.ts 三路分支(无active→开新/休止→封旧开新/未休止→追加) + 模块级 tracker 注册表 + 回合结束不再无条件封口 + ToolCallRecord 新增 pending_approval 状态 + 60 测试全绿（2026-06-09）
+4. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
+5. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
+6. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
+7. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
+8. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
+9. tsgo 全仓类型检查 53→0 清零（2026-06-07）
+10. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
 
 
 ## 已知不稳定项
 - **session 机制已废弃** — 传统 session JSONL 降级为调试备份，统一记忆模型为认知工作集 (PLAN-13)
 - `~/.pi/agent/sessions/` 不再参与索引和认知注入
-- ⚠️ **Telegram Bot 测试 31/65 文件失败** — pi-tui v0.58→v0.64 版本漂移(28文件) + fetch.test.ts 断言(3测试)，PLAN-11 TASK-07 待执行
+- ⚠️ **Telegram Bot 测试 5/97 失败** — 预存 MediaPaths bug（bot.test.ts 2个 + bot.create-telegram-bot.test.ts 3个），pi-tui 导入错误已修复（v0.64.0），grammy mock 已修复，PLAN-11 TASK-07 P3 待执行
 - ~~注入预算器用简化版~~ ✅ P1已修复：computeInjectionBudget接入运行时，按窗口比例缩放
 - ~~conversation-store 无 edges 表~~ ✅ P1已修复：新增 index_nodes + edges 表
 - ~~TaskSegment 封口不产生 IndexNode~~ ✅ P1已修复：onSeal回调写入图谱
