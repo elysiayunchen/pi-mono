@@ -1,66 +1,79 @@
 # HANDOFF — ElysiaClaw
-> 初始化日期：2026-06-09 | 会话：20（TASK-17 M5 + TASK-20 M8 完成）
+> 初始化日期：2026-06-09 | 会话：22（M6 统一预算阈值完成）
 > 每次会话结束后重写此文件。
 
 
 ## ⚡ 立即恢复点
-> "M5 (autoCompact seal-aware) + M8 (命名收尾) 完成。autoCompactMessages 新增 sealedRanges 参数，已封 task 消息零 LLM 调用直接丢弃。框架层通过 CreateAgentSessionOptions.getSealedTaskRanges 正式回调注入（无 monkey-patch）。npm run check 零回归。"
-> 当前优先：TASK-18 PLAN-13 M6（统一预算阈值 80k/90k→W×compact_ratio）
+> "M6 统一预算阈值完成。injection-budget.ts 新增 computeCompactThreshold(W, compactRatio=0.8)，sdk.ts 新增 contextWindowTokens 选项动态计算阈值替代 80k/90k 硬编码，attempt.ts/compact.ts 传递 contextWindowTokens。injection-budget 测试 14/14 全绿，npm run check 零回归。"
+> 当前优先：TASK-19 PLAN-13 M7（C3 元压缩，依赖 M6✅）
 
 
 ## 本次会话总结
+
 ### ✅ 完成内容
-#### TASK-20 PLAN-13 M8 — 命名收尾（crit:p3）
-- **session-rotation/ → cognitive-memory/** 目录重命名
-- **handoff-types.ts → cognitive-types.ts** 文件重命名
-- **handoff-inject.ts → index-head-injector.ts** 文件重命名
-- 所有 import 路径同步更新，npm run check 零回归
 
-#### TASK-17 PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1）
+#### TASK-18 PLAN-13 M6 — 统一预算阈值 80k/90k→W×compact_ratio
 
-**框架层改造（packages/coding-agent）：**
-- **auto-compact.ts**：
-  - 新增 `SealedRange` 接口 `{ taskId?, startedAt: number, endedAt: number }`
-  - 新增 `getMessageTimestamp` / `isInSealedRange` 内部辅助函数
-  - `autoCompactMessages` 新增 `sealedRanges?: SealedRange[]` 参数
-  - `toSummarize` 中时间戳匹配 sealed range 的消息直接丢弃（零 LLM 调用）
-  - 仅对孤儿消息回退 LLM 小摘要
-  - 全 orphan 已被 sealed → 跳过 LLM 调用直接返回 toKeep
-  - `AutoCompactResult` 新增 `sealedDiscarded: number` 字段
-- **sdk.ts**：
-  - `CreateAgentSessionOptions` 新增 `getSealedTaskRanges?: () => SealedRange[]` 回调
-  - `transformContext` 闭包在 auto-compact 前调用回调获取 sealed ranges 并传递
-- **index.ts**：导出 `SealedRange`, `AutoCompactResult`, `shouldAutoCompact` 及常量
+**问题**：auto-compact 的 `AUTO_COMPACT_THRESHOLD=80_000` 和 multi-layer 的 `DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD=90_000` 都是硬编码，不随模型窗口缩放。1M 窗口下 80k/90k 过于保守，白白浪费上下文空间。
 
-**应用层接入（elysiaclaw）：**
-- **attempt.ts**：`sessionOpts` 新增 `getSealedTaskRanges: () => taskTracker.getSealedRanges()`
-- **架构决策**：patch-agent.cjs 已由 M3 删除，改为通过 `CreateAgentSessionOptions` 正式回调注入。无 monkey-patch 风险。
+**方案**：PLAN-13 §4 统一为 `W × compact_ratio`（默认 0.8），替代双阈值。
 
-**验证**：`npm run check` + `npx tsgo --noEmit` 零回归。
+**改动**：
 
-### 🔜 建议下一步
-* TASK-18 PLAN-13 M6 — 统一预算阈值（80k/90k 双阈值 → W×compact_ratio 单阈值，依赖 M5✅）
-* PLAN-13 完成度：M0-M5 ✅ / M6 ⏳ / M7-M9 ⏳（7/9 = 78%）
+1. **`injection-budget.ts`**（elysiaclaw）：
+   - 新增 `computeCompactThreshold(contextWindowTokens, compactRatio?)` 函数
+   - 新增 `DEFAULT_COMPACT_RATIO = 0.8` 常量
+   - 新增 `MIN_COMPACT_THRESHOLD = 20_000` 常量（小窗口保护）
+   - 更新模块文档，标注 `computeInjectionBudget` 精密版已接入 runtime
 
-### 🔍 决策记录
-| 决策 | 选择 | 放弃 | 原因 |
-|------|------|------|------|
-| seal-aware 注入方式 | CreateAgentSessionOptions 正式回调 | monkey-patch (patch-agent.cjs) | M3 已删 patch-agent，正式回调架构更干净 |
-| SealedRange 类型位置 | auto-compact.ts 独立定义（taskId?） | 复用 elysiaclaw sliding-window 类型 | 框架层不应依赖应用层类型；可选 taskId 兼容 elysiaclaw 必选 taskId |
-| 密封消息处理位置 | toSummarize 阶段过滤 | 预处理阶段全局移除 | 保留 splitForCompaction 语义，toKeep 始终保留 recency |
-| 全孤儿已密封时的行为 | 跳过 LLM 调用直接返回 toKeep | 仍调用 LLM 生成空摘要 | 零成本优化，避免无效 API 调用 |
+2. **`sdk.ts`**（packages/coding-agent）：
+   - `CreateAgentSessionOptions` 新增 `contextWindowTokens?: number` 选项
+   - 新增 `compactThreshold` 计算：`W × 0.8 - safeBudget`，下限 20k
+   - `transformContext` 中 multi-layer 阈值优先使用 `compactThreshold`，fallback 保留硬编码
+   - `contextPressureThreshold` 同样优先使用 `compactThreshold`，统一双阈值
 
-## 本次会话中的文件变更
-| 文件 | 变更类型 | 变更内容 | 原因 |
-|------|---------|---------|------|
-| elysiaclaw/src/session-rotation/ | 删除 | 整个目录 | M8 session-rotation→cognitive-memory |
-| elysiaclaw/src/cognitive-memory/ | 重命名 | 从 session-rotation/ 迁移 | M8 命名对齐 |
-| elysiaclaw/src/cognitive-memory/handoff-types.ts | 重命名 | → cognitive-types.ts | M8 命名对齐 |
-| elysiaclaw/src/cognitive-memory/handoff-inject.ts | 重命名 | → index-head-injector.ts | M8 命名对齐 |
-| packages/coding-agent/src/core/compaction/auto-compact.ts | 修改 | 新增 SealedRange + seal-aware 过滤逻辑 + sealedDiscarded 字段 | M5 核心改造 |
-| packages/coding-agent/src/core/sdk.ts | 修改 | CreateAgentSessionOptions 新增 getSealedTaskRanges 回调 | M5 框架层桥接 |
-| packages/coding-agent/src/index.ts | 修改 | 导出 auto-compact 类型和常量 | M5 公开 API |
-| elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts | 修改 | sessionOpts 注入 getSealedTaskRanges | M5 应用层接入 |
-| engine/SPRINT.md | 更新 | TASK-17✅ TASK-20✅ | 引擎文件同步 |
-| engine/HANDOFF.md | 重写 | 会话 20 记录 | 会话交接 |
-| engine/CONTEXT.md | 更新 | M5+M8 完成项 | 引擎文件同步 |
+3. **`attempt.ts`**（elysiaclaw）：
+   - `sessionOpts` 新增 `contextWindowTokens` 传递
+
+4. **`compact.ts`**（elysiaclaw）：
+   - `sessionOptions` 新增 `contextWindowTokens: effectiveModel.contextWindow`
+
+5. **`injection-budget.test.ts`**（elysiaclaw）：
+   - 新增 7 个 `computeCompactThreshold` 测试（默认比例、1M 窗口缩放、小窗口下限、自定义比例、常量值）
+
+**效果**：
+- 1M 窗口：阈值从 80k → 800k（10 倍提升）
+- 200k 窗口：阈值从 80k → 160k（2 倍提升）
+- 100k 窗口：阈值从 80k → 80k（等价）
+- 32k 窗口：阈值从 80k → 25.6k→20k（下限保护，不再过度压缩）
+- 向后兼容：不传 `contextWindowTokens` 时走原硬编码路径
+
+### 📋 代码改动清单
+| 文件 | 改动 |
+|------|------|
+| `elysiaclaw/src/context-engine/injection-budget.ts` | 新增 `computeCompactThreshold` + `DEFAULT_COMPACT_RATIO` + `MIN_COMPACT_THRESHOLD` + 文档更新 |
+| `packages/coding-agent/src/core/sdk.ts` | 新增 `contextWindowTokens` 选项 + `compactThreshold` 动态计算 + multi-layer/pressure 统一阈值 |
+| `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` | `sessionOpts` 新增 `contextWindowTokens` |
+| `elysiaclaw/src/agents/pi-embedded-runner/compact.ts` | `sessionOptions` 新增 `contextWindowTokens` |
+| `elysiaclaw/src/context-engine/injection-budget.test.ts` | 新增 7 个 computeCompactThreshold 测试 |
+
+### 📋 引擎文件更新
+| 文件 | 改动 |
+|------|------|
+| CONTEXT.md | M6→✅、当前优先→M7、产品完成度→80%、不稳定项更新、A6→已完成 |
+| HANDOFF.md | 会话 22 完整交接 |
+
+### ⏳ 未完成 / 待追踪
+- **TASK-19 PLAN-13 M7**（C3 元压缩）为下一优先级
+- **P097** taskTrackerRegistry 内存泄漏 — 仍 Active
+- **P098** finalReply 紧耦合 — 仍 Active（已有 setFinalReply 方法）
+- **PLAN-14** 审批超时释放增强 — 待排期
+
+
+## 架构状态
+| 维度 | 状态 |
+|------|------|
+| PLAN-13 迁移链 | M0✅ M1✅ M2✅ M3✅ M4✅ M5✅ M6✅ M8✅ — M7 待启动 |
+| PITFALLS Active | P097 P098 P101 + 基础工具条目 |
+| 测试覆盖 | cognitive-memory 65/65 + Telegram Bot 94/94 + auto-compact-seal-aware 6/6 + injection-budget 14/14 |
+| 风险点 | P097(内存泄漏) > P098(紧耦合) — 均为 🟡 MEDIUM |

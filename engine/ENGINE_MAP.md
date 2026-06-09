@@ -68,6 +68,7 @@
 | PLAN-12 | 忆匣 (Memory Box) — 统一记忆系统 | archived | engine/archive/plans/PLAN-12.md | (暂无 spec) | superseded-by: PLAN-13（忆匣简化为单 task 惰性分组）；memory-box-store.ts 保留为 T2 body 存储 | 2026-06-09 |
 | PLAN-13 | 认知工作集架构（Cognitive Working Set） | accepted | engine/plans/PLAN-13.md | engine/plans/PLAN-13.spec.md | 认知架构子系统①+连接层**唯一权威**；合并重写 PLAN-09/12，从"固定窗口=工作集缓存"单一策略推导：四层缓存(T0-T3)+seal 单动作+task=控制流边界+忆匣=单task惰性分组+动态滑动窗口+autoCompact 改造为 seal-aware；含 M0-M9 有序迁移链；M0 修地基(task≠turn)未启动 | 2026-06-09 |
 | PLAN-13.branch | PLAN-13 详细分支方案设计 | reviewed | engine/plans/PLAN-13.branch.md | (无独立 spec，验证标准见 PLAN-13.spec) | PLAN-13 的精确实现补充：M0-M9 代码改动方向+代码骨架+验证步骤+风险缓解+并行性分析+审核确认点(Q-06~Q-10✅+C1-C4✅+附录C)；**M0/M1/M2 已完成** | 2026-06-10 |
+| PLAN-14 | 审批流感知的 Task 休止判定（setToolCallPendingApproval 死代码复活） | draft | engine/plans/PLAN-14.md | (暂无 spec) | P096 系统化修复方案；接入 attempt.ts 工具调用流 → taskTracker → isQuiescent；待 Q-01~Q-05 先决问题回答后启动 | 2026-06-10 |
 
 [新 plan 追加到表格末尾。ID 按 PLAN‑[N+1] 递增。状态变更时直接改对应行。]
 [原设计文档已迁移至 `engine/plans/`，旧目录 `elysiaclaw_engine/` 已删除。]

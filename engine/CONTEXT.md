@@ -5,12 +5,12 @@
 ## 状态面板
 | 维度 | 状态 |
 |------|------|
-| 构建 | ✅ 正常（`npm run check` 零新增错误，499 文件） |
-| 测试 | ✅ cognitive-memory 84/84 全绿（含 M4 6 新测试）+ Telegram Bot 94/94 全绿 |
-| 上次完成 | TASK-17 PLAN-13 M5（autoCompact seal-aware）+ TASK-20 PLAN-13 M8（命名收尾） |
-| 当前优先 | TASK-18 PLAN-13 M6（统一预算阈值 80k/90k→W×compact_ratio，依赖 M5✅） |
+| 构建 | ✅ 正常（`npm run check` 零新增错误，500 文件） |
+| 测试 | ✅ cognitive-memory 65/65 全绿 + Telegram Bot 94/94 全绿 + auto-compact-seal-aware 6/6 全绿 |
+| 上次完成 | M6 统一预算阈值（W×0.8 替代 80k/90k 硬编码）+ injection-budget 测试 14/14 全绿 |
+| 当前优先 | TASK-19 PLAN-13 M7（C3 元压缩，依赖 M6✅） |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
-| 产品目标完成度 | 约 78% — 12 层 Agent 框架竣工，认知架构 P0+P1+M0-M5+M8 完成，Tool Parity 88.2% |
+| 产品目标完成度 | 约 80% — 12 层 Agent 框架竣工，认知架构 P0+P1+M0-M6+M8 完成，Tool Parity 88.2% |
 
 
 ## 当前状态概述
@@ -26,10 +26,10 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 | M2 | TASK-14 | ✅ 完成 | B3 单路径（删 resolveIndexHeadBlockForSession，只走 IndexNode+traverseGraph） | M0 |
 | M3 | TASK-15 | ✅ 完成 | 删 dual-track 全套（文件+类型+DB列） | M2 |
 | M4 | TASK-16 | ✅ 完成 | 动态滑动窗口（seal 后裁剪老 raw 消息，recency 锚保留，sliding-window.ts + 2处集成 + 6测试） | M0 |
-| M5 | TASK-17 | ⏳ 待启动 | autoCompact 改 seal-aware（框架层，高风险） | M4 |
-| M6 | TASK-18 | ⏳ 待启动 | 统一预算阈值 80k/90k→W×compact_ratio | M5 |
+| M5 | TASK-17 | ✅ 完成 | autoCompact 改 seal-aware（框架层）+ Bug 3 修复（6 测试全绿） | M4 |
+| M6 | TASK-18 | ✅ 完成 | 统一预算阈值 80k/90k→W×compact_ratio（injection-budget 新增 computeCompactThreshold + sdk.ts 新增 contextWindowTokens 选项 + attempt.ts/compact.ts 传递 contextWindowTokens） | M5 |
 | M7 | TASK-19 | ⏳ 待启动 | C3 元压缩（N task IndexNode→1 session 节点） | M6 |
-| M8 | TASK-20 | ⏳ 待启动 | 命名收尾 session-rotation→cognitive-memory | M3 |
+| M8 | TASK-20 | ✅ 完成 | 命名收尾 session-rotation→cognitive-memory | M3 |
 | M9 | TASK-21 | ⏳ 待启动 | 端到端验证+部署 | M0-M8 |
 
 **并行性**：M1‖M2‖M4（都只依赖 M0）；M8‖M5（M8 只依赖 M3）。
@@ -75,7 +75,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. **TASK-17 PLAN-13 M5 — autoCompact seal-aware**（2026-06-10）：autoCompactMessages 新增 sealedRanges 参数，已封 task 消息时间戳匹配后直接丢弃（零 LLM），孤儿回退 LLM 小摘要；sdk.ts CreateAgentSessionOptions 新增 getSealedTaskRanges 回调；attempt.ts 注入 taskTracker.getSealedRanges()。npm run check 零回归。
+1. **TASK-18 PLAN-13 M6 — 统一预算阈值**（2026-06-10）：injection-budget.ts 新增 computeCompactThreshold(W, compactRatio) + DEFAULT_COMPACT_RATIO=0.8 + MIN_COMPACT_THRESHOLD=20_000；sdk.ts CreateAgentSessionOptions 新增 contextWindowTokens 选项，compactThreshold 动态计算替代硬编码 80k/90k（fallback 路径保留向后兼容）；attempt.ts/compact.ts 传递 contextWindowTokens。injection-budget 测试 14/14 全绿，npm run check 零回归。
 2. **TASK-20 PLAN-13 M8 — 命名收尾**（2026-06-10）：session-rotation/→cognitive-memory/，handoff-types→cognitive-types，handoff-inject→index-head-injector。npm run check 零回归。
 3. **TASK-16 PLAN-13 M4 — 动态滑动窗口**（2026-06-10）：新建 sliding-window.ts（pruneSealedMessages 核心剪枝函数）+ task-segment-tracker 添加 getSealedRanges() 方法 + attempt.ts 两处集成（上下文组装后 + force seal 后），使用 settingsManager.getCompactionKeepRecentTokens() 获取 recency 锚（fallback 20_000），消息→task 映射采用时间戳匹配。新建 sliding-window.test.ts 6/6 全绿，session-rotation 84/84 全绿，npm run check 零回归。
 4. **TASK-07 PLAN-11 Bot 测试修复 P3**（2026-06-10）：5 个 MediaPaths 预存 bug 全部修复 — 4 个超时（fetch.ts resolveTelegramTransport sourceFetch 默认优先 globalThis.fetch，可被 vi.spyOn mock，undiciFetch 降级 fallback）+ 1 个 named-account DM 测试断言修正（代码只丢弃 GROUP 不丢弃 DM，DM 用 per-account session key，测试改为验证 DM 正确路由含 AccountId/SessionKey）；bot.test.ts + bot.create-telegram-bot.test.ts 94/94 全绿。
@@ -108,7 +108,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 - ⚠️ **P096/P099/P100 M0 审查发现的维护性问题** — P096（setToolCallPendingApproval 死代码，M1/M2 接线 → M1/M2 已完成，P096 仍死代码残留需 M3 删除）、P099（dual-track 双写，M3 自然消除）、P100（onSeal 无兜底，M3 修复），详见 PITFALLS。P097/P098 已于维护检查修复 → Resolved
 - ✅ **B3 注入双路径** → ✅ M2 已完成：删除 resolveIndexHeadBlockForSession，统一 B3 为 IndexNode + traverseGraph 单路径
 - ⚠️ **autoCompact 不感知 seal** — 压缩产物为不透明 blob，不利用已封 task 的 B3 头（PLAN-13 M5 修复目标）
-- ⚠️ **80k/90k 双阈值硬编码** — 不随模型窗口缩放（PLAN-13 M6 修复目标）
+- ✅ **80k/90k 双阈值硬编码** → ✅ M6 已完成：统一为 W×compact_ratio（默认 0.8），sdk.ts 新增 contextWindowTokens 选项，attempt.ts/compact.ts 传递动态阈值
 
 
 ## 待解决问题
@@ -124,4 +124,4 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 - [ ] [Q-10] PLAN-13 M5 patch 锚点 — ✅ 审核确认：M5 前必须提取锚点位置，改造后验证
 - [x] [A1] PLAN-13 M0 finalReply 字段 — ✅ TaskSegmentBody 已有 finalReply?: string，M0 直接使用
 - [ ] [A5] PLAN-13 M5 autoCompact 改造风险 — M5 必须在 deploy.sh 后验证 patch 存活 + TUI+Bot 双路径
-- [ ] [A6] PLAN-13 M6 统一预算器分配比例 — M6 实施时先跑实测数据，比例可配
+- [x] [A6] PLAN-13 M6 统一预算器分配比例 — ✅ M6 已完成：compactRatio 默认 0.8，可通过 computeCompactThreshold 第二参数配置

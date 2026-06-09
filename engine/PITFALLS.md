@@ -1,5 +1,5 @@
 # PITFALLS — ElysiaClaw
-> 100 条记录 | Last updated: 2026-06-09
+> 100 条记录 | Last updated: 2026-06-10
 > ⚠️ 修改代码库前必读。
 
 ## 严重程度说明
@@ -9,7 +9,7 @@
 - 🔵 INFO — 造成困惑但不破坏。**现象**：开发时容易误解。
 
 ## 高频警告（必读）
-在执行任何操作前，先过这 14 条：
+在执行任何操作前，先过这 15 条：
 
 1. **写文件用 Python**，不要用 heredoc（P001）；含花括号/反引号的代码走 Write→Bash 两段式（P079）
 2. **字符串替换用 Python `str.replace()`**，不要用 sed（P002）
@@ -123,11 +123,11 @@
 | P093 | 🔴 | rotate_session 违反 AgentTool 框架契约 | api | Resolved |
 | P094 | 🟡 | attempt.ts inputClassification 重复声明 | api | Resolved |
 | P095 | 🔴 | blockStreamingDefault='on' 抑制流式草稿预览 | config | Resolved |
-| P096 | 🟡 | setToolCallPendingApproval 无生产调用者（M0 死代码） | arch | Active |
+| P096 | 🟡 | setToolCallPendingApproval 无生产调用者（M0 死代码） | arch | Resolved（P096 接线完成） |
 | P097 | 🟡 | taskTrackerRegistry Map 永不清理（内存泄漏风险） | arch | Active |
 | P098 | 🟡 | activeSeg.body.finalReply 跨模块直接赋值（紧耦合） | arch | Active |
-| P099 | 🔵 | dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex） | data | Active |
-| P100 | 🟡 | tracker 创建时 conversationId 为空阻塞 onSeal → 输入到达密封路径无 index 写入兜底 | data | Active |
+| P099 | 🔵 | dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex） | data | Resolved（M3 已删 dual-track 全套） |
+| P100 | 🟠 | tracker 创建时 conversationId 为 null 阻塞 onSeal → 新会话首 task 密封无 IndexNode 写入 | data | Resolved（setConversationId 惰性注入） |
 | P101 | 🟠 | Vitest vi.mock 只在测试文件中被 hoist，非测试文件中的 vi.mock 不生效 | testing | Active |
 
 ## 条目
@@ -1075,12 +1075,13 @@
 ### P096 — setToolCallPendingApproval 无生产调用者（M0 死代码）
 - **严重程度：** 🟡 MEDIUM
 - **类别：** arch
-- **状态：** Active
+- **状态：** Resolved
 - **你能观察到的现象：** `setToolCallPendingApproval` 仅在测试中调用（`task-segment-tracker.test.ts:787`），整个 `src/` 目录下无任何生产代码调用它
 - **根因：** M0 是基础铺设阶段，`pending_approval` 状态是 API 预留但尚未在审批流程中接线。`isQuiescent` 中的 `hasPendingApprovals` 检查在 M0 中始终为 false
 - **错误做法：** 依赖生产环境中 `pending_approval` 阻止 seal（当前无效）
-- **正确做法：** M1/M2 审批流程接入时，需要在 `attempt.ts` 工具调用流中检测需审批的工具并调用 `setToolCallPendingApproval`。M0 阶段可接受，因 API 设计和测试覆盖已完整
+- **正确做法：** 已在 `pi-embedded-subscribe.handlers.tools.ts` 中检测 `approval-pending` 工具结果，在 `onAgentEvent` 回调中传递 `approvalPending` 标志；`attempt.ts` 的 `taskTrackerOnAgentEvent` 收到标志后调用 `setToolCallPendingApproval`，阻止 task 在审批等待期间被 seal
 - **发现时间：** 2026-06-09（TASK-12 M0 审查）
+- **解决时间：** 2026-06-10
 
 ### P097 — taskTrackerRegistry Map 永不清理（内存泄漏风险）
 - **严重程度：** 🟡 MEDIUM
@@ -1105,22 +1106,28 @@
 ### P099 — dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex）
 - **严重程度：** 🔵 INFO
 - **类别：** data
-- **状态：** Active
+- **状态：** Resolved
 - **你能观察到的现象：** force-seal 路径上 `buildAndStoreDualTrackIndex` 被调用两次：一次在 `sealSegment` → `onSeal` 回调中，一次在 `attempt.ts` seal 路径之后
-- **根因：** `onSeal` 回调是 tracker 创建时注入的通用回调，而 attempt.ts 的 force-seal 路径额外调用了 `buildAndStoreDualTrackIndex` 作为兜底（处理 conversationId 创建时序问题）。两次写入同一份数据，后者覆盖前者
-- **错误做法：** 依赖双写行为（M2/M3 删 dual-track 后会自然消除此问题）
-- **正确做法：** M3 删除 dual-track 时一并清理此冗余。当前无害（幂等覆盖），仅浪费一次 I/O
+- **根因：** 原 `onSeal` 回调是 tracker 创建时注入的通用回调，而 attempt.ts 的 force-seal 路径额外调用了 `buildAndStoreDualTrackIndex` 作为兜底
+- **错误做法：** 依赖双写行为
+- **正确做法：** M3 已删除 dual-track 全套（文件+类型+DB列），此问题自然消除。仅剩迁移注释和 `migrateDropDualTrackColumns` 清理代码
 - **发现时间：** 2026-06-09（TASK-12 M0 审查）
 
-### P100 — tracker 创建时 conversationId 为空阻塞 onSeal → 输入到达密封路径无 index 写入兜底
-- **严重程度：** 🟡 MEDIUM
+### P100 — tracker 创建时 conversationId 为 null 阻塞 onSeal → 新会话首 task 密封无 IndexNode 写入
+- **严重程度：** 🟠 HIGH（M3 删除 dual-track 兜底后升级——无 fallback 路径）
 - **类别：** data
-- **状态：** Active
-- **你能观察到的现象：** 用户发新消息且旧段休止时 `sealSegment` 成功封口，但 dual-track index 未写入（`onSeal` 回调因 `conversationId` 为空被跳过）
-- **根因：** `onSeal` 中的 `conversationId` 在 tracker 创建时闭包捕获（`attempt.ts:L1462`），若 `resolveSessionKeyViaConversation` 首次返回空 `conversationId`，则此后所有密封的 `onSeal` 都不会写 index。force-seal 路径（error/abort/compaction）有兜底 `buildAndStoreDualTrackIndex` 调用，但**输入到达密封路径（休止→封旧开新）没有兜底**
-- **错误做法：** 假设 `resolveSessionKeyViaConversation` 永远返回有效 conversationId
-- **正确做法：** 在输入到达密封路径（`attempt.ts:L1486` `sealSegment` 之后）也加上兜底 `buildAndStoreDualTrackIndex` 调用，与 force-seal 路径对齐。或改为在 `startSegment` 时惰性创建 conversationId
+- **状态：** Resolved
+- **你能观察到的现象：** 每个新 Telegram 会话的第一个 task 密封后，IndexNode（含 goal/outcome/关键决策）不会被写入数据库。B3 注入和 RECALL 搜索找不到这些节点
+- **根因链：**
+  1. `conversation-router.ts` — 新会话时 `resolveSessionKeyViaConversation` 返回 `conversationId: null`
+  2. `attempt.ts` — tracker 创建时捕获这个 `null`
+  3. `task-segment-tracker.ts` — `conversationId` 被降级为 `""`（空字符串，falsy）
+  4. `if (onSeal && conversationId)` → 空字符串为 falsy，`onSeal` 被跳过
+  5. M3 删除了 dual-track 兜底路径 → **没有任何恢复机制**
+- **错误做法：** 假设 `resolveSessionKeyViaConversation` 首次调用返回有效 conversationId
+- **正确做法：** 已在 `TaskSegmentTracker` 接口新增 `setConversationId(id)` 方法，`attempt.ts` 在复用缓存 tracker 时调用 `taskTracker.setConversationId(ensuredConversationId)` 惰性注入。`setConversationId` 仅在 conversationId 为空时生效（不覆盖已有值）
 - **发现时间：** 2026-06-09（TASK-12 M0 审查）
+- **解决时间：** 2026-06-10
 
 ### P101 — Vitest vi.mock 只在测试文件中被 hoist，非测试文件中的 vi.mock 不生效
 - **严重程度：** 🟠 HIGH

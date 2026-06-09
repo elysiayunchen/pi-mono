@@ -103,6 +103,14 @@ export interface CreateAgentSessionOptions {
 	 */
 	contextPressureBudget?: number;
 	/**
+	 * PLAN-13 M6: model's context window size in tokens.
+	 * When provided, compaction thresholds are computed dynamically as
+	 * `contextWindowTokens × compactRatio - contextPressureBudget`
+	 * instead of using hardcoded 80k/90k constants. This ensures thresholds
+	 * scale with the model window (e.g., 1M window → 800k threshold).
+	 */
+	contextWindowTokens?: number;
+	/**
 	 * PLAN-13 M5: returns sealed task time ranges for seal-aware compaction.
 	 * Messages whose timestamps fall within these ranges are discarded directly
 	 * (zero LLM cost) because B3 index heads proxy their content.
@@ -379,6 +387,14 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	// Clamp injection budget to >= 0 — belt-and-suspenders for safety.
 	const safeBudget = Math.max(0, options.contextPressureBudget ?? 0);
 
+	// PLAN-13 M6: unified compact threshold.
+	// When contextWindowTokens is provided, compute dynamically: W × 0.8 - injectionBudget.
+	// Otherwise fall back to hardcoded constants for backward compatibility (TUI path).
+	const COMPACT_RATIO = 0.8;
+	const compactThreshold = options.contextWindowTokens
+		? Math.max(Math.floor(options.contextWindowTokens * COMPACT_RATIO) - safeBudget, 20_000)
+		: undefined;
+
 	agent = new Agent({
 		initialState: {
 			systemPrompt: "",
@@ -419,12 +435,16 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			const afterEviction = evictConsumedToolResults(messages);
 
 			// Layer 1 + 2: Fast, free compression (snip + microcompact).
-			// Default threshold is 90k.  Subtract injection budget so large system prompts
-			// don't push us into reflexive compaction loops.
+			// PLAN-13 M6: unified threshold. When contextWindowTokens is provided,
+			// use the dynamically computed compactThreshold. Otherwise fall back to
+			// the legacy 90k constant (possibly adjusted by injection budget).
 			// Floor: 30k — below this, snip would run almost every turn (false-positive cost).
-			const multiLayerConfig = options.contextPressureBudget
-				? { autoCompactThreshold: Math.max(DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD - safeBudget, 30_000) }
-				: undefined;
+			const multiLayerConfig =
+				compactThreshold != null
+					? { autoCompactThreshold: Math.max(compactThreshold, 30_000) }
+					: options.contextPressureBudget
+						? { autoCompactThreshold: Math.max(DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD - safeBudget, 30_000) }
+						: undefined;
 			const { messages: compressed, needsAutocompact: needsCompact } = applyMultiLayerCompaction(
 				afterEviction,
 				multiLayerConfig,
@@ -469,12 +489,16 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		},
 
 		// Agent-level context pressure threshold — when to emit pressure events.
-		// Default: AUTO_COMPACT_THRESHOLD (80k).  Subtract injection budget to account
-		// for system prompt overhead.
+		// PLAN-13 M6: unified with compactThreshold. When contextWindowTokens is
+		// provided, both multi-layer and pressure use the same dynamic threshold.
+		// Otherwise fall back to legacy AUTO_COMPACT_THRESHOLD (80k).
 		// Floor: 20k — room for ~5k tokens of actual conversation before warning.
-		contextPressureThreshold: options.contextPressureBudget
-			? Math.max(AUTO_COMPACT_THRESHOLD - safeBudget, 20_000)
-			: AUTO_COMPACT_THRESHOLD,
+		contextPressureThreshold:
+			compactThreshold != null
+				? Math.max(compactThreshold, 20_000)
+				: options.contextPressureBudget
+					? Math.max(AUTO_COMPACT_THRESHOLD - safeBudget, 20_000)
+					: AUTO_COMPACT_THRESHOLD,
 		tokenBudget: options.tokenBudget,
 		steeringMode: settingsManager.getSteeringMode(),
 		followUpMode: settingsManager.getFollowUpMode(),
