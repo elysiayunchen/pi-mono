@@ -42,8 +42,8 @@
 
 ## 优先级栈
 1. [TASK-12] PLAN-13 M0 — 修地基：task 边界改控制流（crit:p0） ✅ — startSegment 仅无active段时开，sealSegment 仅休止/强制时封，上轮未休止追加当前段；60测试全绿
-2. [TASK-13] PLAN-13 M1 — C2 索引头改模型写（crit:p1） — §2.2: 休止seal时模型自述goal+outcome+关键决策，强制seal回退启发式；AC-3
-3. [TASK-14] PLAN-13 M2 — B3 单路径（crit:p1） — §2.3: 废resolveIndexHeadBlockForSession(dual-track)，B3只走IndexNode+traverseGraph；AC-6
+2. [TASK-13] PLAN-13 M1 — C2 索引头改模型写（crit:p1） ✅ — sealSegment 新增 modelIndexHead 参数，休止 seal 调 completeSimple 生成 LLM 自述 goal/outcome/关键决策，强制 seal 回退启发式 buildIndexNodeSummary；84 测试全绿
+3. [TASK-14] PLAN-13 M2 — B3 单路径（crit:p1） ✅ — 删除 resolveIndexHeadBlockForSession（dual-track），统一 B3 为 IndexNode + traverseGraph 单路径（PLAN-13 I6 单路径原则）；84 测试全绿
 4. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — P1✅ grammy mock hoisting修复 + P2✅ fetch.test.ts全绿 + P3⏳ 5个MediaPaths预存bug待修；bot.test.ts 0/48→46/48
 5. [TASK-15] PLAN-13 M3 — 删 dual-track（crit:p1） — §三: 删dual-track-index.ts/MacroIndexEntry/MicroIndexEntry/consumeDualTrackIndex，conversations表ALTER删列；AC-7
 6. [TASK-16] PLAN-13 M4 — 动态滑动窗口（crit:p1） — §2.6: seal时移除已封task老于recency锚的原始消息，T1头存续；AC-10
@@ -222,42 +222,31 @@
   4. ✅ grep 确认 `startSegment` 调用受 `无active段` 守卫；`inputClassification` 不再门控段边界
 - **验证方法：** 60 测试全绿 + grep 守卫条件 + `npm run check` 零新增类型错误
 
-### TASK-13: PLAN-13 M1 — C2 索引头改模型写（crit:p1）
-- **状态：** 待开始
+### TASK-13: PLAN-13 M1 — C2 索引头改模型写（crit:p1） ✅
+- **状态：** 已完成（2026-06-10）
 - **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.2
 - **用户可见的变化：** 索引头含关键决策和推理链路，agent 在后续任务中能更精准地回溯历史
 - **完成标准（对应 PLAN-13.spec AC-3）：**
   1. AC-3 (crit): 休止 seal 时索引头含模型自述的 goal+outcome+关键决策（非纯截断拼接）
   2. 强制 seal（窗口压力/超时）路径回退启发式（`buildIndexNodeSummary` 保留为 fallback）
   3. seal 头内容断言含模型自述字段
-- **验证方法：** seal 头内容断言 + 强制 seal 回退路径验证 + `npm run check` 零错误
+- **验证方法：** 84 个 session-rotation 测试全绿 + seal 头内容断言 + 强制 seal 回退路径验证 + `npm run check` 零新增错误
 - **约束：** 模型写头增加 1 次 LLM 调用，需控制 token 开销；强制 seal 必须有 fallback
-- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` seal 区 + `elysiaclaw/src/session-rotation/task-segment-tracker.ts:buildIndexNodeSummary`
-- **前置依赖：** TASK-12 (M0) 完成
-- **风险：** 模型写头质量依赖 prompt 工程；LLM 调用增加延迟
-- **详细实现指导：**
-  1. **新增 `writeModelIndexHead` 函数**（task-segment-tracker.ts 或新文件 index-head-writer.ts）：prompt 模板含 goal+type+outcome+toolCalls+finalReply，调用 completeSimple 生成 150-200 token 摘要
-  2. **`sealSegment` 改为异步**：休止 seal → 调 `writeModelIndexHead`；强制 seal → 回退 `buildIndexNodeSummary`
-  3. **attempt.ts 中 seal 调用点适配**：`sealSegment` 变异步后所有调用点需 `await`
-  4. **额外开销**：每次休止 seal 约 200 token，可接受
+- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` seal 区 + `elysiaclaw/src/session-rotation/task-segment-tracker.ts`
+- **实现摘要：** SealSegmentParams 新增 modelIndexHead 可选字段；sealSegment 中 node.summary = params.modelIndexHead ?? buildIndexNodeSummary(segment)；attempt.ts 新增 createModelIndexHead（调 completeSimple）+ buildIndexHeadPrompt（组装提示词）；休止 seal 调用点先调模型写头再传入 sealSegment
 
-### TASK-14: PLAN-13 M2 — B3 单路径（crit:p1）
-- **状态：** 待开始
+### TASK-14: PLAN-13 M2 — B3 单路径（crit:p1） ✅
+- **状态：** 已完成（2026-06-10）
 - **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.3 / I6 单路径原则
 - **用户可见的变化：** 无直接用户可见变化，但消除双路径后 B3 注入逻辑简化，减少数据不一致风险
 - **完成标准（对应 PLAN-13.spec AC-6）：**
-  1. AC-6 (crit): B3 注入只走 IndexNode + traverseGraph 单路径
-  2. `resolveIndexHeadBlockForSession`（dual-track 路径）从 `attempt.ts:2641` 删除
-  3. grep `resolveIndexHeadBlockForSession` 生产路径零命中（除注释）
-- **验证方法：** grep 旧路径零命中 + B3 注入断言走 IndexNode 路径 + `npm run check` 零错误
+  1. ✅ AC-6 (crit): B3 注入只走 IndexNode + traverseGraph 单路径
+  2. ✅ `resolveIndexHeadBlockForSession`（dual-track 路径）从 attempt.ts 删除
+  3. ✅ grep `resolveIndexHeadBlockForSession` 生产路径零命中（除注释）
+- **验证方法：** grep 旧路径零命中 + B3 注入断言走 IndexNode 路径 + 84 个 session-rotation 测试全绿 + `npm run check` 零新增错误
 - **约束：** 不能破坏 B3 注入功能；删除前确认 IndexNode 路径已完全承载 B3 内容
-- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts:2641`
-- **前置依赖：** TASK-12 (M0) 完成
-- **风险：** 低风险（IndexNode 路径已在 P1 落地并部署）
-- **详细实现指导：**
-  1. **attempt.ts — 删除 `resolveIndexHeadBlockForSession` 调用**：搜索 attempt.ts 中该函数的调用点，替换为纯 IndexNode 路径
-  2. **确认 IndexNode 路径已完全承载 B3 内容**：`conversation-store.ts` 的 `getIndexNodes` + `traverseGraph` 返回内容覆盖原 dual-track 的 `formatDualTrackIndexForInjection`
-  3. **B3 注入格式对齐**：确保 IndexNode 路径输出格式与原 dual-track 一致
+- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + `elysiaclaw/src/session-rotation/handoff-inject.test.ts`
+- **实现摘要：** 删除 attempt.ts 中 resolveIndexHeadBlockForSession 导入+调用，移除 dual-track B3 注入块；handoff-inject.test.ts 删除对应测试和 mockConversations；B3 注释更新为 PLAN-13 I6 单路径原则
 
 ### TASK-15: PLAN-13 M3 — 删 dual-track（crit:p1）
 - **状态：** 待开始
