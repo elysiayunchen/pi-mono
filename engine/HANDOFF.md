@@ -1,41 +1,54 @@
 # HANDOFF — ElysiaClaw
-> 初始化日期：2026-06-09 | 会话：15（TASK-07 PLAN-11 Bot 测试修复 P1+P2）
+> 初始化日期：2026-06-09 | 会话：16（代码维护检查）
 > 每次会话结束后重写此文件。
 
 
 ## ⚡ 立即恢复点
-> "TASK-07 PLAN-11 Bot 测试修复 P1+P2 完成：grammy mock hoisting 修复 + fetch.test.ts 全绿。剩余 5 个 MediaPaths 预存 bug 待 P3 修复。"
-> 入口：`elysiaclaw/src/telegram/bot.create-telegram-bot.test-harness.ts`（harness mock 定义）+ `elysiaclaw/src/telegram/bot.test.ts`（异步 vi.mock 工厂）+ `engine/plans/PLAN-11.md`（验收标准）。
+> "代码维护检查完成：移除 tools-invoke-http.ts 4 处 as any + 修复 P097（registry 泄漏）+ P098（finalReply 紧耦合）。PITFALLS P097/P098 → Resolved。npm run check 零回归。"
+> 当前优先：TASK-07 P3（MediaPaths 5 bug）/ TASK-13/14/16（PLAN-13 M1/M2/M4 并行）。
 
 
 ## 本次会话总结
 ### ✅ 完成内容
-* **TASK-07 PLAN-11 P1 — grammy mock 修复**
-  * 根因：Vitest 4.x 只 hoist 测试文件中的 `vi.mock`，harness 文件中的 `vi.mock("grammy")` 不被 hoist，导致 `bot.test.ts` 导入 grammy 时 mock 未注册
-  * 修复：harness 中所有 grammy mock 变量移入 `vi.hoisted()`；`bot.test.ts` 添加异步 `vi.mock("grammy", async () => { ... })` 工厂函数动态导入 harness
-  * 结果：`bot.test.ts` 0/48 → 46/48 passed
-* **TASK-07 PLAN-11 P2 — fetch.test.ts 全绿**
-  * 20/20 passed（前序会话已完成）
-* **loadWebMedia mock 补齐**
-  * `bot.test.ts` 导入 `getLoadWebMediaMock`，在需要媒体加载的测试中设置 `loadWebMedia.mockResolvedValueOnce()`
-  * 但 MediaPaths 仍为 null——根因在 `resolveMedia` → `downloadAndSaveTelegramFile` 链路，非 mock 层面问题
-* **验证无回归**
-  * `bot.create-telegram-bot.test.ts` 43/46 passed（与修改前一致）
-  * `bot.fetch-abort.test.ts` 3/3 passed
-  * `npm run check` 零新增类型错误（预存 27 条 pi-tui/agents 错误不变）
+* **代码维护检查 — 全面审计**
+  * 引擎文件完整性：9 文件全部存在，关系图一致，无漂移
+  * 构建健康：biome 499 文件零修正 + tsgo 零错误 + browser smoke 通过
+  * Plan 完整性：13 plan + spec twin 全部对应
+  * Git 工作区：干净
+* **tools-invoke-http.ts 类型安全修复**
+  * 移除关键工具执行路径 4 处 `as any`
+  * 类型已由 `AnyAgentTool` 正确推导，无需断言
+* **P097 修复 — taskTrackerRegistry Map 内存泄漏**
+  * `attempt.ts` finally 块加 `taskTracker.clear()` + `taskTrackerRegistry.delete(trackerKey)`
+  * 仅当无活跃段时清理（有活跃段说明 session 还在用）
+* **P098 修复 — activeSeg.body.finalReply 紧耦合**
+  * `TaskSegmentTracker` 接口新增 `setFinalReply(segmentId, finalReply)` 方法
+  * `attempt.ts` 改用 `taskTracker.setFinalReply()` 替代直接赋值
+* **PITFALLS 头计数修正**
+  * "101 条记录" → "100 条记录"（实际 100 条，缺 P057/P058）
 ### 🔜 建议下一步
-* TASK-07 PLAN-11 P3 — 修复 5 个 MediaPaths 预存 bug：
-  - `bot.test.ts`: "includes replied image media in inbound context for text replies" + "defers reply media download until debounce flush"
-  - `bot.create-telegram-bot.test.ts`: "drops non-default account DMs without explicit bindings" + "buffers channel_post media groups" + "processes remaining media group photos when one photo download fails"
-  - 根因：`resolveMedia` → `resolveTelegramFileWithRetry` → `ctx.getFile()` 返回空对象（无 `file_path`），需在测试中正确 mock `ctx.getFile` 返回值
+* TASK-07 PLAN-11 P3 — 修复 5 个 MediaPaths 预存 bug
 * TASK-13/14/16 PLAN-13 M1/M2/M4 可并行（均只依赖 M0）
 
+### 🔍 维护检查发现（已/待处理）
+| 问题 | 状态 | 说明 |
+|------|------|------|
+| tools-invoke-http.ts 4 处 as any | ✅ 已修复 | 移除类型断言 |
+| P097 registry 泄漏 | ✅ 已修复 | finally 块清理 |
+| P098 finalReply 紧耦合 | ✅ 已修复 | 新增 setFinalReply 封装 |
+| PITFALLS 头计数 101→100 | ✅ 已修正 | 实际 100 条 |
+| P096 setToolCallPendingApproval 死代码 | ⏳ M1/M2 接线 | 依赖 PLAN-13 迁移链 |
+| P099 dual-track 双写 | ⏳ M3 自然消除 | 依赖 PLAN-13 迁移链 |
+| P100 tracker conversationId 为空 | ⏳ 时序重构 | 需独立修复 |
+| attempt.ts 3324 行 | ⏳ PLAN-13 M9 后拆分 | 避免与迁移冲突 |
+| @deprecated 40 处积累 | ⏳ release cycle 清理 | 向后兼容评估 |
 
 ## 本次会话中的决策
 | 决策 | 选择 | 放弃 | 原因 |
 |------|------|------|------|
-| grammy mock 修复方式 | 在 bot.test.ts 中添加异步 vi.mock 工厂 | 修改 harness 中的 vi.mock 位置 | Vitest 只 hoist 测试文件中的 vi.mock；异步工厂可动态导入 harness 变量，确保 mock 注册时机正确 |
-| MediaPaths 失败处理 | 记录为预存 bug，不阻塞 P1/P2 交付 | 深入修复 resolveMedia 链路 | 根因在 `downloadAndSaveTelegramFile` → `fetchRemoteMedia` 链路，涉及 transport mock 等深层问题，需单独排查 |
+| P097 清理时机 | finally 块中 clear+delete | LRU/TTL 淘汰 | 当前 session 数量有限，简单清理即可；LRU 过度设计 |
+| P098 封装方式 | tracker 加 setFinalReply 方法 | 不在 attempt.ts 改其它 | 最小化改动，与现有 api 风格一致 |
+| as any 移除范围 | 仅移除 tools-invoke-http.ts 生产路径 | 测试/共享代码 | 测试代码中 as any 为 mock 需要，风险可控 |
 
 ## 上次会话遗留决策
 * tracker 生命周期：模块级 Map 注册表（按 sessionKey 持久化）
@@ -46,8 +59,8 @@
 ## 进行中的工作
 ### 当前任务：TASK-07 PLAN-11 P3（5 个 MediaPaths 预存 bug）
 - **状态：** 待开始
-- **根因：** `resolveMedia` → `resolveTelegramFileWithRetry` → `ctx.getFile()` 返回空对象（无 `file_path`），导致 `downloadAndSaveTelegramFile` 抛出 "Telegram getFile returned no file_path"
-- **修复方向：** 在测试中正确 mock `ctx.getFile` 返回 `{ file_path: "media/file.jpg" }`，或 mock `resolveMedia` 整体返回
+- **根因：** `resolveMedia` → `resolveTelegramFileWithRetry` → `ctx.getFile()` 返回空对象（无 `file_path`）
+- **修复方向：** 在测试中正确 mock `ctx.getFile` 返回 `{ file_path: "media/file.jpg" }`
 
 ### 并行可做：TASK-13/14/16 PLAN-13 M1/M2/M4
 - 均只依赖 M0，与 TASK-07 正交
@@ -71,28 +84,29 @@
 | 8 | 2026-06-09 | TASK-08~TASK-11 完成：轮换清理 + 双轨注入 + 压缩→seal + PLAN-12 P0 设计+存储 |
 | 9 | 2026-06-09 | 引擎文件 RECONCILE：PLAN-10→done + TASK-08~11 补录 + ARCHITECTURE §11 更新 |
 | 10 | 2026-06-09 | PLAN-13 执行计划写入：TASK-12~TASK-21（M0-M9）派生 + ENGINE_MAP 关系图更新 |
-| 11 | 2026-06-09 | PLAN-13 详细分支计划 + 引擎文件完善：ARCHITECTURE §11 PLAN-13 权威+四层缓存+I6+单路径原则；CONTEXT 迁移链表+不稳定项+Q-06；SPRINT 详细实现指导 |
+| 11 | 2026-06-09 | PLAN-13 详细分支计划 + 引擎文件完善：ARCHITECTURE §11 PLAN-13 权威+四层缓存+I6+单路径原则；CONTEXT 迁移链表+不稳定项+Q-06；SPRINT 详细实施指导 |
 | 12 | 2026-06-09 | PLAN-13 详细分支方案审核：Q-06~Q-10 全部回答 + C1-C4 补充纳入 + spec B1-B4 修正 + ROADMAP M4 更新为 PLAN-13 + branch.md draft→reviewed |
 | 13 | 2026-06-09 | TASK-12 PLAN-13 M0 实施：task 边界改控制流（3 源文件 + 1 测试文件 + 引擎文件更新）|
 | 14 | 2026-06-09 | TASK-12 PLAN-13 M0 审查：维护性排查 → 发现 5 问题（P096–P100）→ 全量录入 PITFALLS + 引擎文件同步 |
 | 15 | 2026-06-09 | TASK-07 PLAN-11 Bot 测试修复 P1+P2：grammy mock hoisting 修复 + fetch.test.ts 全绿 + loadWebMedia mock 补齐 |
+| 16 | 2026-06-09 | 代码维护检查：tools-invoke-http.ts 4 处 as any 移除 + P097 修复（registry 泄漏）+ P098 修复（finalReply 紧耦合）+ PITFALLS 计数修正 |
 
 
 ## 引擎文件变更摘要
 | 文件 | 变更类型 | 变更内容 | 原因 |
 |------|---------|---------|------|
-| engine/CONTEXT.md | 状态更新 | 状态面板测试 31/65→92/97；上次完成更新；不稳定项更新；最近完成事项新增 #1 | 反映 TASK-07 P1+P2 进展 |
-| engine/HANDOFF.md | 会话记录 | 重写为会话15；记录 grammy mock 修复决策+MediaPaths 预存 bug | 会话交接 |
-| engine/ENGINE_MAP.md | 版本更新 | 全局 revision 10→11 | 反映引擎文件变更 |
-| engine/SPRINT.md | 任务状态 | TASK-07 状态更新为 P1+P2 完成 | 反映任务进展 |
+| engine/PITFALLS.md | 状态+计数 | P097/P098 → Resolved；头部 101→100 条 | 维护检查修复 |
+| engine/CONTEXT.md | 状态更新 | 上次完成更新为维护检查；不稳定项 P097/P098 已移除；attempt.ts 行数 2861+→3324 | 反映最新状态 |
+| engine/HANDOFF.md | 会话记录 | 重写为会话 16；记录维护检查决策 | 会话交接 |
+| engine/ENGINE_MAP.md | 版本更新 | 全局 revision 11→12 | 反映引擎文件变更 |
 
 
 ## 交接检查清单
 - [x] 恢复点足够具体，能立即行动
 - [x] 所有修改过的文件已列出
 - [x] 待解决问题已记录
-- [x] 新发现的陷阱已记录（MediaPaths 预存 bug，非 PITFALLS 级别）
+- [x] 新发现的问题已记录（PITFALLS 计数偏差，已修正）
 - [x] 上下文漂移警告已标注
 - [x] 会话历史表已更新
-- [x] ENGINE_MAP 已更新（revision / 关系图）
+- [x] ENGINE_MAP 已更新（revision 11→12）
 - [x] 引擎文件变更摘要已输出

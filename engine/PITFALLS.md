@@ -1,5 +1,5 @@
 # PITFALLS — ElysiaClaw
-> 101 条记录 | Last updated: 2026-06-09
+> 100 条记录 | Last updated: 2026-06-09
 > ⚠️ 修改代码库前必读。
 
 ## 严重程度说明
@@ -1085,22 +1085,22 @@
 ### P097 — taskTrackerRegistry Map 永不清理（内存泄漏风险）
 - **严重程度：** 🟡 MEDIUM
 - **类别：** arch
-- **状态：** Active
+- **状态：** Resolved
 - **你能观察到的现象：** 长期运行后内存占用持续增长，废弃 session 的 tracker 及内部 segments Map 永不释放
 - **根因：** `attempt.ts:L175` `taskTrackerRegistry` 是 `Map<string, TaskSegmentTracker>`，只有 `set` 没有 `delete`。`startTimeoutSealLoop` 的 `setInterval` 在 `finally` 块中通过 `stopTimeoutSeal` 正确清理，但 segments 数据本身不会释放
-- **错误做法：** 依赖该 Map 自行清理
-- **正确做法：** M3 阶段考虑添加 LRU 淘汰或基于 session TTL 的清理机制。当前风险较低（Node.js 单线程 + 实际 session 数量有限）
+- **解决方案：** 在 `finally` 块中先 `taskTracker.clear()` 清理 segments，再 `taskTrackerRegistry.delete(trackerKey)` 释放 Map 条目（仅当无活跃段时）
 - **发现时间：** 2026-06-09（TASK-12 M0 审查）
+- **解决时间：** 2026-06-09（维护检查）
 
 ### P098 — activeSeg.body.finalReply 跨模块直接赋值（紧耦合）
 - **严重程度：** 🟡 MEDIUM
 - **类别：** arch
-- **状态：** Active
-- **你能观察到的现象：** `attempt.ts:L3109` 直接修改 tracker 返回的 segment 内部对象 `activeSeg.body.finalReply = lastAssistantText.slice(0, 500)`
+- **状态：** Resolved
+- **你能观察到的现象：** `attempt.ts` 直接修改 tracker 返回的 segment 内部对象 `activeSeg.body.finalReply = lastAssistantText.slice(0, 500)`
 - **根因：** `getActiveSegment()` 返回的是 tracker 内部的同一内存引用，attempt.ts 利用这一点直接写入 finalReply。如果 TaskSegment body 结构变更，attempt.ts 和 task-segment-tracker.ts 两处都需同步修改
-- **错误做法：** 在 tracker 不暴露写入方法的情况下持续跨模块直接操作内部状态
-- **正确做法：** 后续可在 tracker 上暴露 `setFinalReply(segmentId, text)` 方法封装此操作。当前 TypeScript 类型系统可捕获结构漂移，风险较低
+- **解决方案：** 在 tracker 上暴露 `setFinalReply(segmentId, text)` 方法封装此操作。attempt.ts 改为调用 `taskTracker.setFinalReply(activeSeg.taskId, lastAssistantText.slice(0, 500))`
 - **发现时间：** 2026-06-09（TASK-12 M0 审查）
+- **解决时间：** 2026-06-09（维护检查）
 
 ### P099 — dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex）
 - **严重程度：** 🔵 INFO

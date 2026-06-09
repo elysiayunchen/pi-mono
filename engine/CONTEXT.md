@@ -7,7 +7,7 @@
 |------|------|
 | 构建 | ✅ 正常（`npm run check` 零新增错误，499 文件；预存 pi-tui/agents 类型错误 27 条） |
 | 测试 | ⚠️ Telegram Bot 92/97 通过（5 失败为预存 MediaPaths bug，非本次引入）；pi-tui 导入错误已修复（v0.64.0） |
-| 上次完成 | TASK-07 PLAN-11 Bot 测试修复 P1（grammy mock 修复 0/48→46/48）+ P2（fetch.test.ts 20/20 全绿） |
+| 上次完成 | 维护检查：移除 tools-invoke-http.ts 4 处 as any + 修复 P097（registry 泄漏）+ P098（finalReply 紧耦合）|
 | 当前优先 | TASK-07 PLAN-11 Bot 测试修复 P3（5 个预存 MediaPaths 失败） / TASK-13/14/16 PLAN-13 M1/M2/M4 可并行 |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
 | 产品目标完成度 | 约 74% — 12 层 Agent 框架竣工，认知架构 P0+P1 完成，Tool Parity 88.2% |
@@ -75,9 +75,9 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. TASK-07 PLAN-11 Bot 测试修复 P1+P2 — grammy mock hoisting 修复（harness vi.hoisted + bot.test.ts 异步 vi.mock 工厂）+ loadWebMedia mock 补齐 + fetch.test.ts 20/20 全绿；bot.test.ts 0/48→46/48，剩余 2 个 MediaPaths 预存 bug（2026-06-09）
-2. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
-3. TASK-12 PLAN-13 M0 完成 — task 边界改控制流：startSegment 仅无 active 段时开新段 + isQuiescent 休止判定(4条件) + sealSegment quiescence guard(force参数) + attempt.ts 三路分支(无active→开新/休止→封旧开新/未休止→追加) + 模块级 tracker 注册表 + 回合结束不再无条件封口 + ToolCallRecord 新增 pending_approval 状态 + 60 测试全绿（2026-06-09）
+1. 代码维护检查 — 移除 tools-invoke-http.ts 关键路径 4 处 `as any` + 修复 P097（taskTrackerRegistry Map 泄漏，finally 块加 clear+delete）+ 修复 P098（activeSeg.body.finalReply 紧耦合，新增 setFinalReply 封装方法）。PITFALLS P097/P098 → Resolved。`npm run check` 零回归。（2026-06-09）
+2. TASK-07 PLAN-11 Bot 测试修复 P1+P2 — grammy mock hoisting 修复（harness vi.hoisted + bot.test.ts 异步 vi.mock 工厂）+ loadWebMedia mock 补齐 + fetch.test.ts 20/20 全绿；bot.test.ts 0/48→46/48，剩余 2 个 MediaPaths 预存 bug（2026-06-09）
+3. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
 4. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
 5. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
 6. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
@@ -97,8 +97,8 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 - 输入分类器数据源偏窄：短陈述句落入 task，identity.name 提不出
 - sessions chunks 47% CLAUDE.md 注入噪音
 - delegate_code_task Telegram 端到端验证未完成（需可用模型）
-- attempt.ts 复杂度失控：2861+ 行，建议拆分（TASK-04）
-- ⚠️ **P096–P100 M0 审查发现的 5 个维护性问题** — 3 个 arch（P096 死代码/P097 内存泄漏/P098 紧耦合）、2 个 data（P099 双写/P100 onSeal 无兜底），均不阻塞 M1，详见 PITFALLS + PLAN-13.branch.md 审查章节
+- attempt.ts 复杂度失控：3324 行，建议拆分（PLAN-13 M0-M9 完成后执行）
+- ⚠️ **P096/P099/P100 M0 审查发现的维护性问题** — P096（setToolCallPendingApproval 死代码，M1/M2 接线）、P099（dual-track 双写，M3 自然消除）、P100（onSeal 无兜底），详见 PITFALLS。P097/P098 已于维护检查修复 → Resolved
 - ⚠️ **B3 注入双路径** — resolveIndexHeadBlockForSession + IndexNode 并存（PLAN-13 M2 统一为单路径）
 - ⚠️ **autoCompact 不感知 seal** — 压缩产物为不透明 blob，不利用已封 task 的 B3 头（PLAN-13 M5 修复目标）
 - ⚠️ **80k/90k 双阈值硬编码** — 不随模型窗口缩放（PLAN-13 M6 修复目标）

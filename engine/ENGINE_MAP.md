@@ -1,5 +1,5 @@
 # ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-09 | Revision: 11 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-09 | Revision: 12 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
