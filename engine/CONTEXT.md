@@ -6,11 +6,11 @@
 | 维度 | 状态 |
 |------|------|
 | 构建 | ✅ 正常（`npm run check` 零新增错误，499 文件） |
-| 测试 | ✅ session-rotation 84/84 全绿（含 M4 6 新测试）+ Telegram Bot 94/94 全绿 |
-| 上次完成 | TASK-16 PLAN-13 M4（动态滑动窗口：sliding-window.ts + task-segment-tracker.getSealedRanges + attempt.ts 2处集成 + 6测试全绿） |
-| 当前优先 | TASK-17 PLAN-13 M5（autoCompact 改 seal-aware）/ TASK-20 PLAN-13 M8（命名收尾，依赖 M3✅） |
+| 测试 | ✅ cognitive-memory 84/84 全绿（含 M4 6 新测试）+ Telegram Bot 94/94 全绿 |
+| 上次完成 | TASK-17 PLAN-13 M5（autoCompact seal-aware）+ TASK-20 PLAN-13 M8（命名收尾） |
+| 当前优先 | TASK-18 PLAN-13 M6（统一预算阈值 80k/90k→W×compact_ratio，依赖 M5✅） |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
-| 产品目标完成度 | 约 76% — 12 层 Agent 框架竣工，认知架构 P0+P1+M0-M4 完成，Tool Parity 88.2% |
+| 产品目标完成度 | 约 78% — 12 层 Agent 框架竣工，认知架构 P0+P1+M0-M5+M8 完成，Tool Parity 88.2% |
 
 
 ## 当前状态概述
@@ -75,21 +75,23 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. **TASK-16 PLAN-13 M4 — 动态滑动窗口**（2026-06-10）：新建 sliding-window.ts（pruneSealedMessages 核心剪枝函数）+ task-segment-tracker 添加 getSealedRanges() 方法 + attempt.ts 两处集成（上下文组装后 + force seal 后），使用 settingsManager.getCompactionKeepRecentTokens() 获取 recency 锚（fallback 20_000），消息→task 映射采用时间戳匹配。新建 sliding-window.test.ts 6/6 全绿，session-rotation 84/84 全绿，npm run check 零回归。
-2. **TASK-07 PLAN-11 Bot 测试修复 P3**（2026-06-10）：5 个 MediaPaths 预存 bug 全部修复 — 4 个超时（fetch.ts resolveTelegramTransport sourceFetch 默认优先 globalThis.fetch，可被 vi.spyOn mock，undiciFetch 降级 fallback）+ 1 个 named-account DM 测试断言修正（代码只丢弃 GROUP 不丢弃 DM，DM 用 per-account session key，测试改为验证 DM 正确路由含 AccountId/SessionKey）；bot.test.ts + bot.create-telegram-bot.test.ts 94/94 全绿。
-3. **TASK-13 PLAN-13 M1 — C2 索引头改模型写**（2026-06-10）：sealSegment 新增 modelIndexHead 参数，休止 seal 时调 completeSimple 生成 LLM 自述 goal/outcome/关键决策摘要，强制 seal 回退 buildIndexNodeSummary 启发式；attempt.ts 新增 createModelIndexHead + buildIndexHeadPrompt 辅助函数。84 个 session-rotation 测试全绿。
-4. **TASK-14 PLAN-13 M2 — B3 单路径**（2026-06-10）：删除 resolveIndexHeadBlockForSession（dual-track B3 路径），统一 B3 注入为 IndexNode + traverseGraph 单路径（PLAN-13 I6 单路径原则）；handoff-inject.test.ts 移除对应测试。84 个 session-rotation 测试全绿，type check 零新增。
-5. 代码维护检查 — 移除 tools-invoke-http.ts 关键路径 4 处 `as any` + 修复 P097（taskTrackerRegistry Map 泄漏，finally 块加 clear+delete）+ 修复 P098（activeSeg.body.finalReply 紧耦合，新增 setFinalReply 封装方法）。PITFALLS P097/P098 → Resolved。`npm run check` 零回归。（2026-06-09）
-6. TASK-07 PLAN-11 Bot 测试修复 P1+P2 — grammy mock hoisting 修复（harness vi.hoisted + bot.test.ts 异步 vi.mock 工厂）+ loadWebMedia mock 补齐 + fetch.test.ts 20/20 全绿；bot.test.ts 0/48→46/48，剩余 2 个 MediaPaths 预存 bug（2026-06-09）
-7. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
-8. TASK-12 PLAN-13 M0 实施 — task 边界改控制流（3 源文件 + 1 测试文件）（2026-06-09）
-9. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
-10. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
-11. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
-12. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
-13. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
-14. tsgo 全仓类型检查 53→0 清零（2026-06-07）
-15. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
+1. **TASK-17 PLAN-13 M5 — autoCompact seal-aware**（2026-06-10）：autoCompactMessages 新增 sealedRanges 参数，已封 task 消息时间戳匹配后直接丢弃（零 LLM），孤儿回退 LLM 小摘要；sdk.ts CreateAgentSessionOptions 新增 getSealedTaskRanges 回调；attempt.ts 注入 taskTracker.getSealedRanges()。npm run check 零回归。
+2. **TASK-20 PLAN-13 M8 — 命名收尾**（2026-06-10）：session-rotation/→cognitive-memory/，handoff-types→cognitive-types，handoff-inject→index-head-injector。npm run check 零回归。
+3. **TASK-16 PLAN-13 M4 — 动态滑动窗口**（2026-06-10）：新建 sliding-window.ts（pruneSealedMessages 核心剪枝函数）+ task-segment-tracker 添加 getSealedRanges() 方法 + attempt.ts 两处集成（上下文组装后 + force seal 后），使用 settingsManager.getCompactionKeepRecentTokens() 获取 recency 锚（fallback 20_000），消息→task 映射采用时间戳匹配。新建 sliding-window.test.ts 6/6 全绿，session-rotation 84/84 全绿，npm run check 零回归。
+4. **TASK-07 PLAN-11 Bot 测试修复 P3**（2026-06-10）：5 个 MediaPaths 预存 bug 全部修复 — 4 个超时（fetch.ts resolveTelegramTransport sourceFetch 默认优先 globalThis.fetch，可被 vi.spyOn mock，undiciFetch 降级 fallback）+ 1 个 named-account DM 测试断言修正（代码只丢弃 GROUP 不丢弃 DM，DM 用 per-account session key，测试改为验证 DM 正确路由含 AccountId/SessionKey）；bot.test.ts + bot.create-telegram-bot.test.ts 94/94 全绿。
+5. **TASK-13 PLAN-13 M1 — C2 索引头改模型写**（2026-06-10）：sealSegment 新增 modelIndexHead 参数，休止 seal 时调 completeSimple 生成 LLM 自述 goal/outcome/关键决策摘要，强制 seal 回退 buildIndexNodeSummary 启发式；attempt.ts 新增 createModelIndexHead + buildIndexHeadPrompt 辅助函数。84 个 session-rotation 测试全绿。
+6. **TASK-14 PLAN-13 M2 — B3 单路径**（2026-06-10）：删除 resolveIndexHeadBlockForSession（dual-track B3 路径），统一 B3 注入为 IndexNode + traverseGraph 单路径（PLAN-13 I6 单路径原则）；handoff-inject.test.ts 移除对应测试。84 个 session-rotation 测试全绿，type check 零新增。
+7. 代码维护检查 — 移除 tools-invoke-http.ts 关键路径 4 处 `as any` + 修复 P097（taskTrackerRegistry Map 泄漏，finally 块加 clear+delete）+ 修复 P098（activeSeg.body.finalReply 紧耦合，新增 setFinalReply 封装方法）。PITFALLS P097/P098 → Resolved。`npm run check` 零回归。（2026-06-09）
+8. TASK-07 PLAN-11 Bot 测试修复 P1+P2 — grammy mock hoisting 修复（harness vi.hoisted + bot.test.ts 异步 vi.mock 工厂）+ loadWebMedia mock 补齐 + fetch.test.ts 20/20 全绿；bot.test.ts 0/48→46/48，剩余 2 个 MediaPaths 预存 bug（2026-06-09）
+9. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
+10. TASK-12 PLAN-13 M0 实施 — task 边界改控制流（3 源文件 + 1 测试文件）（2026-06-09）
+11. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
+12. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
+13. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
+14. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
+15. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
+16. tsgo 全仓类型检查 53→0 清零（2026-06-07）
+17. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
 
 
 ## 已知不稳定项

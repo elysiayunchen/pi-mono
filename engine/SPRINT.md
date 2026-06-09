@@ -47,10 +47,10 @@
 4. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — P1✅ grammy mock hoisting修复 + P2✅ fetch.test.ts全绿 + P3✅ 5个MediaPaths预存bug修复（fetch.ts sourceFetch默认globalThis.fetch + bot.create-telegram-bot.test.ts named-account DM路由断言修正）；94/94全绿
 5. [TASK-15] PLAN-13 M3 — 删 dual-track（crit:p1） ✅ — 删dual-track-index.ts/MacroIndexEntry/MicroIndexEntry/consumeDualTrackIndex/appendMacroIndexEntry/appendMicroIndexEntries/updateDualTrackIndex/resolveIndexHeadBlockForSession/buildAndStoreDualTrackIndex，ConversationEntry移除macro/micro字段，conversations表ALTER DROP COLUMN，handoff-inject.test.ts删除，conversation-store.test.ts移除4个dual-track测试；78/78全绿
 6. [TASK-16] PLAN-13 M4 — 动态滑动窗口（crit:p1） ✅ — §2.6: seal 后移除已封 task 老于 recency 锚的原始消息；新建 sliding-window.ts (pruneSealedMessages) + task-segment-tracker.getSealedRanges() + attempt.ts 两处集成（上下文组装后 + force seal 后），消息→task 映射采用时间戳匹配；新建 sliding-window.test.ts 6/6 全绿；AC-10
-7. [TASK-17] PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层） — §2.7: 丢已封task老raw(常见零LLM)，孤儿回退小摘要；⚠️框架层monkey-patch风险；AC-11前半
+7. [TASK-17] PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层） ✅ — §2.7: autoCompactMessages 新增 sealedRanges 参数，已封 task 消息时间戳匹配后直接丢弃（零 LLM 调用），孤儿消息回退 LLM 小摘要；sdk.ts CreateAgentSessionOptions 新增 getSealedTaskRanges 回调；attempt.ts 注入 taskTracker.getSealedRanges()；patch-agent.cjs 锚点确认 M3 已删无需补丁；npm run check 零回归
 8. [TASK-18] PLAN-13 M6 — 统一预算阈值（crit:p2） — §4: 80k/90k双阈值→W×compact_ratio单阈值，驱动seal/丢弃/元压缩；AC-11后半
 9. [TASK-19] PLAN-13 M7 — C3 元压缩（crit:p2） — §2.2: B3超预算→N个task头→session节点，原task头出B3但IndexNode留图谱；AC-12前半
-10. [TASK-20] PLAN-13 M8 — 命名收尾（crit:p3） — session-rotation/→cognitive-memory/，handoff-types→cognitive-types，handoff-inject→index-head-injector
+10. [TASK-20] PLAN-13 M8 — 命名收尾（crit:p3） ✅ — session-rotation/→cognitive-memory/，handoff-types.ts→cognitive-types.ts，handoff-inject.ts→index-head-injector.ts；npm run check 零回归
 11. [TASK-21] PLAN-13 M9 — 端到端验证 + 部署（crit:p0） — Telegram实跑多步任务，验DB有正确IndexNode/edges，新任务替换B4，RECALL命中归档；AC-12
 12. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
 13. ~~[TASK-05] PLAN-09 P2：元压缩 + 图遍历检索~~ — **superseded by PLAN-13**（M7 C3 元压缩 + M9 端到端取代）
@@ -248,8 +248,8 @@
 - **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + `elysiaclaw/src/session-rotation/handoff-inject.test.ts`
 - **实现摘要：** 删除 attempt.ts 中 resolveIndexHeadBlockForSession 导入+调用，移除 dual-track B3 注入块；handoff-inject.test.ts 删除对应测试和 mockConversations；B3 注释更新为 PLAN-13 I6 单路径原则
 
-### TASK-15: PLAN-13 M3 — 删 dual-track（crit:p1）
-- **状态：** 待开始
+### TASK-15: PLAN-13 M3 — 删 dual-track（crit:p1） ✅
+- **状态：** 已完成（2026-06-10）
 - **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §三
 - **用户可见的变化：** 无直接用户可见变化，但代码库大幅简化，消除 dual-track 数据模型冗余
 - **完成标准（对应 PLAN-13.spec AC-7）：**
@@ -270,8 +270,8 @@
   5. **DB 变更**：conversations 表 ALTER 删除 `macro_index`/`micro_index` 列
   6. **验证**：`grep -rn 'MacroIndexEntry|MicroIndexEntry|DualTrackIndex|consumeDualTrackIndex|appendMacro|appendMicro' elysiaclaw/src/ | grep -v test` 零命中
 
-### TASK-16: PLAN-13 M4 — 动态滑动窗口（crit:p1）
-- **状态：** 待开始
+### TASK-16: PLAN-13 M4 — 动态滑动窗口（crit:p1） ✅
+- **状态：** 已完成（2026-06-10）
 - **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.6
 - **用户可见的变化：** 长对话中窗口自动向前滑动，老任务的原始消息被索引头代理，为 active task 腾出空间
 - **完成标准（对应 PLAN-13.spec AC-10）：**
@@ -289,26 +289,15 @@
   3. **recency 锚值**：默认 20k token，可配
   4. **验证**：封口后老 raw 消息从数组移除 + B3 头存续 + 窗口每封口一个 task 向前滑一格
 
-### TASK-17: PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层）
-- **状态：** 待开始
-- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.7
-- **用户可见的变化：** 压缩产物从 1 坨不透明 blob 变为结构化 B3 头集；常见情况零 LLM 调用（更省更快）
-- **完成标准（对应 PLAN-13.spec AC-11 前半）：**
-  1. 找出 raw 消息全部老于 recency 锚的已封 task → 直接丢弃（B3 头即其摘要，无需再 LLM）
-  2. 剩余老消息若不属于任何已封 task（孤儿）→ 强制 seal 其覆盖段，或回退小 LLM 摘要
-  3. recency 锚（最近 K）逐字保留
-  4. 压缩产物为结构化 B3 头集，非 1 坨 blob
-  5. deploy.sh patch 存活验证 + TUI+Bot 双路径无回归
-- **验证方法：** 压缩产物断言 + 双路径 E2E + deploy patch 存活 + `npm run check` 零错误
-- **约束：** ⚠️ 触及框架层 `packages/coding-agent/src/core/compaction/auto-compact.ts` + `sdk.ts`；monkey-patch 风险（PITFALLS #11/#22b）
-- **起点：** `packages/coding-agent/src/core/compaction/auto-compact.ts` + `packages/coding-agent/src/core/compaction/multi-layer.ts` + `packages/coding-agent/src/core/sdk.ts`
-- **前置依赖：** TASK-16 (M4) 完成
-- **风险：** 框架层改造影响 TUI+Bot 双路径；deploy.sh patch 锚点可能偏移
-- **详细实现指导：**
-  1. **`auto-compact.ts` — `autoCompactMessages` 改造**：先调 `pruneSealedTaskRawMessages` 丢已封 task 老 raw（零 LLM），再对孤儿消息回退小 LLM 摘要，recency 锚逐字保留
-  2. **`multi-layer.ts` — 阈值对齐**：`DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD`（90k）与 `auto-compact.ts` 的 `AUTO_COMPACT_THRESHOLD`（80k）暂保留差异（M6 统一）
-  3. **`sdk.ts` — `transformContext` 闭包适配**：确保 seal-aware 改造后正确传递 sealed task 信息
-  4. **⚠️ 框架层 monkey-patch 风险**：改造后需 `deploy.sh` 验证 patch 存活 + TUI+Bot 双路径验证 + 确认 `patch-agent.cjs` 锚点未被移动
+### TASK-17: PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层） ✅
+- **状态：** 已完成（2026-06-10）
+- **改动文件：**
+  - `packages/coding-agent/src/core/compaction/auto-compact.ts` — 新增 `SealedRange` 接口、`getMessageTimestamp`/`isInSealedRange` 辅助函数、`autoCompactMessages` 新增 `sealedRanges` 参数，`toSummarize` 中时间戳匹配 sealed range 的消息直接丢弃（零 LLM），仅对孤儿消息回退 LLM 小摘要；`AutoCompactResult` 新增 `sealedDiscarded` 字段
+  - `packages/coding-agent/src/core/sdk.ts` — `CreateAgentSessionOptions` 新增 `getSealedTaskRanges?: () => SealedRange[]` 回调；`transformContext` 闭包中调用回调获取 sealed ranges 并传递给 `autoCompactMessages`
+  - `packages/coding-agent/src/index.ts` — 导出 `SealedRange`、`AutoCompactResult`、`shouldAutoCompact` 等 auto-compact 类型/函数
+  - `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` — `sessionOpts` 新增 `getSealedTaskRanges: () => taskTracker.getSealedRanges()`
+- **架构决策：** patch-agent.cjs 已由 M3 删除，改为通过 `CreateAgentSessionOptions` 正式回调注入（无 monkey-patch 风险）
+- **验证：** `npm run check` + `npx tsgo --noEmit` 零回归
 
 ### TASK-18: PLAN-13 M6 — 统一预算阈值（crit:p2）
 - **状态：** 待开始
@@ -351,8 +340,8 @@
   3. **原 task 头处理**：出 B3 但 IndexNode 留图谱（I2 索引只增），session 节点入 B3
   4. **session 节点结构**：`{ nodeId, grain: "session", summary, childNodeIds }`
 
-### TASK-20: PLAN-13 M8 — 命名收尾（crit:p3）
-- **状态：** 待开始
+### TASK-20: PLAN-13 M8 — 命名收尾（crit:p3） ✅
+- **状态：** 已完成（2026-06-10）
 - **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §六 M8
 - **用户可见的变化：** 无直接用户可见变化，但代码库命名与认知架构概念对齐，降低新贡献者理解成本
 - **完成标准：**

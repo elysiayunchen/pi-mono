@@ -24,6 +24,15 @@ export {
 	InMemoryAuthStorageBackend,
 	type OAuthCredential,
 } from "./core/auth-storage.js";
+export {
+	AUTO_COMPACT_KEEP_RECENT,
+	AUTO_COMPACT_RESERVE,
+	AUTO_COMPACT_THRESHOLD,
+	type AutoCompactResult,
+	autoCompactMessages,
+	type SealedRange,
+	shouldAutoCompact,
+} from "./core/compaction/auto-compact.js";
 // Compaction
 export {
 	type BranchPreparation,

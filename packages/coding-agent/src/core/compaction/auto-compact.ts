@@ -8,6 +8,10 @@
  *   trigger  = 80 000 tokens  (proactive — before snip+microcompact exhausted)
  *   keep     = 20 000 tokens  (recent history preserved verbatim)
  *   reserve  = 16 384 tokens  (budget for the summary output)
+ *
+ * PLAN-13 M5: seal-aware compaction. Messages belonging to sealed tasks are
+ * discarded directly (B3 index heads proxy their content). Only orphan messages
+ * receive LLM summarization.
  */
 
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
@@ -27,6 +31,18 @@ export const AUTO_COMPACT_KEEP_RECENT = 20_000;
 /** Reserve for the summary output itself (prevents the summary call overflowing). */
 export const AUTO_COMPACT_RESERVE = 16_384;
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+/** PLAN-13 M5: sealed task time range for seal-aware compaction. */
+export interface SealedRange {
+	/** Opaque task identifier for diagnostics. */
+	taskId?: string;
+	/** Start timestamp (ms since epoch) of the sealed segment. */
+	startedAt: number;
+	/** End timestamp (ms since epoch) of the sealed segment. */
+	endedAt: number;
+}
+
 // ── Public helpers ───────────────────────────────────────────────────────────
 
 /**
@@ -36,6 +52,25 @@ export const AUTO_COMPACT_RESERVE = 16_384;
 export function shouldAutoCompact(messages: AgentMessage[], threshold = AUTO_COMPACT_THRESHOLD): boolean {
 	const { tokens } = estimateContextTokens(messages);
 	return tokens > threshold;
+}
+
+// ── Internal helpers ─────────────────────────────────────────────────────────
+
+function getMessageTimestamp(msg: AgentMessage): number | undefined {
+	const raw = (msg as unknown as Record<string, unknown>).timestamp;
+	return typeof raw === "number" ? raw : undefined;
+}
+
+/**
+ * Check whether a message timestamp falls within any sealed range.
+ */
+function isInSealedRange(timestamp: number, ranges: SealedRange[]): boolean {
+	for (const r of ranges) {
+		if (timestamp >= r.startedAt && timestamp <= r.endedAt) {
+			return true;
+		}
+	}
+	return false;
 }
 
 // ── Internal split logic ─────────────────────────────────────────────────────
@@ -83,18 +118,25 @@ function splitForCompaction(
 export interface AutoCompactResult {
 	messages: AgentMessage[];
 	tokensFreed: number;
-	/** Number of messages that were summarised. */
+	/** Number of messages that were LLM-summarised (excluding sealed discards). */
 	summarizedCount: number;
+	/** PLAN-13 M5: number of messages discarded via seal-aware pruning (zero LLM cost). */
+	sealedDiscarded: number;
 }
 
 /**
- * Perform LLM-based compaction on an AgentMessage[].
+ * Perform seal-aware compaction on an AgentMessage[].
+ *
+ * PLAN-13 M5: messages belonging to sealed tasks are discarded directly
+ * (B3 index heads proxy their content). Only orphan messages receive
+ * LLM summarization.
  *
  * Steps:
  *  1. Split into toSummarize + toKeep
- *  2. Call generateSummary() on toSummarize
- *  3. Prepend a compactionSummary message to toKeep
- *  4. Return the compacted array + metrics
+ *  2. Filter out sealed messages from toSummarize → orphans
+ *  3. If orphans remain, call generateSummary() on orphans
+ *  4. Prepend a compactionSummary message to toKeep
+ *  5. Return the compacted array + metrics
  *
  * Safe to call even if messages are below threshold — returns unchanged if
  * toSummarize is empty.
@@ -106,16 +148,45 @@ export async function autoCompactMessages(
 	headers?: Record<string, string>,
 	signal?: AbortSignal,
 	rateLimiter?: RateLimitScheduler,
+	/** PLAN-13 M5: sealed task time ranges. Messages in these ranges are discarded (zero LLM cost). */
+	sealedRanges?: SealedRange[],
 ): Promise<AutoCompactResult> {
 	const tokensBefore = messages.reduce((s, m) => s + estimateTokens(m), 0);
 
 	const { toSummarize, toKeep } = splitForCompaction(messages, AUTO_COMPACT_KEEP_RECENT);
 
 	if (toSummarize.length === 0) {
-		return { messages, tokensFreed: 0, summarizedCount: 0 };
+		return { messages, tokensFreed: 0, summarizedCount: 0, sealedDiscarded: 0 };
 	}
 
-	const doGenerate = () => generateSummary(toSummarize, model, AUTO_COMPACT_RESERVE, apiKey, headers, signal);
+	let sealedDiscarded = 0;
+	let orphans = toSummarize;
+
+	if (sealedRanges && sealedRanges.length > 0) {
+		const kept: AgentMessage[] = [];
+		for (const msg of toSummarize) {
+			const ts = getMessageTimestamp(msg);
+			if (ts !== undefined && isInSealedRange(ts, sealedRanges)) {
+				sealedDiscarded++;
+			} else {
+				kept.push(msg);
+			}
+		}
+		orphans = kept;
+	}
+
+	if (orphans.length === 0) {
+		const compacted = toKeep;
+		const tokensAfter = compacted.reduce((s, m) => s + estimateTokens(m), 0);
+		return {
+			messages: compacted,
+			tokensFreed: tokensBefore - tokensAfter,
+			summarizedCount: 0,
+			sealedDiscarded,
+		};
+	}
+
+	const doGenerate = () => generateSummary(orphans, model, AUTO_COMPACT_RESERVE, apiKey, headers, signal);
 	const summary = rateLimiter ? await rateLimiter.acquireAndStream(model.provider, doGenerate) : await doGenerate();
 
 	const summaryMessage = createCompactionSummaryMessage(summary, tokensBefore, new Date().toISOString());
@@ -126,6 +197,7 @@ export async function autoCompactMessages(
 	return {
 		messages: compacted,
 		tokensFreed: tokensBefore - tokensAfter,
-		summarizedCount: toSummarize.length,
+		summarizedCount: orphans.length,
+		sealedDiscarded,
 	};
 }

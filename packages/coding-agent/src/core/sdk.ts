@@ -4,7 +4,7 @@ import { type AssistantMessageEventStream, type Message, type Model, streamSimpl
 import { getAgentDir, getDocsPath } from "../config.js";
 import { AgentSession } from "./agent-session.js";
 import { AuthStorage } from "./auth-storage.js";
-import { AUTO_COMPACT_THRESHOLD, autoCompactMessages } from "./compaction/auto-compact.js";
+import { AUTO_COMPACT_THRESHOLD, autoCompactMessages, type SealedRange } from "./compaction/auto-compact.js";
 import {
 	applyMultiLayerCompaction,
 	DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD,
@@ -102,6 +102,12 @@ export interface CreateAgentSessionOptions {
 	 * Default: 0 (thresholds unchanged).
 	 */
 	contextPressureBudget?: number;
+	/**
+	 * PLAN-13 M5: returns sealed task time ranges for seal-aware compaction.
+	 * Messages whose timestamps fall within these ranges are discarded directly
+	 * (zero LLM cost) because B3 index heads proxy their content.
+	 */
+	getSealedTaskRanges?: () => SealedRange[];
 	/**
 	 * Continue the most recent session for this cwd instead of creating a new one.
 	 * Equivalent to openclaw --continue.
@@ -432,6 +438,8 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 				try {
 					const auth = await modelRegistry.getApiKeyAndHeaders(model);
 					if (auth.ok) {
+						// PLAN-13 M5: resolve sealed task ranges for seal-aware compaction.
+						const sealedRanges = options.getSealedTaskRanges?.();
 						const release2 = await rateLimitScheduler.acquire(model.provider);
 						let compactResult: any;
 						try {
@@ -441,6 +449,8 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 								auth.apiKey!,
 								auth.headers,
 								signal ?? undefined,
+								undefined, // rateLimiter — rateLimitScheduler is handled above
+								sealedRanges,
 							);
 						} finally {
 							release2();
