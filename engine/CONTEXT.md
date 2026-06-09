@@ -1,14 +1,14 @@
 # CONTEXT — ElysiaClaw
-> 快照日期：2026-06-09 | 每次会话开始时，读完 ENGINE_MAP 后优先阅读此文件。
+> 快照日期：2026-06-10 | 每次会话开始时，读完 ENGINE_MAP 后优先阅读此文件。
 
 
 ## 状态面板
 | 维度 | 状态 |
 |------|------|
-| 构建 | ✅ 正常（`npm run check` 零新增错误，499 文件；预存 pi-tui/agents 类型错误 27 条） |
-| 测试 | ✅ Telegram Bot 94/94 全绿（TASK-07 P3 完成：fetch.ts sourceFetch 默认 globalThis.fetch + named-account DM 路由断言修正） |
-| 上次完成 | TASK-07 PLAN-11 Bot 测试修复 P3（5 个 MediaPaths 预存 bug 全部修复） |
-| 当前优先 | TASK-15 PLAN-13 M3（删 dual-track）/ TASK-16 PLAN-13 M4（动态滑动窗口） |
+| 构建 | ✅ 正常（`npm run check` 零新增错误，498 文件；预存 pi-tui/agents 类型错误 28 条） |
+| 测试 | ✅ session-rotation 78/78 全绿 + Telegram Bot 94/94 全绿 |
+| 上次完成 | TASK-15 PLAN-13 M3（删 dual-track：dual-track-index.ts 删除 + ConversationEntry 移除 macro/micro + conversation-store 移除 5 方法 + DB ALTER DROP COLUMN + handoff-inject 移除 resolveIndexHeadBlockForSession/buildAndStoreDualTrackIndex + attempt.ts 移除 buildAndStoreDualTrackIndex 调用） |
+| 当前优先 | TASK-16 PLAN-13 M4（动态滑动窗口）/ TASK-20 PLAN-13 M8（命名收尾，依赖 M3✅） |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
 | 产品目标完成度 | 约 74% — 12 层 Agent 框架竣工，认知架构 P0+P1 完成，Tool Parity 88.2% |
 
@@ -24,7 +24,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 | M0 | TASK-12 | ✅ 完成 | startSegment 改控制流 + sealSegment 加休止判定(isQuiescent含pending_approval) + attempt.ts 调用侧改造(三路分支+模块级tracker注册表+回合结束不封口) + ToolCallRecord新增pending_approval状态 | 无 |
 | M1 | TASK-13 | ✅ 完成 | C2 索引头改模型写（seal 时 LLM 自述 goal/outcome/决策，强制 seal 回退启发式） | M0 |
 | M2 | TASK-14 | ✅ 完成 | B3 单路径（删 resolveIndexHeadBlockForSession，只走 IndexNode+traverseGraph） | M0 |
-| M3 | TASK-15 | ⏳ 待启动 | 删 dual-track 全套（文件+类型+DB列） | M2 |
+| M3 | TASK-15 | ✅ 完成 | 删 dual-track 全套（文件+类型+DB列） | M2 |
 | M4 | TASK-16 | ⏳ 待启动 | 动态滑动窗口（seal 后裁剪老 raw 消息，recency 锚保留） | M0 |
 | M5 | TASK-17 | ⏳ 待启动 | autoCompact 改 seal-aware（框架层，高风险） | M4 |
 | M6 | TASK-18 | ⏳ 待启动 | 统一预算阈值 80k/90k→W×compact_ratio | M5 |

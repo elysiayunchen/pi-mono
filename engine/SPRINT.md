@@ -45,7 +45,7 @@
 2. [TASK-13] PLAN-13 M1 — C2 索引头改模型写（crit:p1） ✅ — sealSegment 新增 modelIndexHead 参数，休止 seal 调 completeSimple 生成 LLM 自述 goal/outcome/关键决策，强制 seal 回退启发式 buildIndexNodeSummary；84 测试全绿
 3. [TASK-14] PLAN-13 M2 — B3 单路径（crit:p1） ✅ — 删除 resolveIndexHeadBlockForSession（dual-track），统一 B3 为 IndexNode + traverseGraph 单路径（PLAN-13 I6 单路径原则）；84 测试全绿
 4. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — P1✅ grammy mock hoisting修复 + P2✅ fetch.test.ts全绿 + P3✅ 5个MediaPaths预存bug修复（fetch.ts sourceFetch默认globalThis.fetch + bot.create-telegram-bot.test.ts named-account DM路由断言修正）；94/94全绿
-5. [TASK-15] PLAN-13 M3 — 删 dual-track（crit:p1） — §三: 删dual-track-index.ts/MacroIndexEntry/MicroIndexEntry/consumeDualTrackIndex，conversations表ALTER删列；AC-7
+5. [TASK-15] PLAN-13 M3 — 删 dual-track（crit:p1） ✅ — 删dual-track-index.ts/MacroIndexEntry/MicroIndexEntry/consumeDualTrackIndex/appendMacroIndexEntry/appendMicroIndexEntries/updateDualTrackIndex/resolveIndexHeadBlockForSession/buildAndStoreDualTrackIndex，ConversationEntry移除macro/micro字段，conversations表ALTER DROP COLUMN，handoff-inject.test.ts删除，conversation-store.test.ts移除4个dual-track测试；78/78全绿
 6. [TASK-16] PLAN-13 M4 — 动态滑动窗口（crit:p1） — §2.6: seal时移除已封task老于recency锚的原始消息，T1头存续；AC-10
 7. [TASK-17] PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层） — §2.7: 丢已封task老raw(常见零LLM)，孤儿回退小摘要；⚠️框架层monkey-patch风险；AC-11前半
 8. [TASK-18] PLAN-13 M6 — 统一预算阈值（crit:p2） — §4: 80k/90k双阈值→W×compact_ratio单阈值，驱动seal/丢弃/元压缩；AC-11后半
