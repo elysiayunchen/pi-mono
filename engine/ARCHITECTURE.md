@@ -1,5 +1,5 @@
 # ARCHITECTURE — ElysiaClaw
-> Stage: 认知架构演进中期 | Last updated: 2026-06-08
+> Stage: 认知架构演进中期（PLAN-13 accepted） | Last updated: 2026-06-09
 > Class: mixed | CLI-LEAN 下只信任 irreducible 章节（§0/§1/§6/§7），derivable 章节按需从代码现生
 
 
@@ -123,29 +123,30 @@
 
 
 ## 11. 认知架构全景  [irreducible]
-> 统合审定 2026-06-09：认知架构 = **3 个正交子系统 + 1 个连接层 + 1 个身份层**。PLAN-09（accepted）为子系统①的权威设计，PLAN-12（active）为连接层权威。本节是常驻总图，任何认知架构改动先对齐本图；细节见各 PLAN。
+> 统合审定 2026-06-09（第二次）：认知架构 = **3 个正交子系统 + 1 个连接层 + 1 个身份层**。**PLAN-13（accepted）为子系统①+连接层⑤的唯一权威设计**，合并重写 PLAN-09/12。PLAN-09 已落地实现保留（IndexNode/HardEdge/traverseGraph/图谱表/computeInjectionBudget/B3 append），PLAN-13 在其上续建。本节是常驻总图，任何认知架构改动先对齐本图；细节见各 PLAN。
 
 ### 11.1 子系统分解
 
 | # | 子系统 | 职责 | 权威 plan | 状态 |
 |---|--------|------|-----------|------|
-| ① | **上下文与事件记忆** | 注入分层 B0-B5 + 事件流 + 认知图谱（节点+边） | PLAN-09 (active) | P0 ✅ / P1 ✅ / P0+P1 已部署至生产 ✅（2026-06-09）/ P2-P3 待实施 |
+| ① | **上下文与事件记忆** | 四层缓存(Pin/T0-T3)+seal 单动作+动态滑动窗口+三档压缩(C1/C2/C3)+统一预算 | PLAN-13 (accepted) | M0-M9 迁移链已派生(TASK-12~TASK-21)，M0 待启动；PLAN-09 P0/P1 已落地部署 |
 | ② | **记忆与世界模型** | 语义记忆引擎(向量+FTS+hybrid) + World Model 数字孪生 + CONSOLIDATE | PLAN-03 | Phase1 ✅ / Phase2 待启 |
 | ③ | **知识库与自我进化** | 输入分类 + 用户画像 + 技能进化 + 索引化注入范式 | PLAN-04 | 分类/画像 ✅ / 进化 PROPOSAL |
-| ⑤ | **忆匣连接层** | 统一 TaskGroup+索引层+认知图谱边+压缩元数据为原子持久化单元，废除 session | PLAN-12 (active) | P0 ✅ / P1-P3 待实施 |
+| ⑤ | **认知工作集连接层** | 忆匣=单 task 惰性分组 + T2 归档体 + archiveRef 解引用 + C3 元压缩 session 节点 | PLAN-13 (accepted) | 合并入①统一设计，不再独立存在 |
 | ④ | **身份与协作** | Participant 主键 + L0/L1/L3/L4 + 决策 D1-D10 | PLAN-08 (L0/L1/L3/L4) | 设计锁定，待落地 |
 
-**被取代的草案地质层**：PLAN-01（注入分层 → 并入①）· PLAN-02（会话轮换 → 废弃，TaskSegment/压缩并入①）· PLAN-08 L2（轮换 → 被①重设计）。三者 superseded，保留作历史依据，NEVER 据此动代码。
+**被取代的草案地质层**：PLAN-01（注入分层 → 并入①）· PLAN-02（会话轮换 → 废弃，TaskSegment/压缩并入①）· PLAN-08 L2（轮换 → 被①重设计）· PLAN-09（事件记忆 → 被 PLAN-13 取代，已落地实现保留）· PLAN-12（忆匣 → 被 PLAN-13 取代，memory-box-store.ts 保留为 T2 body 存储）。superseded plan 保留作历史依据，NEVER 据此动代码。
 
 ### 11.2 数据流全景
 
 ```
 ┌──── 输入：永不中断的事件流（绑 participant_id ④，私聊/群/跨渠道统一）────┐
 │                                                                          │
-用户/agent 消息 ─→ [③ 输入分类器] ─┬─ task ──────────→ [① 事件流: TaskSegment 实时打包]
+用户/agent 消息 ─→ [③ 输入分类器] ─┬─ task ──────────→ [① 控制流边界: task段]
+                                   │   (分类器不判边界,只分流)   不再每回合开闭段
                                    ├─ chat/affective ─→ [③ 用户画像流]
                                    └─ meta ──────────→ [③ 偏好/规则]
-                                                             │ TaskSegment 封口（① 提供时机）
+                                                             │ seal 封口（① 控制流判定）
                                                              ▼
                                                    ┌─ CONSOLIDATE 沉淀 ─┐
                           ┌────────────────────────┼────────────────────┼─────────────┐
@@ -153,32 +154,42 @@
                   ② 语义记忆引擎            ② World Model        ③ 用户画像/技能       │
                   (向量+FTS+hybrid)         (数字孪生+7 probes)   (SQLite)            │
                           │                         │                    │             │
-                          └──────── 索引化注入回认知（① B0-B5）──────────┘             │
+                          └──────── 索引化注入回认知（① Pin+B3-B5）──────┘             │
                                                     ▼                                  │
-  B0 IDENTITY · B1 CAPABILITY · B2 ENVIRONMENT(②World Model 摘要)                       │
+  Pin: B0 IDENTITY · B1 CAPABILITY · B2 ENVIRONMENT(②World Model 摘要)                 │
   ══════════════════ CACHE ANCHOR（前缀缓存断点）══════════════════                     │
-  effectivePrompt 末尾 append：B3 INDEX HEADS(①认知图谱索引头,只增 I2)                  │
-                              B4 ACTIVE TASK(当前任务完整细节,替换 I1)                   │
-                              B5 RECALL(②语义召回 + ①图遍历)                            │
+  [recent K turns 原始消息]  ← recency 锚（滑动窗口保留区）                            │
+  effectivePrompt 末尾 append：B3 INDEX HEADS(① T1 索引头,只增 I2, C3元压缩可聚合)     │
+                              B4 ACTIVE TASK(① T0 工作集,当前任务完整体,替换 I1)         │
+                              B5 RECALL(② T3 语义召回 + ①图遍历)                        │
                                                     ▼                                  │
         模型在 active task 工作空间继续（I1 单任务 · I3 窗口透明）─────────────────────┘
-                                  （封口 → 回到 CONSOLIDATE，闭环）
+                                  （seal → T0→T1降级→T2归档 → 回到 CONSOLIDATE，闭环）
+
+  四层缓存 + seal 单动作（PLAN-13 核心模型）:
+    Pin  B0-B2        全保真 · 永驻前缀 · KV-cache 锚点
+    T0   B4 active    全保真 · 在窗口 · 整体可替换
+    T1   B3 索引头    有损摘要 · 在窗口尾部 · 只增(I2)
+    T2   忆匣 body   全保真 · 窗口外 · archiveRef 取回(I6)
+    T3   B5 语义      模糊 · 窗口外 · 召回入窗
+    seal = T0→T1降级 + T2写穿 + 图谱硬边 + 滑动(移除老raw)
 ```
 
 ### 11.3 子系统接口契约（统合关键 — 改任一接口需同步对侧 plan）
 
 | 接口 | 提供方 | 消费方 | 内容 |
 |------|--------|--------|------|
-| B2 注入源 | ② World Model | ① B2 ENVIRONMENT | 机器现状紧凑摘要（服务/端口/磁盘/版本），慢变 30min |
-| B5 RECALL 底座 | ② src/memory | ① B5 | 向量近邻 top-k 语义召回 |
-| 图谱软边 | ② src/memory | ① 认知图谱 | 查询时向量近邻动态生成，**绝不入库**（D4 硬边持久/软边不存） |
-| CONSOLIDATE 时机 | ① TaskSegment 封口 | ②③ | 封口信号 → ② 写记忆 + ③ 更新画像/固化技能 |
-| 输入分流 | ③ 输入分类器 | ① 事件流 | task 进事件流，chat/affective/meta 进画像流（偏向判 task，误判不对称） |
+| B2 注入源 | ② World Model | ① Pin B2 | 机器现状紧凑摘要（服务/端口/磁盘/版本），慢变 |
+| T3 / B5 召回底座 | ② src/memory | ① B5 | 向量近邻 top-k；软边查询时动态生成，**绝不入库**（D4） |
+| CONSOLIDATE 时机 | ① seal（§2.1 控制流） | ②③ | seal 信号 → ② 写记忆 + ③ 更新画像/固化技能 |
+| 输入分流 | ③ 输入分类器 | 画像流 | **只分流 chat/affective/meta**，不判 task 边界（PLAN-13 §2.1） |
 | 索引化注入策略 | ③ | ① B5 | 索引为主 + 强相关预取（score 分级，避免多轮往返） |
-| 身份主键 | ④ participant_id | ①②③ | 所有连续线、记忆、画像的归属键 |
+| 身份主键 | ④ participant_id | ①②③ | 所有连续线、记忆、画像的归属键（I5） |
 
 ### 11.4 不可推翻的不变式（跨子系统，违反即跑偏）
 
-**I1** 工作空间单任务 · **I2** 索引只增 · **I3** 窗口对模型透明 · **I4** 双形态延续（精确轨=索引头，模糊轨=图+语义，模糊轨绝不单独承载精确任务状态）· **I5** Participant 为连续性主键。
+**I1** 工作空间单任务 · **I2** 索引只增 · **I3** 窗口对模型透明 · **I4** 双形态延续（精确轨=索引头+硬边图遍历，模糊轨=语义召回；模糊轨绝不单独承载精确任务状态）· **I5** Participant 为连续性主键 · **I6** 忆匣自包含（sealed task 可由 archiveRef 完整解引用）。
 
-**本项目反复踩的陷阱（同构，必防）**：① "模块+测试齐全 ≠ 完成"，完成定义 = 生产路径实跑 + 端到端验证；② 死代码伪装成功能（executeRotation）；③ 声明性文档乐观偏差，见 ✅ 先 grep 生产调用者；④ 断言冒充检查（安全判据必须真求值）。详见 PITFALLS #91-94。
+**单路径原则**：任一数据任一时刻仅一条读写路径。B3 注入不得同时走 dual-track 和 IndexNode（PLAN-13 M2 统一为单路径）。
+
+**本项目反复踩的陷阱（同构，必防）**：① "模块+测试齐全 ≠ 完成"，完成定义 = 生产路径实跑 + 端到端验证；② 死代码伪装成功能（executeRotation）；③ 声明性文档乐观偏差，见 ✅ 先 grep 生产调用者；④ 断言冒充检查（安全判据必须真求值）。详见 PITFALLS #85/#91-94。

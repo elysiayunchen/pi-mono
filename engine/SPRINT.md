@@ -41,17 +41,27 @@
 
 
 ## 优先级栈
-1. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — AC-1:pi-tui v0.58→v0.64升级(28文件恢复) + AC-2:fetch.test.ts 3条断言修复 + AC-3:Telegram测试套件全绿 + AC-4:跨层无回归
-2. [TASK-06] ~~PLAN-10 审计修复（crit:p1）~~ ✅ — AC-1:contextPressureBudget语义修复(injectionTokens) + AC-2:traverseGraph接入B3(1-hop) + AC-3:HandoffPacket死代码清理(~150行) + AC-4:测试迁移(6条IndexNode/Edge/traverseGraph) + BFS off-by-one修复
-3. [TASK-01] ~~PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅ — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool，HandoffPacket废弃，auto-rotation移除，npm run check零错误+vitest全绿
-4. [TASK-02] ~~PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode~~ ✅ — computeInjectionBudget接入运行时（按窗口比例缩放），封口时写入IndexNode+temporal/produces硬边，conversation-store新增index_nodes+edges表+traverseGraph，B3注入从图谱读IndexNode，npm run check零错误
-5. [TASK-03] ~~Tool Parity Task 14: AskUserQuestionTool~~ ✅ — Telegram inline keyboard 交互工具，ask-user-question.ts + helpers + bot-handlers callback路由 + 四层注册 + 11测试全绿
-6. [TASK-08] ~~会话轮换清理~~ ✅ — 删除HandoffPacket/RotationReason类型+5个旋转字段+updateActiveSession死代码+conversation-router简化，9文件，28测试全过
-7. [TASK-09] ~~双轨注入修正~~ ✅ — B4 ACTIVE TASK注入(formatTaskBodyForInjection) + archiveRef暴露 + task_get工具创建注册 + 元数据格式压缩
-8. [TASK-10] ~~压缩→seal连接~~ ✅ — compaction触发→sealSegment→IndexNode→B3常驻(attempt.ts:3078)
-9. [TASK-11] ~~PLAN-12 P0 设计+存储~~ ✅ — PLAN-12.md设计文档 + memory-box-store.ts独立SQLite存储层
-10. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
-11. [TASK-05] PLAN-09 P2：元压缩 + 图遍历检索 — L2.5 task→session聚合，图遍历检索闭环
+1. [TASK-12] PLAN-13 M0 — 修地基：task 边界改控制流（crit:p0） ✅ — startSegment 仅无active段时开，sealSegment 仅休止/强制时封，上轮未休止追加当前段；60测试全绿
+2. [TASK-13] PLAN-13 M1 — C2 索引头改模型写（crit:p1） — §2.2: 休止seal时模型自述goal+outcome+关键决策，强制seal回退启发式；AC-3
+3. [TASK-14] PLAN-13 M2 — B3 单路径（crit:p1） — §2.3: 废resolveIndexHeadBlockForSession(dual-track)，B3只走IndexNode+traverseGraph；AC-6
+4. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — AC-1:pi-tui v0.58→v0.64升级(28文件恢复) + AC-2:fetch.test.ts 3条断言修复 + AC-3:Telegram测试套件全绿 + AC-4:跨层无回归
+5. [TASK-15] PLAN-13 M3 — 删 dual-track（crit:p1） — §三: 删dual-track-index.ts/MacroIndexEntry/MicroIndexEntry/consumeDualTrackIndex，conversations表ALTER删列；AC-7
+6. [TASK-16] PLAN-13 M4 — 动态滑动窗口（crit:p1） — §2.6: seal时移除已封task老于recency锚的原始消息，T1头存续；AC-10
+7. [TASK-17] PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层） — §2.7: 丢已封task老raw(常见零LLM)，孤儿回退小摘要；⚠️框架层monkey-patch风险；AC-11前半
+8. [TASK-18] PLAN-13 M6 — 统一预算阈值（crit:p2） — §4: 80k/90k双阈值→W×compact_ratio单阈值，驱动seal/丢弃/元压缩；AC-11后半
+9. [TASK-19] PLAN-13 M7 — C3 元压缩（crit:p2） — §2.2: B3超预算→N个task头→session节点，原task头出B3但IndexNode留图谱；AC-12前半
+10. [TASK-20] PLAN-13 M8 — 命名收尾（crit:p3） — session-rotation/→cognitive-memory/，handoff-types→cognitive-types，handoff-inject→index-head-injector
+11. [TASK-21] PLAN-13 M9 — 端到端验证 + 部署（crit:p0） — Telegram实跑多步任务，验DB有正确IndexNode/edges，新任务替换B4，RECALL命中归档；AC-12
+12. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
+13. ~~[TASK-05] PLAN-09 P2：元压缩 + 图遍历检索~~ — **superseded by PLAN-13**（M7 C3 元压缩 + M9 端到端取代）
+14. ~~[TASK-06] PLAN-10 审计修复（crit:p1）~~ ✅
+15. ~~[TASK-01] PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅
+16. ~~[TASK-02] PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode~~ ✅
+17. ~~[TASK-03] Tool Parity Task 14: AskUserQuestionTool~~ ✅
+18. ~~[TASK-08] 会话轮换清理~~ ✅
+19. ~~[TASK-09] 双轨注入修正~~ ✅
+20. ~~[TASK-10] 压缩→seal连接~~ ✅
+21. ~~[TASK-11] PLAN-12 P0 设计+存储~~ ✅
 
 
 ## 任务详情
@@ -199,13 +209,210 @@
   2. ✅ memory-box-store.ts 独立 SQLite 存储层（MemoryBox + MemoryBoxTask CRUD，0 type error）
 
 
+### TASK-12: PLAN-13 M0 — 修地基：task 边界改控制流（crit:p0） ✅
+- **状态：** 已完成（2026-06-09）
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.1
+- **用户可见的变化：** 多步多轮任务不再被每回合拆成碎片，agent 在完整任务上下文中工作，B3 不再被每回合一个头污染
+- **完成标准（对应 PLAN-13.spec AC-1 + AC-2）：**
+  1. ✅ AC-1 (crit): `startSegment` 仅在无 active 段时开新段；`sealSegment` 仅在休止（最终回复 + todo 全清 + 无 running/pending_approval 工具）或强制（窗口压力/超时）时封；上轮未休止则追加当前段
+  2. ✅ 多步多轮任务（含工具审批、用户中途补充）封口为**单个**段；单轮 Q&A 封单段
+  3. ✅ AC-2: `classifyInput` 不再门控 `startSegment`（输入分类器只分流 chat/affective/meta 到画像流）
+  4. ✅ grep 确认 `startSegment` 调用受 `无active段` 守卫；`inputClassification` 不再门控段边界
+- **验证方法：** 60 测试全绿 + grep 守卫条件 + `npm run check` 零新增类型错误
+
+### TASK-13: PLAN-13 M1 — C2 索引头改模型写（crit:p1）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.2
+- **用户可见的变化：** 索引头含关键决策和推理链路，agent 在后续任务中能更精准地回溯历史
+- **完成标准（对应 PLAN-13.spec AC-3）：**
+  1. AC-3 (crit): 休止 seal 时索引头含模型自述的 goal+outcome+关键决策（非纯截断拼接）
+  2. 强制 seal（窗口压力/超时）路径回退启发式（`buildIndexNodeSummary` 保留为 fallback）
+  3. seal 头内容断言含模型自述字段
+- **验证方法：** seal 头内容断言 + 强制 seal 回退路径验证 + `npm run check` 零错误
+- **约束：** 模型写头增加 1 次 LLM 调用，需控制 token 开销；强制 seal 必须有 fallback
+- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` seal 区 + `elysiaclaw/src/session-rotation/task-segment-tracker.ts:buildIndexNodeSummary`
+- **前置依赖：** TASK-12 (M0) 完成
+- **风险：** 模型写头质量依赖 prompt 工程；LLM 调用增加延迟
+- **详细实现指导：**
+  1. **新增 `writeModelIndexHead` 函数**（task-segment-tracker.ts 或新文件 index-head-writer.ts）：prompt 模板含 goal+type+outcome+toolCalls+finalReply，调用 completeSimple 生成 150-200 token 摘要
+  2. **`sealSegment` 改为异步**：休止 seal → 调 `writeModelIndexHead`；强制 seal → 回退 `buildIndexNodeSummary`
+  3. **attempt.ts 中 seal 调用点适配**：`sealSegment` 变异步后所有调用点需 `await`
+  4. **额外开销**：每次休止 seal 约 200 token，可接受
+
+### TASK-14: PLAN-13 M2 — B3 单路径（crit:p1）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.3 / I6 单路径原则
+- **用户可见的变化：** 无直接用户可见变化，但消除双路径后 B3 注入逻辑简化，减少数据不一致风险
+- **完成标准（对应 PLAN-13.spec AC-6）：**
+  1. AC-6 (crit): B3 注入只走 IndexNode + traverseGraph 单路径
+  2. `resolveIndexHeadBlockForSession`（dual-track 路径）从 `attempt.ts:2641` 删除
+  3. grep `resolveIndexHeadBlockForSession` 生产路径零命中（除注释）
+- **验证方法：** grep 旧路径零命中 + B3 注入断言走 IndexNode 路径 + `npm run check` 零错误
+- **约束：** 不能破坏 B3 注入功能；删除前确认 IndexNode 路径已完全承载 B3 内容
+- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts:2641`
+- **前置依赖：** TASK-12 (M0) 完成
+- **风险：** 低风险（IndexNode 路径已在 P1 落地并部署）
+- **详细实现指导：**
+  1. **attempt.ts — 删除 `resolveIndexHeadBlockForSession` 调用**：搜索 attempt.ts 中该函数的调用点，替换为纯 IndexNode 路径
+  2. **确认 IndexNode 路径已完全承载 B3 内容**：`conversation-store.ts` 的 `getIndexNodes` + `traverseGraph` 返回内容覆盖原 dual-track 的 `formatDualTrackIndexForInjection`
+  3. **B3 注入格式对齐**：确保 IndexNode 路径输出格式与原 dual-track 一致
+
+### TASK-15: PLAN-13 M3 — 删 dual-track（crit:p1）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §三
+- **用户可见的变化：** 无直接用户可见变化，但代码库大幅简化，消除 dual-track 数据模型冗余
+- **完成标准（对应 PLAN-13.spec AC-7）：**
+  1. AC-7 (crit): `dual-track-index.ts` 删除；`MacroIndexEntry`/`MicroIndexEntry` 类型删除
+  2. `ConversationEntry.macroIndex|microIndex` 字段删除；`consumeDualTrackIndex`/`appendMacro|Micro*` 函数删除
+  3. conversations 表 ALTER 删 macro/micro 列
+  4. grep 旧符号零命中 + `npm run check` 零错误 + DB schema 验证
+- **验证方法：** grep 旧符号零命中 + `npm run check` 零错误 + conversation-store DB schema 验证
+- **约束：** DB ALTER 需兼容现有数据；删除前确认无生产路径引用
+- **起点：** `elysiaclaw/src/session-rotation/dual-track-index.ts` + `elysiaclaw/src/session-rotation/conversation-store.ts` + `elysiaclaw/src/session-rotation/conversation-types.ts`
+- **前置依赖：** TASK-14 (M2) 完成
+- **风险：** DB ALTER 在生产环境需谨慎（缓解：先删代码引用，再 ALTER）
+- **详细实现指导：**
+  1. **删除文件**：`dual-track-index.ts` 整文件删除
+  2. **删除类型**：`conversation-types.ts` 中 `ConversationEntry.macroIndex`/`microIndex` 字段
+  3. **删除函数**：`conversation-store.ts` 中 `consumeDualTrackIndex`/`appendMacroIndexEntry*`/`appendMicroIndexEntry*`
+  4. **删除导出**：`session-rotation/index.ts` 中 dual-track 相关导出
+  5. **DB 变更**：conversations 表 ALTER 删除 `macro_index`/`micro_index` 列
+  6. **验证**：`grep -rn 'MacroIndexEntry|MicroIndexEntry|DualTrackIndex|consumeDualTrackIndex|appendMacro|appendMicro' elysiaclaw/src/ | grep -v test` 零命中
+
+### TASK-16: PLAN-13 M4 — 动态滑动窗口（crit:p1）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.6
+- **用户可见的变化：** 长对话中窗口自动向前滑动，老任务的原始消息被索引头代理，为 active task 腾出空间
+- **完成标准（对应 PLAN-13.spec AC-10）：**
+  1. AC-10 (crit): task seal 时其老于 recency 锚的原始消息从消息数组移除，T1 头存续
+  2. 窗口每封口一个 task 向前滑一格
+  3. 封口前后消息数组断言 + B3 头存续验证
+- **验证方法：** 封口前后消息数组断言 + B3 头存续 + `npm run check` 零错误
+- **约束：** recency 锚默认复用 keep-recent 20k；移除消息不能影响 B3/B4/B5 注入
+- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + 消息数组管理
+- **前置依赖：** TASK-12 (M0) 完成
+- **风险：** 消息移除时机需精确，不能移除 active task 的消息
+- **详细实现指导：**
+  1. **attempt.ts — seal 后消息数组裁剪**：新增 `pruneSealedTaskRawMessages` 函数，从尾部向前累积 recency 锚内消息，锚外属于已封 task 的 raw 消息移除
+  2. **消息→task 映射**：在 attempt.ts 中维护消息到 task segment 的映射关系（消息产生时记录所属 segmentId）
+  3. **recency 锚值**：默认 20k token，可配
+  4. **验证**：封口后老 raw 消息从数组移除 + B3 头存续 + 窗口每封口一个 task 向前滑一格
+
+### TASK-17: PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.7
+- **用户可见的变化：** 压缩产物从 1 坨不透明 blob 变为结构化 B3 头集；常见情况零 LLM 调用（更省更快）
+- **完成标准（对应 PLAN-13.spec AC-11 前半）：**
+  1. 找出 raw 消息全部老于 recency 锚的已封 task → 直接丢弃（B3 头即其摘要，无需再 LLM）
+  2. 剩余老消息若不属于任何已封 task（孤儿）→ 强制 seal 其覆盖段，或回退小 LLM 摘要
+  3. recency 锚（最近 K）逐字保留
+  4. 压缩产物为结构化 B3 头集，非 1 坨 blob
+  5. deploy.sh patch 存活验证 + TUI+Bot 双路径无回归
+- **验证方法：** 压缩产物断言 + 双路径 E2E + deploy patch 存活 + `npm run check` 零错误
+- **约束：** ⚠️ 触及框架层 `packages/coding-agent/src/core/compaction/auto-compact.ts` + `sdk.ts`；monkey-patch 风险（PITFALLS #11/#22b）
+- **起点：** `packages/coding-agent/src/core/compaction/auto-compact.ts` + `packages/coding-agent/src/core/compaction/multi-layer.ts` + `packages/coding-agent/src/core/sdk.ts`
+- **前置依赖：** TASK-16 (M4) 完成
+- **风险：** 框架层改造影响 TUI+Bot 双路径；deploy.sh patch 锚点可能偏移
+- **详细实现指导：**
+  1. **`auto-compact.ts` — `autoCompactMessages` 改造**：先调 `pruneSealedTaskRawMessages` 丢已封 task 老 raw（零 LLM），再对孤儿消息回退小 LLM 摘要，recency 锚逐字保留
+  2. **`multi-layer.ts` — 阈值对齐**：`DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD`（90k）与 `auto-compact.ts` 的 `AUTO_COMPACT_THRESHOLD`（80k）暂保留差异（M6 统一）
+  3. **`sdk.ts` — `transformContext` 闭包适配**：确保 seal-aware 改造后正确传递 sealed task 信息
+  4. **⚠️ 框架层 monkey-patch 风险**：改造后需 `deploy.sh` 验证 patch 存活 + TUI+Bot 双路径验证 + 确认 `patch-agent.cjs` 锚点未被移动
+
+### TASK-18: PLAN-13 M6 — 统一预算阈值（crit:p2）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §4
+- **用户可见的变化：** 1M 窗口下压缩阈值随窗口缩放，不再硬编码 80k/90k
+- **完成标准（对应 PLAN-13.spec AC-11 后半）：**
+  1. 80k/90k 双阈值统一为 `W × compact_ratio` 单阈值
+  2. 单阈值驱动 seal / seal-aware raw 丢弃 / C3 元压缩
+  3. 注入量（B2-B5）计入阈值
+  4. 1M 窗口下阈值随窗口缩放，非硬编码
+- **验证方法：** 不同窗口尺寸下阈值断言 + `npm run check` 零错误
+- **约束：** 阈值变更需在 TUI+Bot 双路径验证
+- **起点：** `elysiaclaw/src/context-engine/injection-budget.ts` + `packages/coding-agent/src/core/compaction/multi-layer.ts` + `packages/coding-agent/src/core/compaction/auto-compact.ts`
+- **前置依赖：** TASK-17 (M5) 完成
+- **风险：** compact_ratio 参数需实测调优
+- **详细实现指导：**
+  1. **`injection-budget.ts` — 新增 `computeCompactThreshold`**：`contextWindowTokens × compact_ratio`（默认 0.8）
+  2. **`auto-compact.ts` — 替换硬编码 80k**：从 `computeCompactThreshold(contextWindowTokens)` 动态获取
+  3. **`multi-layer.ts` — 替换硬编码 90k**：同一动态阈值
+  4. **`sdk.ts` — 传递 contextWindowTokens**：确保 `transformContext` 闭包中能获取到 `contextWindowTokens`
+  5. **验证**：1M 窗口下阈值 = 800k（非 80k 硬编码）+ 阈值随窗口缩放
+
+### TASK-19: PLAN-13 M7 — C3 元压缩（crit:p2）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §2.2
+- **用户可见的变化：** 长对话中 B3 索引头自动聚合，agent 能在更紧凑的上下文中工作
+- **完成标准（对应 PLAN-13.spec AC-12 前半）：**
+  1. B3 索引头总量超预算时自动触发 C3 元压缩
+  2. N 个 task IndexNode → 1 个 session 节点（grain="session"）
+  3. 原 task 头出 B3，但 IndexNode 留图谱（I2 索引只增）
+  4. 新增 `meta-compression.ts` 模块
+- **验证方法：** 元压缩触发断言 + 图谱查询验证 task IndexNode 仍存在 + `npm run check` 零错误
+- **约束：** 元压缩只替换 B3 注入内容，IndexNode 和边仍在图谱中可回查
+- **起点：** 新增 `elysiaclaw/src/session-rotation/meta-compression.ts` + 升级 `elysiaclaw/src/session-rotation/dual-track-index.ts`（M3 后已删，改为操作 conversation-store）
+- **前置依赖：** TASK-18 (M6) 完成
+- **风险：** 元压缩丢信息（缓解：IndexNode 仍在图谱中可回查）
+- **详细实现指导：**
+  1. **新增 `meta-compression.ts`**：`metaCompress(taskNodes, model, apiKey)` → `{ sessionNode, removedNodeIds }`；LLM 批处理 N 个 task 头 → 1 个 session 摘要（≤300 token）
+  2. **B3 注入时检查预算**：`estimateTokens(b3Content) > indexBudget` 时触发元压缩
+  3. **原 task 头处理**：出 B3 但 IndexNode 留图谱（I2 索引只增），session 节点入 B3
+  4. **session 节点结构**：`{ nodeId, grain: "session", summary, childNodeIds }`
+
+### TASK-20: PLAN-13 M8 — 命名收尾（crit:p3）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §六 M8
+- **用户可见的变化：** 无直接用户可见变化，但代码库命名与认知架构概念对齐，降低新贡献者理解成本
+- **完成标准：**
+  1. `session-rotation/` → `cognitive-memory/`
+  2. `handoff-types.ts` → `cognitive-types.ts`
+  3. `handoff-inject.ts` → `index-head-injector.ts`
+  4. logger 名同步更新
+  5. grep `handoff`/`rotation` 在已废概念处零命中（注释除外）
+- **验证方法：** grep 旧概念零命中 + `npm run check` 零错误 + 全量 import 路径正确
+- **约束：** 纯重命名，不改变任何逻辑；需更新所有 import 路径
+- **起点：** `elysiaclaw/src/session-rotation/` 全目录
+- **前置依赖：** TASK-15 (M3) 完成
+- **风险：** 大范围重命名容易遗漏 import；需全量 grep 验证
+- **详细实现指导：**
+  1. **创建新目录/文件**：`cognitive-memory/` 目录 + 新文件名
+  2. **迁移内容**：仅改 import 路径和 logger 名，不改逻辑
+  3. **更新所有 import 引用**：attempt.ts、conversation-store.ts 等
+  4. **删除旧文件**
+  5. **重命名清单**：`session-rotation/` → `cognitive-memory/`；`handoff-types.ts` → `cognitive-types.ts`；`handoff-inject.ts` → `index-head-injector.ts`；logger 名含 `handoff`/`rotation` → `cognitive`/`index-head`
+
+### TASK-21: PLAN-13 M9 — 端到端验证 + 部署（crit:p0）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-13](plans/PLAN-13.md) 认知工作集架构 §六 M9
+- **用户可见的变化：** 认知工作集架构完整落地，agent 在 Telegram 中展现多步任务延续能力
+- **完成标准（对应 PLAN-13.spec AC-12 + 全部 AC 回归）：**
+  1. Telegram 实跑多步任务，验 conversation-store.db 有正确 IndexNode/edges
+  2. 新任务替换 B4，RECALL 命中归档
+  3. AC-1~AC-12 全部验证通过
+  4. 不变式回归门：I1~I6 + 单路径原则
+  5. deploy.sh 部署 + gateway 正常响应
+- **验证方法：** Telegram E2E + DB 验证 + AC 全绿 + deploy 验证
+- **约束：** 需主模型可用；完成定义 = 生产路径实跑 + 端到端（PITFALLS #85）
+- **起点：** deploy.sh + Telegram Bot 实跑
+- **前置依赖：** TASK-12~TASK-20 (M0-M8) 全部完成
+- **风险：** 主模型不可用阻塞验证；多步迁移后可能有累积回归
+- **详细实现指导：**
+  1. **Telegram 实跑多步任务**：用户发多步请求→agent 工具调用→用户补充→agent 继续→最终回复
+  2. **DB 验证**：conversation-store.db 有正确 IndexNode/edges
+  3. **B4 替换验证**：新任务替换 B4（旧 active task body 出窗）
+  4. **RECALL 命中归档**：RECALL 能搜到已归档内容
+  5. **不变式回归门**：I1-I6 + 单路径原则
+  6. **部署**：`npm run check` 零错误 + `./deploy.sh` 5 guards 全部通过 + patch-agent.cjs 存活验证 + 生产环境 E2E 验证
+
+
 ## 阻塞中的任务
 - 端到端生产验证：阻塞于主模型不可用（OpenRouter owl-alpha 不可用）
 
 
 ## 本冲刺不做的事
-- World Model Phase 2（PLAN-03）— 等待 PLAN-12 P1-P2 闭环
+- World Model Phase 2（PLAN-03）— 等待 PLAN-13 M0-M7 闭环
 - 技能进化 Skill Evolution（PLAN-04）— 等待 World Model
 - MCP 协议集成（Tool Parity Task 15）— 大工程，排在 Task 14 之后
 - 并行执行引擎（Tool Parity Task 16）— 大工程，最后做
-- 参与者持续性 W1-W5（PLAN-08 L0/L1/L3/L4）— 等待 PLAN-12 闭环
+- 参与者持续性 W1-W5（PLAN-08 L0/L1/L3/L4）— 等待 PLAN-13 闭环

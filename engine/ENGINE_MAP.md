@@ -31,12 +31,12 @@
 |------|-------|---------------|----------|---------------|
 | ENGINE_MAP.md | index | 0 | 8 | 2026-06-09 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
-| CONTEXT.md | irreducible | 2 | 2 | 2026-06-09 |
+| CONTEXT.md | irreducible | 2 | 3 | 2026-06-09 |
 | HANDOFF.md | irreducible | 3 | 2 | 2026-06-09 |
 | SPRINT.md | irreducible | 4 | 3 | 2026-06-09 |
 | ROADMAP.md | irreducible | 5 | 2 | 2026-06-09 |
 | PITFALLS.md | irreducible | 6 | 1 | 2026-06-08 |
-| ARCHITECTURE.md | mixed | 7 | 2 | 2026-06-09 |
+| ARCHITECTURE.md | mixed | 7 | 3 | 2026-06-09 |
 | SOURCEMAP.md | derivable | 8 | 1 | 2026-06-08 |
 
 [新引擎文件追加到表格末尾。删除文件时直接删行，并同步清理 §3 中对它的引用。]
@@ -54,19 +54,20 @@
 
 | ID | Title | Status | Plan path | Spec twin | 备注 | Last verified |
 |----|-------|--------|-----------|-----------|------|---------------|
-| PLAN-01 | 分层上下文注入架构（Context Injection） | superseded | engine/plans/PLAN-01.md | engine/plans/PLAN-01.spec.md | superseded-by: PLAN-09（事件记忆+全索引统合） | 2026-06-08 |
-| PLAN-02 | 会话轮换与跨会话延续（Session Rotation） | superseded | engine/plans/PLAN-02.md | engine/plans/PLAN-02.spec.md | superseded-by: PLAN-09（轮换机制废弃，TaskSegment+压缩保留） | 2026-06-08 |
+| PLAN-01 | 分层上下文注入架构（Context Injection） | archived | engine/archive/plans/PLAN-01.md | engine/archive/plans/PLAN-01.spec.md | superseded-by: PLAN-09 → PLAN-13 | 2026-06-09 |
+| PLAN-02 | 会话轮换与跨会话延续（Session Rotation） | archived | engine/archive/plans/PLAN-02.md | engine/archive/plans/PLAN-02.spec.md | superseded-by: PLAN-09 → PLAN-13 | 2026-06-09 |
 | PLAN-03 | 超级计算机管理员 Agent（World Model + Memory） | active | engine/plans/PLAN-03.md | engine/plans/PLAN-03.spec.md | 正交子系统②；Phase 1 记忆引擎 ✅，Phase 2 World Model 待启动 | 2026-06-08 |
 | PLAN-04 | 知识库与自我进化 | active | engine/plans/PLAN-04.md | engine/plans/PLAN-04.spec.md | 正交子系统③；输入分类/用户画像 ✅，技能进化 PROPOSAL | 2026-06-08 |
 | PLAN-05 | Telegram UX × 上下文/记忆协同 | active | engine/plans/PLAN-05.md | engine/plans/PLAN-05.spec.md | WS-1/WS-2/WS-3 已完成 | 2026-06-08 |
 | PLAN-06 | 子代理代码委派（delegate_code_task） | active | engine/plans/PLAN-06.md | engine/plans/PLAN-06.spec.md | AC 未全部验证，待 RECONCILE 确认 | 2026-06-08 |
 | PLAN-07 | Tool Parity（工具对标 Claude Code） | active | engine/plans/PLAN-07.md | engine/plans/PLAN-07.spec.md | 15/17 = 88.2%，Task 14 ✅，Task 15-16 待执行 | 2026-06-08 |
-| PLAN-08 | 参与者持续性架构（Participant Continuity） | superseded | engine/plans/PLAN-08.md | engine/plans/PLAN-08.spec.md | superseded-by: PLAN-09（L2 认知层重设计，L0/L1/L3/L4 方向保留） | 2026-06-08 |
-| PLAN-09 | 事件记忆与认知索引架构（Event Memory & Cognitive Index） | superseded | engine/plans/PLAN-09.md | engine/plans/PLAN-09.spec.md | superseded-by: PLAN-13（合并重写为统一工作集脊椎）；已落地实现保留（IndexNode/HardEdge/traverseGraph/图谱表/computeInjectionBudget/B3 append），PLAN-13 在其上续建，NEVER 据本文动新代码 | 2026-06-09 |
-| PLAN-10 | 体验端落实验证与可维护性保障框架 | done | engine/plans/PLAN-10.md | engine/plans/PLAN-10.spec.md | 质量治理 plan；AC-1~AC-4 全部验证通过（2026-06-09），SPRINT TASK-06 ✅；含 contextPressureBudget 语义修复 + traverseGraph 接入 B3 + HandoffPacket 死代码清理 + 测试迁移 | 2026-06-09 |
+| PLAN-08 | 参与者持续性架构（Participant Continuity） | archived | engine/archive/plans/PLAN-08.md | engine/archive/plans/PLAN-08.spec.md | superseded-by: PLAN-09 → PLAN-13（L0/L1/L3/L4 方向保留） | 2026-06-09 |
+| PLAN-09 | 事件记忆与认知索引架构（Event Memory & Cognitive Index） | archived | engine/archive/plans/PLAN-09.md | engine/archive/plans/PLAN-09.spec.md | superseded-by: PLAN-13；已落地实现保留（IndexNode/HardEdge/traverseGraph/图谱表/computeInjectionBudget/B3 append），PLAN-13 在其上续建 | 2026-06-09 |
+| PLAN-10 | 体验端落实验证与可维护性保障框架 | archived | engine/archive/plans/PLAN-10.md | engine/archive/plans/PLAN-10.spec.md | AC-1~AC-4 全部验证通过（2026-06-09），TASK-06 ✅ | 2026-06-09 |
 | PLAN-11 | Bot 测试基础设施修复与依赖对齐 | accepted | engine/plans/PLAN-11.md | engine/plans/PLAN-11.spec.md | pi-tui 版本漂移(28文件) + fetch.test.ts 断言(3测试)；P1 依赖升级 + P2 断言修复 + P3 全量验证 | 2026-06-09 |
-| PLAN-12 | 忆匣 (Memory Box) — 统一记忆系统 | superseded | engine/plans/PLAN-12.md | (暂无 spec) | superseded-by: PLAN-13（忆匣简化为单 task 惰性分组，砍掉实时 TaskGroup/topic 检测）；memory-box-store.ts 保留为 T2 body 存储 | 2026-06-09 |
+| PLAN-12 | 忆匣 (Memory Box) — 统一记忆系统 | archived | engine/archive/plans/PLAN-12.md | (暂无 spec) | superseded-by: PLAN-13（忆匣简化为单 task 惰性分组）；memory-box-store.ts 保留为 T2 body 存储 | 2026-06-09 |
 | PLAN-13 | 认知工作集架构（Cognitive Working Set） | accepted | engine/plans/PLAN-13.md | engine/plans/PLAN-13.spec.md | 认知架构子系统①+连接层**唯一权威**；合并重写 PLAN-09/12，从"固定窗口=工作集缓存"单一策略推导：四层缓存(T0-T3)+seal 单动作+task=控制流边界+忆匣=单task惰性分组+动态滑动窗口+autoCompact 改造为 seal-aware；含 M0-M9 有序迁移链；M0 修地基(task≠turn)未启动 | 2026-06-09 |
+| PLAN-13.branch | PLAN-13 详细分支方案设计 | reviewed | engine/plans/PLAN-13.branch.md | (无独立 spec，验证标准见 PLAN-13.spec) | PLAN-13 的精确实现补充：M0-M9 代码改动方向+代码骨架+验证步骤+风险缓解+并行性分析+审核确认点(Q-06~Q-10✅+C1-C4✅+附录C)；**审核已通过，可启动 M0** | 2026-06-09 |
 
 [新 plan 追加到表格末尾。ID 按 PLAN‑[N+1] 递增。状态变更时直接改对应行。]
 [原设计文档已迁移至 `engine/plans/`，旧目录 `elysiaclaw_engine/` 已删除。]
@@ -76,7 +77,7 @@
 - `accepted` —— 设计已审定为权威方向（方向锁定、不可推翻），但尚未全部落地；介于 proposed 与 active 之间，可据此派生执行任务并清理冲突代码
 - `active` —— 已派生执行层条目，进行中
 - `done` —— 已落实并通过验证：其 spec twin 关联的全部验收标准（AC）均验证通过
-- `superseded` —— 被后续 plan 取代；备注列记 `superseded-by: PLAN-XX`，NEVER 删除原 plan 与其 twin
+- `archived` —— 已归档至 `engine/archive/plans/`；含 superseded（被后续 plan 取代）和 done（已完成）两类；备注列记取代链，NEVER 删除原 plan 与其 twin
 
 
 ## 3. 关系图 (Linkage Graph)
@@ -97,7 +98,7 @@
 | PLAN-10 | SPRINT:TASK-06✅(PLAN-10审计修复:AC-1~AC-4) | PLAN-10.spec:AC-1~AC-4 | elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts（AC-1:injectionTokens语义修复 / AC-2:traverseGraph 1-hop接入B3）, elysiaclaw/src/session-rotation/conversation-store.ts（AC-3:consumeHandoffPacket删除 / BFS off-by-one修复）, elysiaclaw/src/session-rotation/dual-track-index.ts（AC-3:buildMacroEntryFromHandoff删除）, elysiaclaw/src/session-rotation/handoff-types.ts（AC-3:validateHandoffCompleteness/formatHandoffForInjection删除,HandoffPacket@deprecated）, elysiaclaw/src/session-rotation/handoff-inject.ts（AC-3:3个废弃函数删除）, elysiaclaw/src/session-rotation/conversation-store.test.ts（AC-4:6条IndexNode/Edge/traverseGraph测试） |
 | PLAN-11 | SPRINT:TASK-07(PLAN-11 Bot测试修复:AC-1~AC-4) | PLAN-11.spec:AC-1~AC-4 | elysiaclaw/package.json（AC-1:pi-tui升级）, elysiaclaw/src/telegram/fetch.test.ts（AC-2:3条断言修复）, elysiaclaw/src/telegram/*.test.ts（AC-3:28文件恢复加载） |
 | PLAN-12 | SPRINT:TASK-08(会话轮换清理)/TASK-09(双轨注入修正)/TASK-10(压缩→seal连接)/TASK-11(PLAN-12 P0设计+存储), ROADMAP:统一记忆系统 | (暂无 spec) | elysiaclaw/src/session-rotation/memory-box-store.ts（P0新建）, elysiaclaw/src/session-rotation/conversation-store.ts（P3简化）, elysiaclaw/src/session-rotation/task-segment-tracker.ts（P1 group管理）, elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts（B3/B4/B5适配+compaction→seal）, elysiaclaw/src/agents/tools/task-get-tool.ts（P1扩展）, elysiaclaw/src/memory/qmd-manager.ts（P2 kind:"memory-box"）, engine/plans/PLAN-12.md（设计文档） |
-| PLAN-13 | SPRINT:待派生(M0-M9迁移链), ROADMAP:认知工作集脊椎(M4重定义), PITFALLS:#85/#91-94 | PLAN-13.spec:AC-1~AC-12 | M0:elysiaclaw/src/session-rotation/task-segment-tracker.ts+attempt.ts(task边界改控制流) · M1:attempt.ts seal区(C2头模型写) · M2/M3:attempt.ts:2641+dual-track-index.ts+conversation-store/types.ts(B3单路径+删双轨) · M4:attempt.ts(滑动窗口) · M5/M6:packages/coding-agent/src/core/compaction/auto-compact.ts+multi-layer.ts+sdk.ts(seal-aware改造+统一阈值) · M7:新增meta-compression.ts · M8:session-rotation/整目录重命名 |
+| PLAN-13 | SPRINT:TASK-12(M0 task边界改控制流)/TASK-13(M1 C2头模型写)/TASK-14(M2 B3单路径)/TASK-15(M3 删dual-track)/TASK-16(M4 滑动窗口)/TASK-17(M5 autoCompact seal-aware)/TASK-18(M6 统一预算阈值)/TASK-19(M7 C3元压缩)/TASK-20(M8 命名收尾)/TASK-21(M9 端到端验证+部署), ROADMAP:认知工作集脊椎(M4重定义), PITFALLS:#85/#91-94 | PLAN-13.spec:AC-1~AC-12 | M0:elysiaclaw/src/session-rotation/task-segment-tracker.ts+attempt.ts(task边界改控制流) · M1:attempt.ts seal区(C2头模型写) · M2/M3:attempt.ts:2641+dual-track-index.ts+conversation-store/types.ts(B3单路径+删双轨) · M4:attempt.ts(滑动窗口) · M5/M6:packages/coding-agent/src/core/compaction/auto-compact.ts+multi-layer.ts+sdk.ts(seal-aware改造+统一阈值) · M7:新增meta-compression.ts · M8:session-rotation/整目录重命名 |
 
 [plan 派生新条目时，在其行内追加。执行层条目用 `文件:锚点` 格式引用，NEVER 复制条目正文。]
 
@@ -135,6 +136,9 @@
 | SPRINT:TASK-06✅(PLAN-10审计修复:AC-1~AC-4) | PLAN-10 |
 | SPRINT:TASK-07(PLAN-11 Bot测试修复:AC-1~AC-4) | PLAN-11 |
 | SPRINT:TASK-08~TASK-11(PLAN-12 忆匣统一记忆系统:P0设计+存储) | PLAN-12 |
+| SPRINT:TASK-12~TASK-21(PLAN-13 认知工作集架构:M0-M9迁移链) | PLAN-13 |
+| ROADMAP:认知工作集脊椎(M4重定义) | PLAN-13 |
+| PITFALLS:#85/#91-94 | PLAN-13 |
 
 
 ## 4. 完整性与新鲜度 (Integrity & Freshness)
@@ -142,8 +146,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 16 |
-| 上次 RECONCILE | 2026-06-09（INGEST PLAN-13 认知工作集架构：PLAN-09/12 转 superseded，PLAN-13 录入 §2/§3.1，合并重写为单一脊椎+M0-M9 迁移链） |
+| 全局 revision | 22 |
+| 上次 RECONCILE | 2026-06-09（TASK-12 PLAN-13 M0 完成：task 边界改控制流，3 源文件+1 测试文件+引擎文件更新） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 

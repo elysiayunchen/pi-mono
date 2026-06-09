@@ -22,7 +22,7 @@
 | M1 | 12 层 Agent 框架竣工 | ✅ 完成 | 2026-04 |
 | M2 | 记忆引擎激活 | ✅ 完成 | 2026-06-06 |
 | M3 | 认知架构序 1-7 完成 | ✅ 完成 | 2026-06-07 |
-| M4 | 事件记忆闭环（PLAN-09） | 🔄 进行中 | 2026-06 |
+| M4 | 认知工作集闭环（PLAN-13） | 🔄 进行中 | 2026-06 |
 | M5 | Tool Parity 100% | 📋 计划中 | 2026-06/07 |
 | M6 | World Model 数字孪生 | 📋 计划中 | 2026-07 |
 | M7 | 参与者持续性 v1 | 📋 计划中 | 2026-07/08 |
@@ -30,13 +30,13 @@
 
 ## 里程碑详情
 
-### M4: 事件记忆闭环（PLAN-09）
-- **目标：** 废除会话轮换，实现事件记忆+认知索引架构，任务延续靠索引不靠轮换
-- **关键交付物：** ~~B3/B4/B5注入方向修正 + 轮换机制废弃~~ ✅ + ~~预算器接入 + TaskSegment封口产生IndexNode + 认知图谱表~~ ✅ + 元压缩 + 图遍历检索
-- **成功指标：** 多步任务封口后索引头正确注入B3，新任务替换B4，RECALL能搜到已归档内容，元压缩在B3膨胀时触发
-- **已知风险：** 模型不可用阻塞端到端验证；B3索引头累积速度需实测
-- **设计文档：** PLAN-09（事件记忆与认知索引架构）
-- **进度：** P0 ✅（2026-06-08），P1 ✅（2026-06-08），P0+P1 已部署至生产 ✅（2026-06-09），P2-P3 待实施
+### M4: 认知工作集闭环（PLAN-13，取代 PLAN-09）
+- **目标：** 废除会话轮换，实现认知工作集架构——固定上下文窗口 = 工作集缓存，四层缓存(T0-T3)+seal 单动作+task=控制流边界+忆匣=单task惰性分组+动态滑动窗口+autoCompact seal-aware+元压缩
+- **关键交付物：** ~~B3/B4/B5注入方向修正 + 轮换机制废弃~~ ✅ + ~~预算器接入 + TaskSegment封口产生IndexNode + 认知图谱表~~ ✅ + M0(task≠turn) + M1(C2头模型写) + M2(B3单路径) + M3(删dual-track) + M4(滑动窗口) + M5(autoCompact seal-aware) + M6(统一阈值) + M7(元压缩) + M8(命名收尾) + M9(端到端验证)
+- **成功指标：** 多步任务封口后索引头正确注入B3，新任务替换B4，RECALL能搜到已归档内容，元压缩在B3膨胀时触发，autoCompact常见情况零LLM调用
+- **已知风险：** 模型不可用阻塞端到端验证；M5框架层monkey-patch风险；M0休止判定需实测调优
+- **设计文档：** PLAN-13（认知工作集架构，取代 PLAN-09/12）
+- **进度：** PLAN-09 P0 ✅ P1 ✅ 已部署 ✅ → PLAN-13 审核通过，M0-M9 待实施
 
 ### M5: Tool Parity 100%
 - **目标：** 工具链完整对标 Claude Code
@@ -80,6 +80,12 @@
 - ~~PLAN-09 P0/P1 部署至生产环境~~ ✅ 已完成（2026-06-09，deploy.sh 5 guards 全部通过）
 - PLAN-12 P1：TaskGroup→忆匣转化，task-segment-tracker 需增加 group 管理，attempt.ts B3/B4/B5 需适配忆匣边界
 - PLAN-12 P3：conversation-store 简化，session JSONL 降级为调试备份
+- **PLAN-13 M0：task 边界从 turn 改为控制流**，startSegment 不再每回合开闭，sealSegment 加休止判定（isQuiescent 含 pending_approval），消息 metadata 加 segmentId
+- **PLAN-13 M2/M3：B3 单路径 + 删 dual-track**，resolveIndexHeadBlockForSession 删除，dual-track-index.ts 整文件删除，DB 删 macro/micro 列
+- **PLAN-13 M4：动态滑动窗口**，seal 后裁剪老 raw 消息，recency 锚与 computeInjectionBudget keep-recent 统一
+- **PLAN-13 M5：autoCompact 改造为 seal-aware**，框架层 auto-compact.ts + sdk.ts transformContext 闭包改造，新增 getSealedTaskIds 回调
+- **PLAN-13 M6：统一预算阈值**，80k/90k 硬编码替换为 W×compact_ratio 动态计算
+- **PLAN-13 M8：命名收尾**，session-rotation/ → cognitive-memory/，handoff-* → cognitive-* / index-head-*
 - attempt.ts 拆分重构：将 2861+ 行拆为 3 个文件，需要仔细迁移
 - 参与者持续性架构：可能改变 session 管理模型，从 chat/session 到 participant 绑定
 - World Model 注入：B2 层新增环境快照注入，可能影响 KV-cache 布局
