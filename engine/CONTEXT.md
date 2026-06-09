@@ -10,7 +10,7 @@
 | 上次完成 | P080 缓解 + P082 确认修复 + TASK-04 attempt.ts 拆分重构 Step 1-3（3576→2359 行） |
 | 当前优先 | TASK-21 PLAN-13 M9（端到端验证+部署） |
 | 阻塞 | Telegram 交互验证 P102 temporal edge 创建 — 需用户通过 Telegram 交互触发 |
-| 产品目标完成度 | 约 82% — 认知架构 M0-M8 完成 + P080/P082 修复 + attempt.ts 拆分重构 |
+| 产品目标完成度 | 约 82% — 认知架构 M0-M8 完成 + P080/P082 修复 + TASK-04 拆分重构 Step 1-3 |
 
 
 ## 当前状态概述
@@ -28,7 +28,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 | M4 | TASK-16 | ✅ 完成 | 动态滑动窗口（seal 后裁剪老 raw 消息，recency 锚保留，sliding-window.ts + 2处集成 + 6测试） | M0 |
 | M5 | TASK-17 | ✅ 完成 | autoCompact 改 seal-aware（框架层）+ Bug 3 修复（6 测试全绿） | M4 |
 | M6 | TASK-18 | ✅ 完成 | 统一预算阈值 80k/90k→W×compact_ratio（injection-budget 新增 computeCompactThreshold + sdk.ts 新增 contextWindowTokens 选项 + attempt.ts/compact.ts 传递 contextWindowTokens） | M5 |
-| M7 | TASK-19 | ⏳ 待启动 | C3 元压缩（N task IndexNode→1 session 节点） | M6 |
+| M7 | TASK-19 | ✅ 完成 | C3 元压缩（N task IndexNode→1 session 节点） | M6 |
 | M8 | TASK-20 | ✅ 完成 | 命名收尾 session-rotation→cognitive-memory | M3 |
 | M9 | TASK-21 | ⏳ 待启动 | 端到端验证+部署 | M0-M8 |
 
@@ -75,7 +75,9 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. **TASK-18 PLAN-13 M6 — 统一预算阈值**（2026-06-10）：injection-budget.ts 新增 computeCompactThreshold(W, compactRatio) + DEFAULT_COMPACT_RATIO=0.8 + MIN_COMPACT_THRESHOLD=20_000；sdk.ts CreateAgentSessionOptions 新增 contextWindowTokens 选项，compactThreshold 动态计算替代硬编码 80k/90k（fallback 路径保留向后兼容）；attempt.ts/compact.ts 传递 contextWindowTokens。injection-budget 测试 14/14 全绿，npm run check 零回归。
+1. **P080 缓解 + P082 确认修复 + TASK-04 拆分重构**（2026-06-10 会话24）：P080 连续失败检测改 toolName 匹配 + OpenAI/Responses API 错误标记 `❌ Tool error:` + nudge 不重置计数器；P082 确认 wrapToolDefinition 已修复（16 扩展字段逐字段传播），PITFALLS 更新为 Resolved；attempt.ts 拆分重构 Step 1-3（3576→2359 行，-34%），提取 tool-call-repair.ts + ollama-compat.ts + system-prompt-builder.ts + injection-coordinator.ts；部署 5 guards 全绿，175 测试全绿
+2. **P102 修复 + TASK-19 M7 C3 元压缩**（2026-06-10 会话23）：P102 temporal 边永不创建 bug 修复（onSeal 回调 fallback getLatestIndexNode）；meta-compression.ts 新建（22 测试全绿）；rebuildCompressedTaskIds 进程重启恢复；只压缩已完成/已中止 task；session title 从 LLM 摘要提取
+3. **TASK-18 PLAN-13 M6 — 统一预算阈值**（2026-06-10）：injection-budget.ts 新增 computeCompactThreshold(W, compactRatio) + DEFAULT_COMPACT_RATIO=0.8 + MIN_COMPACT_THRESHOLD=20_000；sdk.ts CreateAgentSessionOptions 新增 contextWindowTokens 选项，compactThreshold 动态计算替代硬编码 80k/90k（fallback 路径保留向后兼容）；attempt.ts/compact.ts 传递 contextWindowTokens。injection-budget 测试 14/14 全绿，npm run check 零回归。
 2. **TASK-20 PLAN-13 M8 — 命名收尾**（2026-06-10）：session-rotation/→cognitive-memory/，handoff-types→cognitive-types，handoff-inject→index-head-injector。npm run check 零回归。
 3. **TASK-19 PLAN-13 M7 — C3 元压缩**（2026-06-10）：新建 meta-compression.ts（buildMetaCompressionPrompt + createSessionNode + createSessionEdges + metaCompress + checkAndScheduleMetaCompression + filterNodesForB3Injection），attempt.ts B3 注入集成（metaCompressionStateRegistry + filterNodesForB3Injection + checkAndScheduleMetaCompression 后台调度），index-head-injector.ts session 节点展示增强（3 行摘要 + 200 字符行宽），meta-compression.test.ts 16/16 全绿，npm run check 零回归。
 4. **TASK-16 PLAN-13 M4 — 动态滑动窗口**（2026-06-10）：新建 sliding-window.ts（pruneSealedMessages 核心剪枝函数）+ task-segment-tracker 添加 getSealedRanges() 方法 + attempt.ts 两处集成（上下文组装后 + force seal 后），使用 settingsManager.getCompactionKeepRecentTokens() 获取 recency 锚（fallback 20_000），消息→task 映射采用时间戳匹配。新建 sliding-window.test.ts 6/6 全绿，session-rotation 84/84 全绿，npm run check 零回归。
@@ -105,17 +107,17 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 - 输入分类器数据源偏窄：短陈述句落入 task，identity.name 提不出
 - sessions chunks 47% CLAUDE.md 注入噪音
 - delegate_code_task Telegram 端到端验证未完成（需可用模型）
-- attempt.ts 复杂度失控：3324 行，建议拆分（PLAN-13 M0-M9 完成后执行）
+- attempt.ts 复杂度改善中：3324→2359 行（-34%），已提取 4 个模块，可选继续提取 sessions_yield
 - ⚠️ **P096/P099/P100 M0 审查发现的维护性问题** — P096（setToolCallPendingApproval 死代码，M1/M2 接线 → M1/M2 已完成，P096 仍死代码残留需 M3 删除）、P099（dual-track 双写，M3 自然消除）、P100（onSeal 无兜底，M3 修复），详见 PITFALLS。P097/P098 已于维护检查修复 → Resolved
 - ✅ **B3 注入双路径** → ✅ M2 已完成：删除 resolveIndexHeadBlockForSession，统一 B3 为 IndexNode + traverseGraph 单路径
-- ⚠️ **autoCompact 不感知 seal** — 压缩产物为不透明 blob，不利用已封 task 的 B3 头（PLAN-13 M5 修复目标）
+- ✅ **autoCompact 不感知 seal** → ✅ M5 已完成：autoCompact 改 seal-aware，已封 task 消息直接丢弃（零 LLM），孤儿消息回退小摘要
 - ✅ **80k/90k 双阈值硬编码** → ✅ M6 已完成：统一为 W×compact_ratio（默认 0.8），sdk.ts 新增 contextWindowTokens 选项，attempt.ts/compact.ts 传递动态阈值
 
 
 ## 待解决问题
 - [ ] [Q-01] 序 8 阶段 5 端到端验证 — 需要可用模型才能进行
 - [ ] [Q-02] Tool Parity Task 15-16（MCP / 并行执行）— 优先级排序
-- [Q-03] attempt.ts 拆分重构时机 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
+- [~] [Q-03] attempt.ts 拆分重构 — Step 1-3 完成（3576→2359 行，-34%），可选继续提取 sessions_yield
 - [ ] [Q-04] World Model Phase 2 启动时机 — 阻塞项：序 8 闭环 + 模型可用
 - [ ] [Q-05] 参与者持续性 W0-W5 路线确认 — 需架构师排优先级
 - [x] [Q-06] PLAN-13 M0 休止判定精确定义 — ✅ 审核确认：`!hasPendingTodos && !hasRunningTools && !hasPendingApprovals && hasFinalReply`，finalReply = agent 最后一条非 tool_call 的 assistant message 且后无 pending tool 执行

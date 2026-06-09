@@ -1,5 +1,5 @@
 # ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-10 | Revision: 14 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-10 | Revision: 15 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -29,13 +29,13 @@
 
 | File | Class | Read priority | Revision | Last verified |
 |------|-------|---------------|----------|---------------|
-| ENGINE_MAP.md | index | 0 | 13 | 2026-06-10 |
+| ENGINE_MAP.md | index | 0 | 15 | 2026-06-10 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
-| CONTEXT.md | irreducible | 2 | 5 | 2026-06-10 |
-| HANDOFF.md | irreducible | 3 | 5 | 2026-06-10 |
-| SPRINT.md | irreducible | 4 | 5 | 2026-06-10 |
+| CONTEXT.md | irreducible | 2 | 6 | 2026-06-10 |
+| HANDOFF.md | irreducible | 3 | 6 | 2026-06-10 |
+| SPRINT.md | irreducible | 4 | 6 | 2026-06-10 |
 | ROADMAP.md | irreducible | 5 | 2 | 2026-06-09 |
-| PITFALLS.md | irreducible | 6 | 3 | 2026-06-09 |
+| PITFALLS.md | irreducible | 6 | 4 | 2026-06-10 |
 | ARCHITECTURE.md | mixed | 7 | 3 | 2026-06-09 |
 | SOURCEMAP.md | derivable | 8 | 1 | 2026-06-08 |
 
@@ -68,7 +68,7 @@
 | PLAN-12 | 忆匣 (Memory Box) — 统一记忆系统 | archived | engine/archive/plans/PLAN-12.md | (暂无 spec) | superseded-by: PLAN-13（忆匣简化为单 task 惰性分组）；memory-box-store.ts 保留为 T2 body 存储 | 2026-06-09 |
 | PLAN-13 | 认知工作集架构（Cognitive Working Set） | accepted | engine/plans/PLAN-13.md | engine/plans/PLAN-13.spec.md | 认知架构子系统①+连接层**唯一权威**；合并重写 PLAN-09/12，从"固定窗口=工作集缓存"单一策略推导：四层缓存(T0-T3)+seal 单动作+task=控制流边界+忆匣=单task惰性分组+动态滑动窗口+autoCompact 改造为 seal-aware；含 M0-M9 有序迁移链；M0 修地基(task≠turn)未启动 | 2026-06-09 |
 | PLAN-13.branch | PLAN-13 详细分支方案设计 | reviewed | engine/plans/PLAN-13.branch.md | (无独立 spec，验证标准见 PLAN-13.spec) | PLAN-13 的精确实现补充：M0-M9 代码改动方向+代码骨架+验证步骤+风险缓解+并行性分析+审核确认点(Q-06~Q-10✅+C1-C4✅+附录C)；**M0/M1/M2 已完成** | 2026-06-10 |
-| PLAN-14 | 审批流感知的 Task 休止判定（setToolCallPendingApproval 死代码复活） | draft | engine/plans/PLAN-14.md | (暂无 spec) | P096 系统化修复方案；接入 attempt.ts 工具调用流 → taskTracker → isQuiescent；待 Q-01~Q-05 先决问题回答后启动 | 2026-06-10 |
+| PLAN-14 | 审批流感知的 Task 休止判定（setToolCallPendingApproval 死代码复活） | implemented | engine/plans/PLAN-14.md | (暂无 spec) | P096 系统化修复方案；核心路径已实现：subscribe.handlers.tools → approvalPending → attempt.ts → setToolCallPendingApproval → isQuiescent；Q-01~Q-05 边缘场景待定 | 2026-06-10 |
 
 [新 plan 追加到表格末尾。ID 按 PLAN‑[N+1] 递增。状态变更时直接改对应行。]
 [原设计文档已迁移至 `engine/plans/`，旧目录 `elysiaclaw_engine/` 已删除。]
@@ -147,8 +147,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 24 |
-| 上次 RECONCILE | 2026-06-10（TASK-07 PLAN-11 Bot 测试修复 P3 完成：fetch.ts sourceFetch 默认 globalThis.fetch + bot.create-telegram-bot.test.ts named-account DM 路由断言修正；94/94 全绿） |
+| 全局 revision | 25 |
+| 上次 RECONCILE | 2026-06-10（P080 Mitigated + P082 Resolved + TASK-04 attempt.ts 拆分重构 Step 1-3 + TASK-19 M7 完成 + P102 修复；175 测试全绿，5 guards 部署全绿） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 
