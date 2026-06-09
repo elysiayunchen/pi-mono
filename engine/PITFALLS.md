@@ -22,9 +22,8 @@
 9. **Telegram 超长回复（>3000 字符）写文件发路径**（P081）
 10. **代码+测试存在 ≠ 完成**：必须有生产路径实跑 + 端到端验证（P085）
 11. **信 ✅ 前先 grep 生产调用者**：`grep -rn funcName src | grep -v test`，零命中即死代码（P085）
-12. **wrapToolDefinition 必须逐字段传播**，不能只靠 `as` 类型断言（P082）
-13. **测试 `describe()` 回调不准捕获 `beforeEach` 变量**（P084）
-14. **blockStreamingDefault='on' 会抑制流式草稿预览**（P095）
+12. **测试 `describe()` 回调不准捕获 `beforeEach` 变量**（P084）
+13. **blockStreamingDefault='on' 会抑制流式草稿预览**（P095）
 
 ## 索引
 | ID | 严重程度 | 标题 | 类别 | 状态 |
@@ -107,9 +106,9 @@
 | P077 | 🟠 | deploy.sh Step 9 子目录递归在「无子目录 extension」上 glob 字面量 + set -e 中止 | tooling | Resolved |
 | P078 | 🟡 | Read 工具大文件截断（单次 ~25K 字符限制） | tooling | Active |
 | P079 | 🟡 | Bash heredoc 内 Python f-string / 模板字面量花括号冲突 | tooling | Active |
-| P080 | 🟠 | Agent 工具调用失败后静默卡死（重试循环 + 无错误报告） | arch | Active |
+| P080 | 🟠 | Agent 工具调用失败后静默卡死（重试循环 + 无错误报告） | arch | Mitigated（连续失败检测改 toolName 匹配 + OpenAI/Google 错误标记 + nudge 不重置计数器） |
 | P081 | 🟡 | Telegram 回复超长截断（>4000 字符） | api | Active |
-| P082 | 🟠 | wrapToolDefinition 用 `as` 强制断言但不传播扩展字段 | arch | Active |
+| P082 | 🟠 | wrapToolDefinition 用 `as` 强制断言但不传播扩展字段 | arch | Resolved（逐字段传播 16 个扩展字段） |
 | P083 | 🟡 | 测试用例的 fake 对象缺少必要字段导致模块初始化失败 | testing | Active |
 | P084 | 🟡 | 测试 `describe()` 回调不准捕获 `beforeEach` 变量 | testing | Active |
 | P085 | 🔴 | 代码+测试存在 ≠ 完成：设计-实现鸿沟 | arch | Active |
@@ -124,11 +123,12 @@
 | P094 | 🟡 | attempt.ts inputClassification 重复声明 | api | Resolved |
 | P095 | 🔴 | blockStreamingDefault='on' 抑制流式草稿预览 | config | Resolved |
 | P096 | 🟡 | setToolCallPendingApproval 无生产调用者（M0 死代码） | arch | Resolved（P096 接线完成） |
-| P097 | 🟡 | taskTrackerRegistry Map 永不清理（内存泄漏风险） | arch | Active |
-| P098 | 🟡 | activeSeg.body.finalReply 跨模块直接赋值（紧耦合） | arch | Active |
+| P097 | 🟡 | taskTrackerRegistry Map 永不清理（内存泄漏风险） | arch | Resolved |
+| P098 | 🟡 | activeSeg.body.finalReply 跨模块直接赋值（紧耦合） | arch | Resolved |
 | P099 | 🔵 | dual-track index 双写（onSeal + attempt.ts 均调 buildAndStoreDualTrackIndex） | data | Resolved（M3 已删 dual-track 全套） |
 | P100 | 🟠 | tracker 创建时 conversationId 为 null 阻塞 onSeal → 新会话首 task 密封无 IndexNode 写入 | data | Resolved（setConversationId 惰性注入） |
 | P101 | 🟠 | Vitest vi.mock 只在测试文件中被 hoist，非测试文件中的 vi.mock 不生效 | testing | Active |
+| P102 | 🟠 | temporal 边永不创建（taskTracker.clear() 清空 segments Map，sealedSegments 始终为空） | data | Resolved（onSeal 回调从 ConversationStore 补建 temporal 边） |
 
 ## 条目
 
@@ -1138,6 +1138,17 @@
 - **错误做法：** 在 harness/helper 文件中调用 `vi.mock()`，期望测试文件导入 harness 后 mock 自动生效
 - **正确做法：** (1) 在测试文件中直接调用 `vi.mock()`，使用异步工厂函数动态导入 harness 获取 spy 变量；(2) harness 中的 spy 变量必须用 `vi.hoisted()` 包裹，确保在 `vi.mock` 工厂执行时已初始化
 - **发现时间：** 2026-06-09（TASK-07 PLAN-11 Bot 测试修复）
+
+### P102 — temporal 边永不创建（taskTracker.clear() 清空 segments Map）
+- **严重程度：** 🟠 HIGH
+- **类别：** data
+- **状态：** Resolved
+- **你能观察到的现象：** `conversation-store.db` 的 `edges` 表始终为空（0 行），尽管 `index_nodes` 表有 188 个 task IndexNode。`traverseGraph` 无法从一个 task 节点跳到前一个 task 节点
+- **根因：** `taskTracker.clear()` 在 `runEmbeddedAttempt` 的 finally 块中被调用，清空了所有 segments（包括已 seal 的）。下一个 turn 开始时，`segments` Map 为空，`sealSegment` 中的 `sealedSegments` 始终为空数组，不会创建 temporal 边
+- **错误做法：** 依赖内存中的 `segments` Map 查找前一个 sealed segment 来创建 temporal 边
+- **正确做法：** 在 `onSeal` 回调中，如果 `edges` 中没有 temporal 边，从 `ConversationStore.getLatestIndexNode()` 获取最新的 IndexNode 并补建 temporal 边
+- **发现时间：** 2026-06-10（TASK-21 M9 端到端验证 — DB 检查发现 edges 表为空）
+- **解决时间：** 2026-06-10
 
 ### 新条目模板
 ```markdown

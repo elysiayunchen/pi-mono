@@ -279,7 +279,6 @@ async function runLoop(
 	let consecutiveFailures = 0;
 	const MAX_CONSECUTIVE_FAILURES = 3;
 	let lastFailedTool = "";
-	let lastFailedArgs = "";
 	// Check for steering messages at start (user may have typed while waiting)
 	let pendingMessages: AgentMessage[] = (await config.getSteeringMessages?.()) || [];
 
@@ -356,18 +355,15 @@ async function runLoop(
 					newMessages.push(result);
 
 					if (result.isError) {
-						const resultText = result.content
-							.filter((c): c is { type: "text"; text: string } => c.type === "text")
-							.map((c) => c.text)
-							.join("\n");
-						// Build a signature: toolName + first 200 chars of error
-						const errorSig = `${result.toolName ?? "unknown"}:${resultText.slice(0, 200)}`;
-						if (errorSig === lastFailedArgs) {
+						const failedToolName = result.toolName ?? "unknown";
+						// Track by tool name only — LLM often varies args/errors to
+						// evade exact-signature matching, but the underlying issue is
+						// the same tool failing repeatedly.
+						if (failedToolName === lastFailedTool) {
 							consecutiveFailures++;
 						} else {
 							consecutiveFailures = 1;
-							lastFailedTool = result.toolName ?? "unknown";
-							lastFailedArgs = errorSig;
+							lastFailedTool = failedToolName;
 						}
 
 						if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES && !toolFailureInjected) {
@@ -378,7 +374,7 @@ async function runLoop(
 									{
 										type: "text" as const,
 										text:
-											`SYSTEM: Tool "${lastFailedTool}" has failed ${consecutiveFailures} times with the same error. ` +
+											`SYSTEM: Tool "${lastFailedTool}" has failed ${consecutiveFailures} times. ` +
 											"STOP retrying immediately. Report the failure to the user, explain what went wrong, " +
 											"and suggest an alternative approach. Do NOT attempt the same tool call again.",
 									},
@@ -387,13 +383,13 @@ async function runLoop(
 							} as AgentMessage;
 							currentContext.messages.push(nudgeMsg);
 							newMessages.push(nudgeMsg);
-							consecutiveFailures = 0; // Reset to allow fresh attempts
+							// Do NOT reset — keep counting so a 4th/5th failure
+							// triggers another nudge or stronger action.
 						}
 					} else {
 						// Successful tool call resets the counter
 						consecutiveFailures = 0;
 						lastFailedTool = "";
-						lastFailedArgs = "";
 					}
 				}
 			}

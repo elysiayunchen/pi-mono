@@ -222,6 +222,15 @@ export function convertResponsesMessages<TApi extends Api>(
 			const hasText = textResult.length > 0;
 			const [callId] = msg.toolCallId.split("|");
 
+			// OpenAI Responses API has no is_error field on function_call_output.
+			// Prefix error results with a clear marker so the LLM recognizes
+			// the failure (Pitfall #80: silent retry loops).
+			const markedText = hasText
+				? msg.isError
+					? `❌ Tool error: ${textResult}`
+					: textResult
+				: "(see attached image)";
+
 			let output: string | ResponseFunctionCallOutputItemList;
 			if (hasImages && model.input.includes("image")) {
 				const contentParts: ResponseFunctionCallOutputItemList = [];
@@ -229,7 +238,7 @@ export function convertResponsesMessages<TApi extends Api>(
 				if (hasText) {
 					contentParts.push({
 						type: "input_text",
-						text: sanitizeSurrogates(textResult),
+						text: sanitizeSurrogates(markedText),
 					});
 				}
 
@@ -245,7 +254,7 @@ export function convertResponsesMessages<TApi extends Api>(
 
 				output = contentParts;
 			} else {
-				output = sanitizeSurrogates(hasText ? textResult : "(see attached image)");
+				output = sanitizeSurrogates(markedText);
 			}
 
 			messages.push({

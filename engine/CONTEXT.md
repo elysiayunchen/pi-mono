@@ -6,11 +6,11 @@
 | 维度 | 状态 |
 |------|------|
 | 构建 | ✅ 正常（`npm run check` 零新增错误，500 文件） |
-| 测试 | ✅ cognitive-memory 65/65 全绿 + Telegram Bot 94/94 全绿 + auto-compact-seal-aware 6/6 全绿 |
-| 上次完成 | M6 统一预算阈值（W×0.8 替代 80k/90k 硬编码）+ injection-budget 测试 14/14 全绿 |
-| 当前优先 | TASK-19 PLAN-13 M7（C3 元压缩，依赖 M6✅） |
-| 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
-| 产品目标完成度 | 约 80% — 12 层 Agent 框架竣工，认知架构 P0+P1+M0-M6+M8 完成，Tool Parity 88.2% |
+| 测试 | ✅ cognitive-memory 111/111 全绿 + attempt 64/64 全绿 + Telegram Bot 94/94 全绿 + meta-compression 22/22 全绿 |
+| 上次完成 | P080 缓解 + P082 确认修复 + TASK-04 attempt.ts 拆分重构 Step 1-3（3576→2359 行） |
+| 当前优先 | TASK-21 PLAN-13 M9（端到端验证+部署） |
+| 阻塞 | Telegram 交互验证 P102 temporal edge 创建 — 需用户通过 Telegram 交互触发 |
+| 产品目标完成度 | 约 82% — 认知架构 M0-M8 完成 + P080/P082 修复 + attempt.ts 拆分重构 |
 
 
 ## 当前状态概述
@@ -77,7 +77,8 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 ## 最近完成的事项
 1. **TASK-18 PLAN-13 M6 — 统一预算阈值**（2026-06-10）：injection-budget.ts 新增 computeCompactThreshold(W, compactRatio) + DEFAULT_COMPACT_RATIO=0.8 + MIN_COMPACT_THRESHOLD=20_000；sdk.ts CreateAgentSessionOptions 新增 contextWindowTokens 选项，compactThreshold 动态计算替代硬编码 80k/90k（fallback 路径保留向后兼容）；attempt.ts/compact.ts 传递 contextWindowTokens。injection-budget 测试 14/14 全绿，npm run check 零回归。
 2. **TASK-20 PLAN-13 M8 — 命名收尾**（2026-06-10）：session-rotation/→cognitive-memory/，handoff-types→cognitive-types，handoff-inject→index-head-injector。npm run check 零回归。
-3. **TASK-16 PLAN-13 M4 — 动态滑动窗口**（2026-06-10）：新建 sliding-window.ts（pruneSealedMessages 核心剪枝函数）+ task-segment-tracker 添加 getSealedRanges() 方法 + attempt.ts 两处集成（上下文组装后 + force seal 后），使用 settingsManager.getCompactionKeepRecentTokens() 获取 recency 锚（fallback 20_000），消息→task 映射采用时间戳匹配。新建 sliding-window.test.ts 6/6 全绿，session-rotation 84/84 全绿，npm run check 零回归。
+3. **TASK-19 PLAN-13 M7 — C3 元压缩**（2026-06-10）：新建 meta-compression.ts（buildMetaCompressionPrompt + createSessionNode + createSessionEdges + metaCompress + checkAndScheduleMetaCompression + filterNodesForB3Injection），attempt.ts B3 注入集成（metaCompressionStateRegistry + filterNodesForB3Injection + checkAndScheduleMetaCompression 后台调度），index-head-injector.ts session 节点展示增强（3 行摘要 + 200 字符行宽），meta-compression.test.ts 16/16 全绿，npm run check 零回归。
+4. **TASK-16 PLAN-13 M4 — 动态滑动窗口**（2026-06-10）：新建 sliding-window.ts（pruneSealedMessages 核心剪枝函数）+ task-segment-tracker 添加 getSealedRanges() 方法 + attempt.ts 两处集成（上下文组装后 + force seal 后），使用 settingsManager.getCompactionKeepRecentTokens() 获取 recency 锚（fallback 20_000），消息→task 映射采用时间戳匹配。新建 sliding-window.test.ts 6/6 全绿，session-rotation 84/84 全绿，npm run check 零回归。
 4. **TASK-07 PLAN-11 Bot 测试修复 P3**（2026-06-10）：5 个 MediaPaths 预存 bug 全部修复 — 4 个超时（fetch.ts resolveTelegramTransport sourceFetch 默认优先 globalThis.fetch，可被 vi.spyOn mock，undiciFetch 降级 fallback）+ 1 个 named-account DM 测试断言修正（代码只丢弃 GROUP 不丢弃 DM，DM 用 per-account session key，测试改为验证 DM 正确路由含 AccountId/SessionKey）；bot.test.ts + bot.create-telegram-bot.test.ts 94/94 全绿。
 5. **TASK-13 PLAN-13 M1 — C2 索引头改模型写**（2026-06-10）：sealSegment 新增 modelIndexHead 参数，休止 seal 时调 completeSimple 生成 LLM 自述 goal/outcome/关键决策摘要，强制 seal 回退 buildIndexNodeSummary 启发式；attempt.ts 新增 createModelIndexHead + buildIndexHeadPrompt 辅助函数。84 个 session-rotation 测试全绿。
 6. **TASK-14 PLAN-13 M2 — B3 单路径**（2026-06-10）：删除 resolveIndexHeadBlockForSession（dual-track B3 路径），统一 B3 注入为 IndexNode + traverseGraph 单路径（PLAN-13 I6 单路径原则）；handoff-inject.test.ts 移除对应测试。84 个 session-rotation 测试全绿，type check 零新增。

@@ -656,10 +656,19 @@ export function convertMessages(
 
 				// Always send tool result with text (or placeholder if only images)
 				const hasText = textResult.length > 0;
+				// OpenAI Chat Completions has no is_error field on tool results.
+				// Prefix error results with a clear marker so the LLM recognizes
+				// the failure (Pitfall #80: silent retry loops when errors are
+				// indistinguishable from normal output).
+				const resultContent = hasText
+					? toolMsg.isError
+						? `❌ Tool error: ${textResult}`
+						: textResult
+					: "(see attached image)";
 				// Some providers require the 'name' field in tool results
 				const toolResultMsg: ChatCompletionToolMessageParam = {
 					role: "tool",
-					content: sanitizeSurrogates(hasText ? textResult : "(see attached image)"),
+					content: sanitizeSurrogates(resultContent),
 					tool_call_id: toolMsg.toolCallId,
 				};
 				if (compat.requiresToolResultName && toolMsg.toolName) {

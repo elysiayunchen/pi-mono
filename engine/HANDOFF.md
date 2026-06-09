@@ -1,79 +1,82 @@
 # HANDOFF — ElysiaClaw
-> 初始化日期：2026-06-09 | 会话：22（M6 统一预算阈值完成）
+> 初始化日期：2026-06-09 | 会话：24（P080/P082 修复 + TASK-04 拆分重构）
 > 每次会话结束后重写此文件。
 
 
 ## ⚡ 立即恢复点
-> "M6 统一预算阈值完成。injection-budget.ts 新增 computeCompactThreshold(W, compactRatio=0.8)，sdk.ts 新增 contextWindowTokens 选项动态计算阈值替代 80k/90k 硬编码，attempt.ts/compact.ts 传递 contextWindowTokens。injection-budget 测试 14/14 全绿，npm run check 零回归。"
-> 当前优先：TASK-19 PLAN-13 M7（C3 元压缩，依赖 M6✅）
+> "P080 缓解（连续失败检测改 toolName 匹配 + OpenAI/Responses 错误标记 + nudge 不重置计数器）+ P082 确认修复（wrapToolDefinition 逐字段传播 16 个扩展字段）+ TASK-04 attempt.ts 拆分重构 Step 1-3 完成（3576→2359 行，-34%）。部署 5 guards 全绿，175 测试全绿。"
+> 当前优先：TASK-21 PLAN-13 M9（端到端验证+部署）+ TASK-04 后续（sessions_yield 提取可选）
 
 
 ## 本次会话总结
 
 ### ✅ 完成内容
 
-#### TASK-18 PLAN-13 M6 — 统一预算阈值 80k/90k→W×compact_ratio
+#### P102 验证 — temporal 边创建端对端测试
 
-**问题**：auto-compact 的 `AUTO_COMPACT_THRESHOLD=80_000` 和 multi-layer 的 `DEFAULT_MULTI_LAYER_AUTO_COMPACT_THRESHOLD=90_000` 都是硬编码，不随模型窗口缩放。1M 窗口下 80k/90k 过于保守，白白浪费上下文空间。
+- 部署 elysiaclaw，5 guards 全绿
+- cognitive-memory 111/111 + meta-compression 22/22 测试全绿
+- P102 修复 E2E 验证通过：执行顺序正确（先 getLatestIndexNode 再 insertNode 再 insertEdge）
+- DB 状态：188 个 task IndexNode，0 个 edges（P102 修复已部署，等待新 Telegram 交互触发 edge 创建）
 
-**方案**：PLAN-13 §4 统一为 `W × compact_ratio`（默认 0.8），替代双阈值。
+#### P082 确认修复 — wrapToolDefinition 逐字段传播
 
-**改动**：
+- 调研确认 `wrapToolDefinition` 已修复：16 个扩展字段逐字段 `if (definition.xxx !== undefined)` 传播
+- `createToolDefinitionFromAgentTool` 反向转换仅限测试场景，不影响生产
+- PITFALLS P082 状态更新为 Resolved
 
-1. **`injection-budget.ts`**（elysiaclaw）：
-   - 新增 `computeCompactThreshold(contextWindowTokens, compactRatio?)` 函数
-   - 新增 `DEFAULT_COMPACT_RATIO = 0.8` 常量
-   - 新增 `MIN_COMPACT_THRESHOLD = 20_000` 常量（小窗口保护）
-   - 更新模块文档，标注 `computeInjectionBudget` 精密版已接入 runtime
+#### P080 缓解 — Agent 工具调用失败后静默卡死
 
-2. **`sdk.ts`**（packages/coding-agent）：
-   - `CreateAgentSessionOptions` 新增 `contextWindowTokens?: number` 选项
-   - 新增 `compactThreshold` 计算：`W × 0.8 - safeBudget`，下限 20k
-   - `transformContext` 中 multi-layer 阈值优先使用 `compactThreshold`，fallback 保留硬编码
-   - `contextPressureThreshold` 同样优先使用 `compactThreshold`，统一双阈值
+三项改进：
 
-3. **`attempt.ts`**（elysiaclaw）：
-   - `sessionOpts` 新增 `contextWindowTokens` 传递
+1. **连续失败检测改 toolName 匹配**（`agent-loop.ts`）：
+   - 旧：签名 = toolName + 错误文本前 200 字符，LLM 微调参数即可绕过
+   - 新：只匹配 toolName，同一工具连续失败即计数
+   - nudge 后不重置计数器（旧代码重置，允许 LLM 继续重试）
 
-4. **`compact.ts`**（elysiaclaw）：
-   - `sessionOptions` 新增 `contextWindowTokens: effectiveModel.contextWindow`
+2. **OpenAI/Responses API 错误标记**（`openai-completions.ts` + `openai-responses-shared.ts`）：
+   - OpenAI Chat Completions 和 Responses API 没有 `is_error` 字段
+   - 新增：错误结果前缀 `❌ Tool error:` 标记，让 LLM 明确识别工具失败
+   - Google Gemini API 已正确使用 `{ error: ... }` / `{ output: ... }` 区分
 
-5. **`injection-budget.test.ts`**（elysiaclaw）：
-   - 新增 7 个 `computeCompactThreshold` 测试（默认比例、1M 窗口缩放、小窗口下限、自定义比例、常量值）
+3. **PITFALLS P080 状态更新为 Mitigated**
 
-**效果**：
-- 1M 窗口：阈值从 80k → 800k（10 倍提升）
-- 200k 窗口：阈值从 80k → 160k（2 倍提升）
-- 100k 窗口：阈值从 80k → 80k（等价）
-- 32k 窗口：阈值从 80k → 25.6k→20k（下限保护，不再过度压缩）
-- 向后兼容：不传 `contextWindowTokens` 时走原硬编码路径
+#### TASK-04 attempt.ts 拆分重构 Step 1-3
+
+从 3576 行降至 2359 行（-34%），提取 4 个新模块：
+
+| 新文件 | 提取内容 | 行数 |
+|--------|----------|------|
+| `tool-call-repair.ts` | 工具名称规范化 + 参数修复 + xAI 解码 | ~734 |
+| `ollama-compat.ts` | Ollama 兼容层（4 个函数） | ~96 |
+| `system-prompt-builder.ts` | System prompt 构建 + 诊断辅助 + 常量 | ~280 |
+| `injection-coordinator.ts` | B4 格式化 + Recall 索引 + 模型索引头 | ~130 |
+
+所有提取保持向后兼容（re-export），测试文件无需修改。
 
 ### 📋 代码改动清单
 | 文件 | 改动 |
 |------|------|
-| `elysiaclaw/src/context-engine/injection-budget.ts` | 新增 `computeCompactThreshold` + `DEFAULT_COMPACT_RATIO` + `MIN_COMPACT_THRESHOLD` + 文档更新 |
-| `packages/coding-agent/src/core/sdk.ts` | 新增 `contextWindowTokens` 选项 + `compactThreshold` 动态计算 + multi-layer/pressure 统一阈值 |
-| `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` | `sessionOpts` 新增 `contextWindowTokens` |
-| `elysiaclaw/src/agents/pi-embedded-runner/compact.ts` | `sessionOptions` 新增 `contextWindowTokens` |
-| `elysiaclaw/src/context-engine/injection-budget.test.ts` | 新增 7 个 computeCompactThreshold 测试 |
-
-### 📋 引擎文件更新
-| 文件 | 改动 |
-|------|------|
-| CONTEXT.md | M6→✅、当前优先→M7、产品完成度→80%、不稳定项更新、A6→已完成 |
-| HANDOFF.md | 会话 22 完整交接 |
+| `packages/agent/src/agent-loop.ts` | P080: 连续失败检测改 toolName 匹配 + nudge 不重置 |
+| `packages/ai/src/providers/openai-completions.ts` | P080: 错误结果加 ❌ Tool error: 前缀 |
+| `packages/ai/src/providers/openai-responses-shared.ts` | P080: 错误结果加 ❌ Tool error: 前缀 |
+| `elysiaclaw/src/agents/pi-embedded-runner/run/tool-call-repair.ts` | 新建：工具调用修复模块 |
+| `elysiaclaw/src/agents/pi-embedded-runner/run/ollama-compat.ts` | 新建：Ollama 兼容层 |
+| `elysiaclaw/src/agents/pi-embedded-runner/run/system-prompt-builder.ts` | 新建：System prompt 构建模块 |
+| `elysiaclaw/src/agents/pi-embedded-runner/run/injection-coordinator.ts` | 新建：注入协调模块 |
+| `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` | 拆分重构 3576→2359 行 |
+| `engine/PITFALLS.md` | P080 Mitigated + P082 Resolved |
 
 ### ⏳ 未完成 / 待追踪
-- **TASK-19 PLAN-13 M7**（C3 元压缩）为下一优先级
-- **P097** taskTrackerRegistry 内存泄漏 — 仍 Active
-- **P098** finalReply 紧耦合 — 仍 Active（已有 setFinalReply 方法）
-- **PLAN-14** 审批超时释放增强 — 待排期
+- **TASK-21 PLAN-13 M9**（端到端验证+部署）— 需 Telegram 交互触发 edge 创建
+- **TASK-04 后续**（可选）：sessions_yield 提取到 `sessions-yield.ts`（~197 行，风险中等）
 
 
 ## 架构状态
 | 维度 | 状态 |
 |------|------|
-| PLAN-13 迁移链 | M0✅ M1✅ M2✅ M3✅ M4✅ M5✅ M6✅ M8✅ — M7 待启动 |
-| PITFALLS Active | P097 P098 P101 + 基础工具条目 |
-| 测试覆盖 | cognitive-memory 65/65 + Telegram Bot 94/94 + auto-compact-seal-aware 6/6 + injection-budget 14/14 |
-| 风险点 | P097(内存泄漏) > P098(紧耦合) — 均为 🟡 MEDIUM |
+| PLAN-13 迁移链 | M0✅ M1✅ M2✅ M3✅ M4✅ M5✅ M6✅ M7✅ M8✅ — M9 待启动 |
+| PITFALLS Active | P080 Mitigated + P082 Resolved + P101 + 基础工具条目 |
+| attempt.ts 行数 | 3576 → 2359（-34%），4 个新模块提取 |
+| 测试覆盖 | cognitive-memory 111/111 + attempt 64/64 + agent 36/36 + ai 97/97 |
+| 风险点 | P101(待确认) — 🟡 MEDIUM |

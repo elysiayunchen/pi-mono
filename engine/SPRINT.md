@@ -48,11 +48,11 @@
 5. [TASK-15] PLAN-13 M3 — 删 dual-track（crit:p1） ✅ — 删dual-track-index.ts/MacroIndexEntry/MicroIndexEntry/consumeDualTrackIndex/appendMacroIndexEntry/appendMicroIndexEntries/updateDualTrackIndex/resolveIndexHeadBlockForSession/buildAndStoreDualTrackIndex，ConversationEntry移除macro/micro字段，conversations表ALTER DROP COLUMN，handoff-inject.test.ts删除，conversation-store.test.ts移除4个dual-track测试；78/78全绿
 6. [TASK-16] PLAN-13 M4 — 动态滑动窗口（crit:p1） ✅ — §2.6: seal 后移除已封 task 老于 recency 锚的原始消息；新建 sliding-window.ts (pruneSealedMessages) + task-segment-tracker.getSealedRanges() + attempt.ts 两处集成（上下文组装后 + force seal 后），消息→task 映射采用时间戳匹配；新建 sliding-window.test.ts 6/6 全绿；AC-10
 7. [TASK-17] PLAN-13 M5 — autoCompact 改造为 seal-aware（crit:p1，触及框架层） ✅ — §2.7: autoCompactMessages 新增 sealedRanges 参数，已封 task 消息时间戳匹配后直接丢弃（零 LLM 调用），孤儿消息回退 LLM 小摘要；sdk.ts CreateAgentSessionOptions 新增 getSealedTaskRanges 回调；attempt.ts 注入 taskTracker.getSealedRanges()；patch-agent.cjs 锚点确认 M3 已删无需补丁；npm run check 零回归
-8. [TASK-18] PLAN-13 M6 — 统一预算阈值（crit:p2） — §4: 80k/90k双阈值→W×compact_ratio单阈值，驱动seal/丢弃/元压缩；AC-11后半
-9. [TASK-19] PLAN-13 M7 — C3 元压缩（crit:p2） — §2.2: B3超预算→N个task头→session节点，原task头出B3但IndexNode留图谱；AC-12前半
+8. [TASK-18] PLAN-13 M6 — 统一预算阈值（crit:p2） ✅ — §4: 80k/90k双阈值→W×compact_ratio单阈值，驱动seal/丢弃/元压缩；AC-11后半
+9. [TASK-19] PLAN-13 M7 — C3 元压缩（crit:p2） ✅ — §2.2: B3超预算→N个task头→session节点，原task头出B3但IndexNode留图谱；AC-12前半；meta-compression.ts + attempt.ts集成 + 16测试全绿
 10. [TASK-20] PLAN-13 M8 — 命名收尾（crit:p3） ✅ — session-rotation/→cognitive-memory/，handoff-types.ts→cognitive-types.ts，handoff-inject.ts→index-head-injector.ts；npm run check 零回归
 11. [TASK-21] PLAN-13 M9 — 端到端验证 + 部署（crit:p0） — Telegram实跑多步任务，验DB有正确IndexNode/edges，新任务替换B4，RECALL命中归档；AC-12
-12. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
+12. [TASK-04] attempt.ts 拆分重构 — ✅ Step 1-3 完成（3576→2359 行，-34%），提取 tool-call-repair.ts + ollama-compat.ts + system-prompt-builder.ts + injection-coordinator.ts
 13. ~~[TASK-05] PLAN-09 P2：元压缩 + 图遍历检索~~ — **superseded by PLAN-13**（M7 C3 元压缩 + M9 端到端取代）
 14. ~~[TASK-06] PLAN-10 审计修复（crit:p1）~~ ✅
 15. ~~[TASK-01] PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅
