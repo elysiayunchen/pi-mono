@@ -1,5 +1,5 @@
 # ROADMAP — ElysiaClaw
-> 当前版本：认知架构演进中期 | Last updated: 2026-06-08
+> 当前版本：认知架构演进中期 | Last updated: 2026-06-09
 
 
 ## 完成定义 (v1.0)
@@ -8,11 +8,12 @@
 3. ✅ Tool Parity 达到 80%+（15/17 = 88.2%）
 4. ✅ 记忆引擎激活（TS memory_search + RECALL 注入）
 5. ✅ 序 1-7 统一实施全部完成（分层注入 + 压缩可见性 + 全流式 + 工具驱逐 + 注入预算 + 输入分类 + 用户画像）
-6. 🔄 序 8 事件记忆与认知索引架构（PLAN-09 统合，P0 ✅，P1 ✅，P2-P3 待实施）
-7. [ ] 序 9-12 认知架构闭环（元压缩 → 图遍历检索 → 技能进化 → World Model）
-8. [ ] Tool Parity 100%（Task 15/16 完成）
-9. [ ] 参与者持续性架构落地（W0-W5，L0/L1/L3/L4）
-10. [ ] 端到端生产验证全部通过
+6. 🔄 序 8 事件记忆与认知索引架构（PLAN-09 统合，P0 ✅，P1 ✅，P0+P1 已部署 ✅，P2-P3 待实施）
+7. 🔄 序 8.5 忆匣统一记忆系统（PLAN-12，P0 ✅，P1-P3 待实施）
+8. [ ] 序 9-12 认知架构闭环（元压缩 → 图遍历检索 → 技能进化 → World Model）
+9. [ ] Tool Parity 100%（Task 15/16 完成）
+10. [ ] 参与者持续性架构落地（W0-W5，L0/L1/L3/L4）
+11. [ ] 端到端生产验证全部通过
 
 
 ## 里程碑地图
@@ -35,7 +36,7 @@
 - **成功指标：** 多步任务封口后索引头正确注入B3，新任务替换B4，RECALL能搜到已归档内容，元压缩在B3膨胀时触发
 - **已知风险：** 模型不可用阻塞端到端验证；B3索引头累积速度需实测
 - **设计文档：** PLAN-09（事件记忆与认知索引架构）
-- **进度：** P0 ✅（2026-06-08），P1 ✅（2026-06-08），P2-P3 待实施
+- **进度：** P0 ✅（2026-06-08），P1 ✅（2026-06-08），P0+P1 已部署至生产 ✅（2026-06-09），P2-P3 待实施
 
 ### M5: Tool Parity 100%
 - **目标：** 工具链完整对标 Claude Code
@@ -63,7 +64,7 @@
 - [FB-03] 并行执行引擎 (Task 16) — 优先级：中
 
 ### 架构深化
-- [FB-04] attempt.ts 拆分重构 — 优先级：中（PLAN-09 P0前置）
+- [FB-04] attempt.ts 拆分重构 — 优先级：中（PLAN-09 P0已完成，可启动）
 - [FB-05] ~~注入预算器升级（接入运行时）~~ ✅ — 优先级：高（PLAN-09 P1，已完成）
 - [FB-06] ~~TaskSegment封口产生IndexNode+硬边~~ ✅ — 优先级：高（PLAN-09 P1，已完成）
 
@@ -77,6 +78,8 @@
 - ~~PLAN-09 P0：轮换机制废弃（rotation-controller/auto-trigger/rotate-session-tool删除），B3/B4/B5注入方向改为append~~ ✅ 已完成（2026-06-08）
 - ~~PLAN-09 P1：conversation-store增加edges表，TaskSegment封口逻辑改造~~ ✅ 已完成（2026-06-08）
 - ~~PLAN-09 P0/P1 部署至生产环境~~ ✅ 已完成（2026-06-09，deploy.sh 5 guards 全部通过）
+- PLAN-12 P1：TaskGroup→忆匣转化，task-segment-tracker 需增加 group 管理，attempt.ts B3/B4/B5 需适配忆匣边界
+- PLAN-12 P3：conversation-store 简化，session JSONL 降级为调试备份
 - attempt.ts 拆分重构：将 2861+ 行拆为 3 个文件，需要仔细迁移
 - 参与者持续性架构：可能改变 session 管理模型，从 chat/session 到 participant 绑定
 - World Model 注入：B2 层新增环境快照注入，可能影响 KV-cache 布局

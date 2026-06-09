@@ -37,19 +37,40 @@
 | 20 | 流式管线加固 + 参数校准（已部署） | 2026-06-08 | 4 修复 + 诊断日志 + 3 激进参数回滚 + 部署验证 |
 | 21 | 流式输出修复 — Tool Update 进度传播 + Reasoning 默认值修正 | 2026-06-09 | partialResult 传播修复 + reasoningMode 默认 stream + update 阶段显式处理 |
 | 22 | PLAN-10 审计修复 — contextPressureBudget + traverseGraph + 死代码清理 | 2026-06-09 | AC-1:injectionTokens语义修复 + AC-2:traverseGraph 1-hop接入B3 + AC-3:~150行死代码删除 + AC-4:6条IndexNode测试 + BFS off-by-one修复 |
+| 23 | PLAN-12 P0 忆匣设计 + 会话轮换清理 + 双轨注入修正 + 压缩→seal连接 | 2026-06-09 | TASK-08:轮换废除(9文件) + TASK-09:B4注入+archiveRef+task_get + TASK-10:compaction→seal + TASK-11:memory-box-store |
 
 
 ## 优先级栈
-1. [TASK-06] ~~PLAN-10 审计修复（crit:p1）~~ ✅ — AC-1:contextPressureBudget语义修复(injectionTokens) + AC-2:traverseGraph接入B3(1-hop) + AC-3:HandoffPacket死代码清理(~150行) + AC-4:测试迁移(6条IndexNode/Edge/traverseGraph) + BFS off-by-one修复
-2. [TASK-01] ~~PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅ — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool，HandoffPacket废弃，auto-rotation移除，npm run check零错误+vitest全绿
-3. [TASK-02] ~~PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode~~ ✅ — computeInjectionBudget接入运行时（按窗口比例缩放），封口时写入IndexNode+temporal/produces硬边，conversation-store新增index_nodes+edges表+traverseGraph，B3注入从图谱读IndexNode，npm run check零错误
-4. [TASK-03] ~~Tool Parity Task 14: AskUserQuestionTool~~ ✅ — Telegram inline keyboard 交互工具，ask-user-question.ts + helpers + bot-handlers callback路由 + 四层注册 + 11测试全绿
-5. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
-6. [TASK-05] PLAN-09 P2：元压缩 + 图遍历检索 — L2.5 task→session聚合，图遍历检索闭环
+1. [TASK-07] PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0） — AC-1:pi-tui v0.58→v0.64升级(28文件恢复) + AC-2:fetch.test.ts 3条断言修复 + AC-3:Telegram测试套件全绿 + AC-4:跨层无回归
+2. [TASK-06] ~~PLAN-10 审计修复（crit:p1）~~ ✅ — AC-1:contextPressureBudget语义修复(injectionTokens) + AC-2:traverseGraph接入B3(1-hop) + AC-3:HandoffPacket死代码清理(~150行) + AC-4:测试迁移(6条IndexNode/Edge/traverseGraph) + BFS off-by-one修复
+3. [TASK-01] ~~PLAN-09 P0：注入方向修正 + 轮换机制废弃~~ ✅ — B3/B4/B5 prepend→append，删除rotation-controller/auto-trigger/rotate-session-tool，HandoffPacket废弃，auto-rotation移除，npm run check零错误+vitest全绿
+4. [TASK-02] ~~PLAN-09 P1：预算器接入 + TaskSegment封口产生IndexNode~~ ✅ — computeInjectionBudget接入运行时（按窗口比例缩放），封口时写入IndexNode+temporal/produces硬边，conversation-store新增index_nodes+edges表+traverseGraph，B3注入从图谱读IndexNode，npm run check零错误
+5. [TASK-03] ~~Tool Parity Task 14: AskUserQuestionTool~~ ✅ — Telegram inline keyboard 交互工具，ask-user-question.ts + helpers + bot-handlers callback路由 + 四层注册 + 11测试全绿
+6. [TASK-08] ~~会话轮换清理~~ ✅ — 删除HandoffPacket/RotationReason类型+5个旋转字段+updateActiveSession死代码+conversation-router简化，9文件，28测试全过
+7. [TASK-09] ~~双轨注入修正~~ ✅ — B4 ACTIVE TASK注入(formatTaskBodyForInjection) + archiveRef暴露 + task_get工具创建注册 + 元数据格式压缩
+8. [TASK-10] ~~压缩→seal连接~~ ✅ — compaction触发→sealSegment→IndexNode→B3常驻(attempt.ts:3078)
+9. [TASK-11] ~~PLAN-12 P0 设计+存储~~ ✅ — PLAN-12.md设计文档 + memory-box-store.ts独立SQLite存储层
+10. [TASK-04] attempt.ts 拆分重构 — 拆为 system-prompt-builder.ts + injection-coordinator.ts + index-head-injector.ts
+11. [TASK-05] PLAN-09 P2：元压缩 + 图遍历检索 — L2.5 task→session聚合，图遍历检索闭环
 
 
 ## 任务详情
 
+
+### TASK-07: PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0）
+- **状态：** 待开始
+- **来源 plan：** [PLAN-11](plans/PLAN-11.md) Bot 测试基础设施修复与依赖对齐
+- **用户可见的变化：** 无直接用户可见变化，但恢复 28 个测试文件的执行能力，为后续 Bot 功能开发提供测试保障
+- **完成标准（对应 PLAN-11.spec AC-1~AC-4）：**
+  1. AC-1 (crit): `@mariozechner/pi-tui` 升级到 ≥ v0.64.0，`pnpm build` 零错误，28+1 个测试文件恢复加载
+  2. AC-2 (high): `fetch.test.ts` 3 条断言修复，0 failures
+  3. AC-3 (high): Telegram 测试套件全绿（0 failed files, 0 failed tests）
+  4. AC-4 (medium): 跨层无回归 — `npm run check` + agent/coding-agent/session-rotation/logging vitest 全绿
+- **验证方法：** 见 PLAN-11.spec 验证命令
+- **约束：** 不能破坏生产运行时行为；升级 pi-tui 后需验证无 breaking change
+- **起点：** `elysiaclaw/package.json`（pi-tui 版本）+ `elysiaclaw/src/telegram/fetch.test.ts`（断言）
+- **前置依赖：** 无
+- **风险：** pi-tui v0.64.0 可能引入 breaking change（缓解：逐文件检查编译错误）
 
 ### TASK-06: PLAN-10 审计修复（crit:p1） ✅
 - **状态：** 已完成（2026-06-09）
@@ -141,15 +162,50 @@
 - **前置依赖：** TASK-02完成
 - **风险：** 元压缩丢信息（缓解：IndexNode仍在图谱中可回查）
 
+### TASK-08: 会话轮换清理 ✅
+- **状态：** 已完成（2026-06-09）
+- **来源 plan：** PLAN-12 忆匣统一记忆系统
+- **用户可见的变化：** 无直接用户可见变化，但移除了全部轮换残留代码，为忆匣系统铺路
+- **完成标准：**
+  1. ✅ 删除 HandoffPacket、RotationReason 类型
+  2. ✅ 移除 5 个旋转字段 (activeSessionKey/sessionKeys/lastRotationAt/rotationCount/lastHandoffPacketJson)
+  3. ✅ 删除 updateActiveSession() 死代码
+  4. ✅ 简化 conversation-router (移除 rotated flag)
+  5. ✅ 更新 9 文件，28 测试全过，0 type error
+
+### TASK-09: 双轨注入修正 ✅
+- **状态：** 已完成（2026-06-09）
+- **来源 plan：** PLAN-09 / PLAN-12
+- **用户可见的变化：** B4 注入当前任务完整细节，agent 可通过 task_get 工具按 archiveRef 解引用历史任务
+- **完成标准：**
+  1. ✅ B4 ACTIVE TASK: formatTaskBodyForInjection + B4 注入
+  2. ✅ archiveRef: IndexNode 显示暴露
+  3. ✅ task_get 工具: 创建+注册，支持 archiveRef 解引用
+  4. ✅ 元数据格式压缩: 去 JSON fence，合并 Sender，23/23 测试通过
+
+### TASK-10: 压缩→seal连接 ✅
+- **状态：** 已完成（2026-06-09）
+- **来源 plan：** PLAN-09 / PLAN-12
+- **用户可见的变化：** 压缩不再是盲摘要，而是产生带索引的任务边界
+- **完成标准：**
+  1. ✅ compaction 触发 → sealSegment → IndexNode → B3 常驻（attempt.ts:3078）
+
+### TASK-11: PLAN-12 P0 设计+存储 ✅
+- **状态：** 已完成（2026-06-09）
+- **来源 plan：** PLAN-12 忆匣统一记忆系统
+- **用户可见的变化：** 无直接用户可见变化，但忆匣存储层已就位
+- **完成标准：**
+  1. ✅ PLAN-12.md 设计文档（6 个不变式 + 4 阶段实施路径）
+  2. ✅ memory-box-store.ts 独立 SQLite 存储层（MemoryBox + MemoryBoxTask CRUD，0 type error）
+
 
 ## 阻塞中的任务
-- TASK-05（PLAN-09 P2）：阻塞于TASK-02完成
 - 端到端生产验证：阻塞于主模型不可用（OpenRouter owl-alpha 不可用）
 
 
 ## 本冲刺不做的事
-- World Model Phase 2（PLAN-03）— 等待 PLAN-09 P0-P1 闭环
+- World Model Phase 2（PLAN-03）— 等待 PLAN-12 P1-P2 闭环
 - 技能进化 Skill Evolution（PLAN-04）— 等待 World Model
 - MCP 协议集成（Tool Parity Task 15）— 大工程，排在 Task 14 之后
 - 并行执行引擎（Tool Parity Task 16）— 大工程，最后做
-- 参与者持续性 W1-W5（PLAN-08 L0/L1/L3/L4）— 等待 PLAN-09 L2 闭环
+- 参与者持续性 W1-W5（PLAN-08 L0/L1/L3/L4）— 等待 PLAN-12 闭环
