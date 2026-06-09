@@ -6,9 +6,9 @@
 | 维度 | 状态 |
 |------|------|
 | 构建 | ✅ 正常（`npm run check` 零新增错误，499 文件；预存 pi-tui/agents 类型错误 27 条） |
-| 测试 | ⚠️ Telegram Bot 92/97 通过（5 失败为预存 MediaPaths bug，非本次引入）；pi-tui 导入错误已修复（v0.64.0） |
-| 上次完成 | 维护检查：移除 tools-invoke-http.ts 4 处 as any + 修复 P097（registry 泄漏）+ P098（finalReply 紧耦合）|
-| 当前优先 | TASK-07 PLAN-11 Bot 测试修复 P3（5 个预存 MediaPaths 失败） / TASK-13/14/16 PLAN-13 M1/M2/M4 可并行 |
+| 测试 | ✅ Telegram Bot 94/94 全绿（TASK-07 P3 完成：fetch.ts sourceFetch 默认 globalThis.fetch + named-account DM 路由断言修正） |
+| 上次完成 | TASK-07 PLAN-11 Bot 测试修复 P3（5 个 MediaPaths 预存 bug 全部修复） |
+| 当前优先 | TASK-15 PLAN-13 M3（删 dual-track）/ TASK-16 PLAN-13 M4（动态滑动窗口） |
 | 阻塞 | delegate_code_task Telegram 端到端验证 — 受阻于主模型不可用 |
 | 产品目标完成度 | 约 74% — 12 层 Agent 框架竣工，认知架构 P0+P1 完成，Tool Parity 88.2% |
 
@@ -22,8 +22,8 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 | 步骤 | TASK | 状态 | 关键改动 | 前置 |
 |------|------|------|----------|------|
 | M0 | TASK-12 | ✅ 完成 | startSegment 改控制流 + sealSegment 加休止判定(isQuiescent含pending_approval) + attempt.ts 调用侧改造(三路分支+模块级tracker注册表+回合结束不封口) + ToolCallRecord新增pending_approval状态 | 无 |
-| M1 | TASK-13 | ⏳ 待启动 | C2 索引头改模型写（seal 时 LLM 自述 goal/outcome/决策） | M0 |
-| M2 | TASK-14 | ⏳ 待启动 | B3 单路径（删 resolveIndexHeadBlockForSession，只走 IndexNode） | M0 |
+| M1 | TASK-13 | ✅ 完成 | C2 索引头改模型写（seal 时 LLM 自述 goal/outcome/决策，强制 seal 回退启发式） | M0 |
+| M2 | TASK-14 | ✅ 完成 | B3 单路径（删 resolveIndexHeadBlockForSession，只走 IndexNode+traverseGraph） | M0 |
 | M3 | TASK-15 | ⏳ 待启动 | 删 dual-track 全套（文件+类型+DB列） | M2 |
 | M4 | TASK-16 | ⏳ 待启动 | 动态滑动窗口（seal 后裁剪老 raw 消息，recency 锚保留） | M0 |
 | M5 | TASK-17 | ⏳ 待启动 | autoCompact 改 seal-aware（框架层，高风险） | M4 |
@@ -75,22 +75,26 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 最近完成的事项
-1. 代码维护检查 — 移除 tools-invoke-http.ts 关键路径 4 处 `as any` + 修复 P097（taskTrackerRegistry Map 泄漏，finally 块加 clear+delete）+ 修复 P098（activeSeg.body.finalReply 紧耦合，新增 setFinalReply 封装方法）。PITFALLS P097/P098 → Resolved。`npm run check` 零回归。（2026-06-09）
-2. TASK-07 PLAN-11 Bot 测试修复 P1+P2 — grammy mock hoisting 修复（harness vi.hoisted + bot.test.ts 异步 vi.mock 工厂）+ loadWebMedia mock 补齐 + fetch.test.ts 20/20 全绿；bot.test.ts 0/48→46/48，剩余 2 个 MediaPaths 预存 bug（2026-06-09）
-3. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
-4. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
-5. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
-6. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
-7. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
-8. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
-9. tsgo 全仓类型检查 53→0 清零（2026-06-07）
-10. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
+1. **TASK-07 PLAN-11 Bot 测试修复 P3**（2026-06-10）：5 个 MediaPaths 预存 bug 全部修复 — 4 个超时（fetch.ts resolveTelegramTransport sourceFetch 默认优先 globalThis.fetch，可被 vi.spyOn mock，undiciFetch 降级 fallback）+ 1 个 named-account DM 测试断言修正（代码只丢弃 GROUP 不丢弃 DM，DM 用 per-account session key，测试改为验证 DM 正确路由含 AccountId/SessionKey）；bot.test.ts + bot.create-telegram-bot.test.ts 94/94 全绿。
+2. **TASK-13 PLAN-13 M1 — C2 索引头改模型写**（2026-06-10）：sealSegment 新增 modelIndexHead 参数，休止 seal 时调 completeSimple 生成 LLM 自述 goal/outcome/关键决策摘要，强制 seal 回退 buildIndexNodeSummary 启发式；attempt.ts 新增 createModelIndexHead + buildIndexHeadPrompt 辅助函数。84 个 session-rotation 测试全绿。
+3. **TASK-14 PLAN-13 M2 — B3 单路径**（2026-06-10）：删除 resolveIndexHeadBlockForSession（dual-track B3 路径），统一 B3 注入为 IndexNode + traverseGraph 单路径（PLAN-13 I6 单路径原则）；handoff-inject.test.ts 移除对应测试。84 个 session-rotation 测试全绿，type check 零新增。
+4. 代码维护检查 — 移除 tools-invoke-http.ts 关键路径 4 处 `as any` + 修复 P097（taskTrackerRegistry Map 泄漏，finally 块加 clear+delete）+ 修复 P098（activeSeg.body.finalReply 紧耦合，新增 setFinalReply 封装方法）。PITFALLS P097/P098 → Resolved。`npm run check` 零回归。（2026-06-09）
+5. TASK-07 PLAN-11 Bot 测试修复 P1+P2 — grammy mock hoisting 修复（harness vi.hoisted + bot.test.ts 异步 vi.mock 工厂）+ loadWebMedia mock 补齐 + fetch.test.ts 20/20 全绿；bot.test.ts 0/48→46/48，剩余 2 个 MediaPaths 预存 bug（2026-06-09）
+6. TASK-12 PLAN-13 M0 审查完成 — 维护性与潜在 bug 排查：发现 5 问题（P096–P100 全量录入 PITFALLS），均不阻塞 M1，M0 交付判定 ✅（2026-06-09）
+7. TASK-12 PLAN-13 M0 实施 — task 边界改控制流（3 源文件 + 1 测试文件）（2026-06-09）
+8. 流式管线加固 + 已部署 — Sprint 20: P1-P4 代码修复 + 诊断日志 + 参数校准（回滚激进参数），待端到端测试（2026-06-08）
+9. 流式输出修复 — blockStreamingDefault="off" 配置修复（2026-06-08）
+10. 序 1-7 统一实施全部完成 + 边缘情况加固（2026-06-07）
+11. 序 8 阶段 4：Task Segment 追踪 + 双轨索引 + CompactionSummary（2026-06-07）
+12. 序 8 深度审查 + 接线断链修复：executeRotation 死代码等（2026-06-07）
+13. tsgo 全仓类型检查 53→0 清零（2026-06-07）
+14. PLAN-09 P0/P1 部署至生产 + PLAN-10 审计修复 + PLAN-12 P0 设计+存储（2026-06-09）
 
 
 ## 已知不稳定项
 - **session 机制已废弃** — 传统 session JSONL 降级为调试备份，统一记忆模型为认知工作集 (PLAN-13)
 - `~/.pi/agent/sessions/` 不再参与索引和认知注入
-- ⚠️ **Telegram Bot 测试 5/97 失败** — 预存 MediaPaths bug（bot.test.ts 2个 + bot.create-telegram-bot.test.ts 3个），pi-tui 导入错误已修复（v0.64.0），grammy mock 已修复，PLAN-11 TASK-07 P3 待执行
+- ⚠️ **Telegram Bot 测试全部通过** — TASK-07 P3 完成：4 个 MediaPaths 超时（fetch.ts sourceFetch 默认 globalThis.fetch）+ 1 个 named-account DM 断言修正（测试改为验证 DM 正确路由），94/94 全绿
 - ~~注入预算器用简化版~~ ✅ P1已修复：computeInjectionBudget接入运行时，按窗口比例缩放
 - ~~conversation-store 无 edges 表~~ ✅ P1已修复：新增 index_nodes + edges 表
 - ~~TaskSegment 封口不产生 IndexNode~~ ✅ P1已修复：onSeal回调写入图谱
@@ -98,8 +102,8 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 - sessions chunks 47% CLAUDE.md 注入噪音
 - delegate_code_task Telegram 端到端验证未完成（需可用模型）
 - attempt.ts 复杂度失控：3324 行，建议拆分（PLAN-13 M0-M9 完成后执行）
-- ⚠️ **P096/P099/P100 M0 审查发现的维护性问题** — P096（setToolCallPendingApproval 死代码，M1/M2 接线）、P099（dual-track 双写，M3 自然消除）、P100（onSeal 无兜底），详见 PITFALLS。P097/P098 已于维护检查修复 → Resolved
-- ⚠️ **B3 注入双路径** — resolveIndexHeadBlockForSession + IndexNode 并存（PLAN-13 M2 统一为单路径）
+- ⚠️ **P096/P099/P100 M0 审查发现的维护性问题** — P096（setToolCallPendingApproval 死代码，M1/M2 接线 → M1/M2 已完成，P096 仍死代码残留需 M3 删除）、P099（dual-track 双写，M3 自然消除）、P100（onSeal 无兜底，M3 修复），详见 PITFALLS。P097/P098 已于维护检查修复 → Resolved
+- ✅ **B3 注入双路径** → ✅ M2 已完成：删除 resolveIndexHeadBlockForSession，统一 B3 为 IndexNode + traverseGraph 单路径
 - ⚠️ **autoCompact 不感知 seal** — 压缩产物为不透明 blob，不利用已封 task 的 B3 头（PLAN-13 M5 修复目标）
 - ⚠️ **80k/90k 双阈值硬编码** — 不随模型窗口缩放（PLAN-13 M6 修复目标）
 
