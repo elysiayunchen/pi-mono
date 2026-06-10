@@ -1312,3 +1312,37 @@ const response = await complete(model, {
 ## 许可证
 
 MIT
+
+## For AI Agents
+> Agent memory anchor | 全局权威知识见 /engine/ | Last verified: 2026-06-10
+
+### 职责
+LLM 流式调用统一层——多提供商适配 + 标准化事件流 + OAuth + 模型注册
+
+### 关键文件
+| 文件 | 角色 |
+|------|------|
+| src/types.ts | 核心类型定义（Api、StreamOptions、Model 等） |
+| src/stream.ts | 主流式入口，按 api 类型分发到 provider |
+| src/api-registry.ts | Provider 注册表，lazy load |
+| src/providers/register-builtins.ts | 内置 provider 懒注册 |
+| src/providers/anthropic.ts | Anthropic provider 实现 |
+| src/providers/openai-completions.ts | OpenAI Completions provider |
+| src/providers/openai-responses.ts | OpenAI Responses provider |
+| src/providers/google.ts | Google Gemini provider |
+| src/providers/amazon-bedrock.ts | Amazon Bedrock provider |
+| src/providers/transform-messages.ts | 消息格式转换（thinking、image 等） |
+| src/models.ts | 模型列表与元数据 |
+| src/env-api-keys.ts | 环境变量 → API key 检测 |
+| src/index.ts | 包入口，所有导出 |
+
+### 本包局部规则
+- 新增 provider 必须遵循 AGENTS.md「Adding a New LLM Provider」7 步指南
+- provider 注册 MUST 用 lazy loader，不在 register-builtins.ts 中静态 import 实现模块
+- 包子路径导出在 package.json 的 exports 中声明
+- credential 检测逻辑加到 src/env-api-keys.ts
+
+### 指针（NEVER 在此复制正文）
+- 相关陷阱：PITFALLS: P016/P023（导出遗漏）, P078（大文件截断）
+- 相关架构决策：ARCHITECTURE §6: #6（KV-cache 优化）
+- 关联 plan：无

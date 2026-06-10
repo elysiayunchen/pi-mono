@@ -144,9 +144,13 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 - 命名：camelCase（变量/函数），PascalCase（类/组件），kebab-case（文件名）
 - TypeScript strict mode，禁止 `any`（除非有充分理由）
 - import 排序：node 内置 → 第三方 → 项目内
+- **NEVER use inline imports** — 禁止 `await import("./foo.js")`、`import("pkg").Type` 类型位置用法、动态导入类型。一律使用标准顶层 import
+- NEVER remove or downgrade code to fix type errors from outdated dependencies; upgrade the dependency instead
+- Never hardcode key checks（如 `matchesKey(keyData, "ctrl+x")`）。所有 keybinding 必须可配置，默认值加到 `DEFAULT_EDITOR_KEYBINDINGS` 或 `DEFAULT_APP_KEYBINDINGS`
 - 错误处理：显式 try/catch，不吞错误
 - 日志：使用项目统一的 logger，不直接 console.log
 - biome 作为 linter/formatter（配置文件：`biome.json`）
+- MUST read every file you modify in full before editing（NEVER use sed/cat to read）
 
 
 ## 危险命令
@@ -158,6 +162,8 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 ## 测试策略
 - 提交前必须运行 `pnpm run check` 确保类型检查通过
 - 新增功能必须包含测试
+- 运行特定测试：`npx tsx ../../node_modules/vitest/dist/cli.js --run test/specific.test.ts`（从包根目录运行，非仓库根目录）
+- 创建或修改测试文件后，MUST 运行该测试并迭代直到通过
 - 测试基线不得回归：
   - `@elynyx/agent-core`: 36/36 ✅
   - `@elynyx/tui`: 505/506 (1 flaky)
@@ -170,6 +176,29 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 - 提交消息格式：`type(scope): description`（如 `feat(tools): add delegate_code_task`）
 - 绝对不能提交：`.env`、密钥、API keys、大文件（>1MB）、dist/ 产物
 - `elynx/` git push 需手动执行（auto-mode 阻止）
+- NEVER commit unless user asks
+- **并行 Agent Git 规则**：ONLY commit files YOU changed in THIS session；ALWAYS use `git add <specific-file-paths>`（NEVER `git add -A` / `git add .`）；commit 前先 `git status` 验证只暂存自己的文件；NEVER `git reset --hard` / `git checkout .` / `git clean -fd` / `git stash` / `git commit --no-verify`；rebase 冲突只解决自己改的文件，其余 abort 并询问
+
+### Changelog
+位置：`packages/*/CHANGELOG.md`（每个包独立）
+
+格式：在 `## [Unreleased]` 下使用 `### Breaking Changes` / `### Added` / `### Changed` / `### Fixed` / `### Removed` 子节。新条目追加到对应子节末尾。NEVER 修改已发布版本节（如 `## [0.12.2]`）。
+
+归属：内部变更 `Fixed foo bar ([#123](https://github.com/elysiayunchen/pi-mono/issues/123))`；外部贡献 `Added feature X ([#456](https://github.com/elysiayunchen/pi-mono/pull/456) by [@username](https://github.com/username))`
+
+### Releasing
+**Lockstep versioning**：所有包始终共享同一版本号。`patch` = bug 修复 + 新功能；`minor` = API 破坏性变更。
+
+步骤：确保 CHANGELOGs 更新 → `npm run release:patch` 或 `npm run release:minor`（脚本处理版本 bump + CHANGELOG 定稿 + commit + tag + publish + 新 `[Unreleased]` 节）
+
+### Adding a New LLM Provider (packages/ai)
+1. `packages/ai/src/types.ts` — 添加 API 标识到 `Api` union + options 接口 + `ApiOptionsMap` 映射 + `KnownProvider` union
+2. `packages/ai/src/providers/` — 创建 provider 文件：`stream<Provider>()` + `streamSimple<Provider>()` + 消息/工具转换 + 标准化事件
+3. `packages/ai/package.json` — 添加 subpath export；`src/index.ts` 添加 `export type` re-export；`register-builtins.ts` 添加 lazy loader；`env-api-keys.ts` 添加凭证检测
+4. `packages/ai/scripts/generate-models.ts` — 添加模型获取/解析逻辑
+5. `packages/ai/test/` — 添加到所有 provider 测试文件
+6. `elysiaclaw/src/agents/coding-agent/` — `model-resolver.ts` 添加默认模型 + `cli/args.ts` 添加环境变量文档
+7. `packages/ai/README.md` + `CHANGELOG.md` — 文档更新
 
 
 ## 安全边界
@@ -229,6 +258,8 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 | 依赖/工具链变更 | SYSTEM.md | AI 提议，架构师批准 |
 | 录入新 plan | engine/plans/, ENGINE_MAP §2/§3 | INGEST 模式 |
 | 新增引擎文件 | ENGINE_MAP §1 | EXTEND 模式 |
+| 新建代码包（达锚点触发条件） | 包级 README 锚点 + ENGINE_MAP §1.2 | AI |
+| 用户手写规则进 CLAUDE.md / AGENTS.md | 对应引擎文件（吸收）+ 引导器恢复薄指针 | RECONCILE 模式 |
 | 对账 / 「更新引擎」 | ENGINE_MAP §3.2/§4 + 受影响文件 | RECONCILE 模式 |
 | 项目方向调整 | ROADMAP.md, SPRINT.md, CONTEXT.md | 架构师主导 |
 
@@ -237,9 +268,17 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 - ARCHITECTURE.md：每次架构变更后更新（CLI‑LEAN 下仅 irreducible 章节）
 - HANDOFF.md：每次会话结束后重写
 - ENGINE_MAP.md：任何结构性变更（注册表/关系图）后更新，并 bump 全局 revision
+- 锚点文件：MUST 保持薄指针形态；包结构变化时同步对应包 README 锚点；引导器只在 SYSTEM.md Prime Directives 变更时同步摘抄
 - 其他文件：增量更新
 - **Re‑anchor 强制**：回写前 MUST 重读目标文件的磁盘版本
 - 所有文件头部日期 MUST 同步更新
+
+### 锚点层维护协议
+- **引导器（CLAUDE.md / AGENTS.md）**：目标 ≤25 行，只含四样内容——FIRST ACTION、TOP RULES（3-5 条摘抄自 SYSTEM.md Prime Directives + 关键 NEVER）、SESSION PROTOCOL、MAP（引擎文件路径指针）。NEVER 把引擎文件正文复制进引导器
+- **双生同步**：AGENTS.md 为正本。若 agent 工具支持 import 语法（如 Claude Code 的 `@AGENTS.md`），CLAUDE.md 只写一行引用；不支持则两份内容相同，由 RECONCILE 核对一致性
+- **吸收再指向**：开发者经常顺手把新规则直接写进 CLAUDE.md —— 这是合法输入口，不是违规。RECONCILE 时 MUST 把引导器中出现的、引擎里没有的规则吸收进对应引擎文件（SYSTEM / PITFALLS），然后把引导器恢复为薄指针。NEVER 不经吸收直接删除用户手写内容
+- **包级 README 锚点**：每个主要代码包根部放一个极薄 README（≤30 行），内容四件——本包职责一句话、关键文件表（3-7 个）、本包局部规则、指针区（相关 PITFALLS ID / ARCHITECTURE 决策编号 / 关联 plan）。已有面向人类的 README 时，在末尾追加 `## For AI Agents` 章节，NEVER 覆盖人类内容
+- **单一真相源**：全局知识住引擎文件，锚点只引用 ID。仅适用于本包的局部规则可以正文写在锚点里——此时锚点就是该条知识的权威位置
 
 ### 审核机制
 AI 完成引擎文件修改后，MUST 输出变更摘要供架构师审核（中文）：

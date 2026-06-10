@@ -765,3 +765,26 @@ npx tsx test/chat-simple.ts
 ```bash
 PI_TUI_WRITE_LOG=/tmp/tui-ansi.log npx tsx test/chat-simple.ts
 ```
+
+## For AI Agents
+> Agent memory anchor | 全局权威知识见 /engine/ | Last verified: 2026-06-10
+
+### 职责
+轻量级终端 UI 框架——差异渲染 + 同步输出 + 组件化 CLI 应用
+
+### 关键文件
+| 文件 | 角色 |
+|------|------|
+| src/tui.ts | TUI 主容器，管理组件和渲染 |
+| src/terminal.ts | Terminal 接口 + ProcessTerminal 实现 |
+| src/editor-component.ts | 多行编辑器（自动补全+粘贴处理） |
+| src/keybindings.ts | 按键映射配置 |
+| src/index.ts | 包入口，所有导出 |
+
+### 本包局部规则
+- keybinding 检查 NEVER hardcode（如 `matchesKey(keyData, "ctrl+x")`），必须可配置，默认值加到 `DEFAULT_EDITOR_KEYBINDINGS`
+
+### 指针（NEVER 在此复制正文）
+- 相关陷阱：PITFALLS: P006（tsgo 不在 PATH）, P078（大文件截断）
+- 相关架构决策：ARCHITECTURE §6: #6（KV-cache 优化）
+- 关联 plan：无

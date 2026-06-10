@@ -460,3 +460,30 @@ for await (const event of agentLoopContinue(context, config)) {
 ## 许可证
 
 MIT
+
+## For AI Agents
+> Agent memory anchor | 全局权威知识见 /engine/ | Last verified: 2026-06-10
+
+### 职责
+有状态 Agent 运行时——事件驱动循环 + 工具执行 + 上下文管理 + 引导/跟进
+
+### 关键文件
+| 文件 | 角色 |
+|------|------|
+| src/agent.ts | Agent 主类，状态管理 + prompt/steer/followUp API |
+| src/agent-loop.ts | 底层 agentLoop 生成器，事件流核心 |
+| src/types.ts | AgentMessage、AgentState、AgentTool 等核心类型 |
+| src/proxy.ts | streamProxy，浏览器端通过后端代理调用 |
+| src/plan-mode.ts | Plan 模式实现 |
+| src/build-tool.ts | AgentTool 构建辅助 |
+| src/index.ts | 包入口，所有导出 |
+
+### 本包局部规则
+- 工具执行失败 MUST throw Error，不要把错误信息当正常 content 返回
+- 自定义消息类型通过 declaration merging 扩展 CustomAgentMessages
+- convertToLlm 必须过滤掉非 LLM 消息类型
+
+### 指针（NEVER 在此复制正文）
+- 相关陷阱：PITFALLS: P016/P023（导出遗漏）
+- 相关架构决策：ARCHITECTURE §6: #6（KV-cache 优化）
+- 关联 plan：无
