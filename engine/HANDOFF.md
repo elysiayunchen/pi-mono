@@ -1,44 +1,51 @@
 # HANDOFF — Elynyx
-> 初始化日期：2026-06-09 | 会话：30（v5.1 RECONCILE — 锚点层升级）
+> 初始化日期：2026-06-09 | 会话：35（PLAN-19 看门狗部署闭环 + fallback 链修复 + 可用性止血）
 > 每次会话结束后重写此文件。
 
-
 ## ⚡ 立即恢复点
-> "v5.1 RECONCILE 完成：ENGINE_MAP 新增 §1.2 锚点注册表 + revision 33；CLAUDE.md/AGENTS.md 改写为薄引导器（22行）；SYSTEM.md 吸收独有规则 + 锚点层维护协议；4 个包级 README 生成 For AI Agents 锚点章节。"
-> 当前优先：**TASK-22（S1 拔 patch）+ TASK-23（H1/H2 播报+看门狗）可立即并行启动；TASK-24（S0 eval 护栏）是一切认知改动的前置门。**
-
+> "针对'agent 因网络/API 未响应'痛点完成 P0 止血：watchdog.mjs 修补+部署实测通过（挂死 90s 自动恢复+TG 告警经代理送达）、fallback 链重排（跨 provider 优先）、deploy.sh Guard 6 + watchdog-pause 契约。"
+> 当前优先：**PLAN-18 F1.5 fast-ack 接线（"未响应"体验的下一最短路径）；P2 流式停滞超时调研（chunk 间 inactivity 检测是否存在）待启动。**
 
 ## 本次会话总结
 
-### ✅ 完成内容（v5.1 RECONCILE — 引擎文件系统锚点层升级）
+### ✅ 完成内容（会话 35）
 
-1. **ENGINE_MAP.md** — 新增 §1.2 锚点注册表（6 个锚点文件登记）；§5 更新协议新增 3 个锚点事件行；§4 全局 revision 22→33；强制规则新增锚点形态约束
-2. **CLAUDE.md** — 从 ~190 行完整规则文档改写为 22 行薄引导器（bootloader）
-3. **AGENTS.md** — 同步改写为薄引导器正本，CLAUDE.md 为同步副本
-4. **SYSTEM.md** — 吸收 CLAUDE.md/AGENTS.md 中 10+ 条独有规则（inline imports、git parallel、changelog、releasing、LLM provider guide、test commands 等）；新增「锚点层维护协议」完整章节
-5. **packages/tui/README.md** — 追加 `## For AI Agents` 锚点章节
-6. **packages/ai/README.md** — 追加 `## For AI Agents` 锚点章节
-7. **packages/agent/README.md** — 追加 `## For AI Agents` 锚点章节
-8. **elysiaclaw/README.md** — 新建，含 `## For AI Agents` 锚点章节
+**P0-3 — 看门狗部署闭环（PLAN-19 H2 落地）**
+1. `scripts/watchdog.mjs` 修补：
+   - `ELYNYX_WATCHDOG_SYSTEMCTL_USER=1` → `systemctl --user`（生产 gateway 是用户级 unit `elysiaclaw-gateway.service`，原默认 `elynx-gateway` 系统级假设错误）
+   - TG 告警走 curl + `--proxy`（**Node 22 全局 fetch 不读 HTTP_PROXY**，直连必死）
+   - 重启风暴退避（AC-8/E10）：连续 3 次重启无效 → 停止自动重启 + 🚨 告警，恢复后自动重新启用
+   - 告警 kind 维度 flap 抑制（同分钟恢复告警不被吞）
+   - deploy pause 标记支持（`~/.elysiaclaw/watchdog-pause`，15min 陈旧保护）
+2. 部署：`~/.config/systemd/user/elysiaclaw-watchdog.service`（EnvironmentFile=`~/.elysiaclaw/watchdog.env` 600 权限，Linger=yes 已确认）
+3. **AC-2 等价实测通过**：SIGSTOP 监听进程（pid 1463）→ 3×30s 探活失败 → 01:48:48 TG 告警送达（经 7890 代理）→ systemctl --user restart → 01:48:59 恢复（端到端 ~106s）→ 恢复告警送达
+4. deploy.sh：新增 Guard 6（看门狗存活检查）+ watchdog-pause 部署窗口标记（开头 touch + trap EXIT 清理）
 
-### 🔑 关键决策
-- RECONCILE 模式识别：项目已有 ENGINE_MAP，按 v5.1 MODE DISPATCH 进入 RECONCILE
-- 吸收再指向（absorb-then-point）：开发者手写规则先吸收进 SYSTEM.md，再恢复薄指针
-- 包级锚点触发条件：4 个代码包均 >15 源文件，满足锚点生成条件
+**P0-2 — fallback 模型链修复**
+1. 快照 `elysiaclaw.json.bak.20260611013916` 后修改 `agents.defaults.model.fallbacks`：
+   - 旧链问题：fallbacks[0] 与 primary 重复（owl-alpha 挂了再试自己）；5 个里 4 个同走 openrouter（故障域不分离）
+   - 新链：`deepseek/deepseek-v4-flash` → `zai/glm-4.6` → `openrouter/nvidia/nemotron-3-super-120b-a12b:free` → `openrouter/qwen/qwen3-next-80b-a3b-instruct:free`（跨 provider 优先，全部已在 models.providers 声明）
+2. gateway 重启后已加载新配置（日志 `agent model: openrouter/openrouter/owl-alpha`）
 
-### ⏳ 未完成 / 待追踪
-- **DESIGN 决策点待维护者**：PLAN-17（晨报时刻/夜间token预算/审批形态）· PLAN-18（debounce 默认 2s/插队指令暂缓/fast-ack 形态建议 react）· PLAN-19（dead-man 第三方 vs 自建）
-- **Telegram 代理不可达** — 既有阻塞，影响端到端验证与看门狗直连路径实测
-- **PLAN-08 L3/L4 安全层** — 方向总纲 #6：必须排在 PLAN-17 D3 之前，尚未派任务
-- **packages/ typebox 预存类型错误** — 与本会话无关，未动
+### 🔑 关键事实（本会话实证）
+- **gateway 是双进程结构**：MainPID（父）≠ 监听 18789 的子进程——测试/排障时 `ss -tlnp` 找真监听者，别信 MainPID
+- **Telegram 代理（127.0.0.1:7890）实测可达**：CONTEXT 旧阻塞"代理不可达"疑为间歇性，看门狗双向告警均送达
+- **生产配置真身**：`~/.elysiaclaw/elysiaclaw.json`（CONTEXT 翻译表已修正；`~/.elynx/` 不存在）
+- **deploy.sh 整体漂移**：瞄准 `~/.elynx` + `elynx` 全局安装，生产实跑 `elysiaclaw`——需独立任务对齐
 
+### ⏳ 未完成 / 待接续 / 待决策
+- **【需用户拍板】process-guard.service 下线**：确认为僵尸（探活 18792 错端口 + 重启 `spawn elysiaclaw ENOENT` 空转），建议 `systemctl --user disable --now process-guard`；权限分类器要求用户显式授权
+- **P2 流式停滞超时**：`timeoutMs` 是 run 级总超时，chunk 间 inactivity 检测是否存在未验证——网络半死最常见漏网点
+- **P2 fast-ack**：PLAN-18 F1.5 接线
+- **P2 surface_error 必达用户**：failover surface_error 路径接 notify-policy
+- **fallback 链实战验证**：配置已生效，真实 failover 行为待下次 owl-alpha 故障时观察日志 `embedded_run_failover_decision`
+- **deploy.sh elynx/elysiaclaw 路径对齐**（独立任务）
 
 ## 架构状态
 | 维度 | 状态 |
 |------|------|
-| Plan 矩阵 | PLAN-15~19 全部 accepted（ENGINE_MAP rev 33）；认知主线 15→16→17 串行，体验线 18/19 并行 |
-| v5.1 锚点层 | ✅ RECONCILE 完成：§1.2 锚点注册表 + 4 包级 README 锚点 + 薄引导器 |
-| PLAN-13 迁移链 | M0-M8 ✅，M9 → 并入 PLAN-15 S0（TASK-24，脚本化重放评测） |
-| 可立即启动 | TASK-22（S1）+ TASK-23（H1/H2）零前置；TASK-25（S2）零前置 |
-| 部署链 | patch-agent.cjs 仍存活（TASK-22 待执行），5 guards 现行有效 |
-| 风险点 | 能力增长快于约束（PLAN-08 L3/L4 未落地）— 方向总纲 #6 已立规 |
+| PLAN-19 | H1-H4 代码 ✅；H2 看门狗**已部署+实测**（AC-2 等价✅ AC-8 代码✅）；AC-1/3/5/6/7/10 待验证 |
+| 看门狗 | `elysiaclaw-watchdog.service` active（user unit，30s 探活回环零外网） |
+| fallback 链 | 跨 provider 重排已生效（deepseek→zai→openrouter×2） |
+| 部署链 | deploy.sh +Guard 6 +watchdog-pause；⚠️ 整体仍指向 elynx 旧路径 |
+| 风险点 | process-guard 僵尸未下线（待用户授权）；代理间歇性需持续观察 |

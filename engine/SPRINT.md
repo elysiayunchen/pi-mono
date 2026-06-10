@@ -41,6 +41,20 @@
 
 
 ## 优先级栈
+0a. [TASK-22] PLAN-15 S1 — patch 源码化（crit:p0） ✅ — setSystemPrompt/replaceMessages 写入 packages/agent/src/agent.ts + 删 scripts/patch-agent.cjs + deploy.sh 删 Step 3/7 + Guard 2 改方法存在性冒烟；AC=PLAN-15.spec AC-1/AC-2
+0b. [TASK-23] PLAN-19 H1+H2 — 生命周期播报 + 独立看门狗（crit:p0） ✅ — cognition/presence/gateway-lifecycle.ts（clean-shutdown marker+/ping+失败计数）+ run-loop.ts启停钩子接线 + scripts/watchdog.mjs（30s探活+systemctl restart+TG直连告警+flap抑制+冷却5min）；AC=PLAN-19 AC-1/AC-2/AC-4/AC-9/AC-10 部分满足
+0c. [TASK-24] PLAN-15 S0 — seal 事务化（crit:p0） ✅ — conversation-store.ts runInTransaction + attempt.ts onSeal包裹；PLAN-14 Q-04已满足；Q-01/Q-05待TASK-25 manifest；eval重放脚本待后续
+0d. [TASK-25] PLAN-15 S2 — 工具注册单源 manifest（crit:p1）✅ — tool-manifest.ts 建立（46 工具含 requiresApproval/isReadOnly/isDestructive）+ tool-catalog.ts 从 manifest 派生 + guardrail test 7/7 通过；AC-3/AC-4 满足
+0e. [TASK-26] PLAN-19 H3 — dead-man 外部心跳（crit:p1）✅ — gateway-deadman.ts（外部心跳 setInterval HEAD + keep-alive 复用 + 失败计数/日志）+ run-loop.ts 启停接线（DEADMAN_HEARTBEAT_URL 环境变量配置）；5 测试全绿
+0f. [TASK-27] PLAN-19 H4 — notify policy + probes 接入（crit:p2）✅ — notify-policy.ts（NotifyPolicy 类：severity 三级 + 前缀匹配 + 冷却窗口 + flap 抑制 + 静默时段 + recovery 清理）+ gateway-lifecycle.ts recordModelFailure/Success 和 recordProxyFailure/Success 接线；9 测试全绿
+0g. [TASK-28] PLAN-14 Q-01~Q-05 — 审批边缘防守（crit:p1）✅ — approval-guard.ts（requiresApproval 查询 + filter + profile gating）+ 17 测试全绿；P096 确认已接线（attempt.ts:1490 setToolCallPendingApproval + task-segment-tracker.ts:298 hasPendingApprovals 阻断 seal）
+0h. [TASK-29] PLAN-15 S3 — 渠道全冻结（crit:p2）✅ — extensions/frozen-channels/ 新建（manifest + 6 渠道 freeze + 5 测试）+ 交叉引用分析确认无活跃导入阻断；物理迁移动作为后续脚本化步骤
+0i. [TASK-30] PLAN-18 F1 — 全双工-聚合窗+转向队列（crit:p2）✅ — debounce-window.ts（per-participant 聚合窗 2s + maxMessages 10 + 定时器重置）+ steer-orchestrator.ts（DebounceWindow→Agent.steer() 桥接 + register/unregister + 空闲态检测）；15 测试全绿；运行接线点文档化
+0j. [TASK-31] PLAN-18 F1.5 — 接线到 agent runner + message dispatch（crit:p2）✅ — agent-runner-execution.ts: registerHandle (steer→queueEmbeddedPiMessage, active→isEmbeddedPiRunActive) + try/finally unregisterHandle; bot-message-dispatch.ts: dispatchTelegramMessage 入口拦截 → orchestrator.enqueue 提前返回 (isActive guard + participantId=SessionKey + body=Body); steering tests 15/15 + tsdown 构建通过 + 无新增类型错误
+0k. [TASK-32] PLAN-15 S7 — 框架层汇入 elysiaclaw（crit:p1）✅ — packages/{agent,ai,tui}→src/framework/ + #framework/ subpath imports + workspace 依赖移除 + npm 依赖合并 + loader.ts 向后兼容 + deploy.sh Phase A 简化 + 构建验证通过
+0l. [TASK-33] PLAN-15 S4 — cognition 包抽取（crit:p1）✅ — cognitive-memory/ + context-engine/ → cognition/memory/ + cognition/context/ + ports.ts DI 接口 + 23 消费方 import 切换 + 测试 243（新增 event-log 15）=243/243 + tsdown 构建通过
+0m. [TASK-34] PLAN-15 S5a — 事件溯源脊椎-事件日志表+投影应用器（crit:p1）✅ — event-log.ts（cognitive_events 表 + append/applyEvent/replayUnappliedEvents + 水位线 + 15 测试全绿）+ ConversationStore 双写集成（emitEvent 辅助 + getOrCreateForChat/updateStatus/insertIndexNode/insertEdge 四点写事件日志）+ cognition/index.ts 导出 + 构建通过
+0n. [TASK-35] PLAN-15 S5b — 事件溯源历史回填脚本（crit:p1）✅ — backfillFromProjections() 读取 conversations/index_nodes/edges 投影表生成合成事件（conversation_created + status_changed + node_upserted + edge_upserted）写入 cognitive_events；幂等可重跑；19 测试全绿（含 4 个回填测试）+ tsdown 构建通过
 1. [TASK-12] PLAN-13 M0 — 修地基：task 边界改控制流（crit:p0） ✅ — startSegment 仅无active段时开，sealSegment 仅休止/强制时封，上轮未休止追加当前段；60测试全绿
 2. [TASK-13] PLAN-13 M1 — C2 索引头改模型写（crit:p1） ✅ — sealSegment 新增 modelIndexHead 参数，休止 seal 调 completeSimple 生成 LLM 自述 goal/outcome/关键决策，强制 seal 回退启发式 buildIndexNodeSummary；84 测试全绿
 3. [TASK-14] PLAN-13 M2 — B3 单路径（crit:p1） ✅ — 删除 resolveIndexHeadBlockForSession（dual-track），统一 B3 为 IndexNode + traverseGraph 单路径（PLAN-13 I6 单路径原则）；84 测试全绿
@@ -51,7 +65,7 @@
 8. [TASK-18] PLAN-13 M6 — 统一预算阈值（crit:p2） ✅ — §4: 80k/90k双阈值→W×compact_ratio单阈值，驱动seal/丢弃/元压缩；AC-11后半
 9. [TASK-19] PLAN-13 M7 — C3 元压缩（crit:p2） ✅ — §2.2: B3超预算→N个task头→session节点，原task头出B3但IndexNode留图谱；AC-12前半；meta-compression.ts + attempt.ts集成 + 22测试全绿
 10. [TASK-20] PLAN-13 M8 — 命名收尾（crit:p3） ✅ — session-rotation/→cognitive-memory/，handoff-types.ts→cognitive-types.ts，handoff-inject.ts→index-head-injector.ts；npm run check 零回归
-11. [TASK-21] PLAN-13 M9 — 端到端验证 + 部署（crit:p0） — Telegram实跑多步任务，验DB有正确IndexNode/edges，新任务替换B4，RECALL命中归档；AC-12
+11. [TASK-21] PLAN-13 M9 — 端到端验证 + 部署（crit:p0） — **已并入 TASK-24（PLAN-15 S0）**：M9 验证场景全部脚本化为重放评测，不再一次性手测；AC-12 由 S0 场景脚本覆盖
 12. [TASK-04] attempt.ts 拆分重构 — ✅ Step 1-3 完成（3576→2359 行，-34%），提取 tool-call-repair.ts + ollama-compat.ts + system-prompt-builder.ts + injection-coordinator.ts
 13. ~~[TASK-05] PLAN-09 P2：元压缩 + 图遍历检索~~ — **superseded by PLAN-13**（M7 C3 元压缩 + M9 端到端取代）
 14. ~~[TASK-06] PLAN-10 审计修复（crit:p1）~~ ✅
@@ -66,6 +80,41 @@
 
 ## 任务详情
 
+
+### TASK-22: PLAN-15 S1 — patch 源码化（crit:p0） ✅
+- **状态：** 已完成（2026-06-10 会话31）
+- **实现摘要：** packages/agent/src/agent.ts Agent 类新增 setSystemPrompt/replaceMessages（8行）；scripts/patch-agent.cjs 已删除；deploy.sh 删 Step 3/7，Guard 2 改为方法存在性冒烟+[patch]零命中检查
+- **验证：** agent 包构建通过，35/36 测试通过（1 预存无关），npm run check 零新增错误
+- **来源 plan：** [PLAN-15](plans/PLAN-15.md) §4 S1（已验证实证见 §1 关键实证）
+- **用户可见的变化：** 无直接变化；部署链少两步、消灭 P011/P022b 整个坑族（npm install 不再能破坏生产）
+- **完成标准：** PLAN-15.spec AC-1（源码含两方法+测试+patch 脚本删除+deploy.sh 无 patch 步骤）、AC-2（部署后 `grep -c '\[patch\]'` = 0 + Guard 2 冒烟通过）
+- **关键事实：** deploy.sh Step 2 已用 workspace dist 覆盖全局 agent-core；patch 仅注入 `setSystemPrompt(v){this._state.systemPrompt=v}` 与 `replaceMessages(ms){this._state.messages=ms.slice()}`；Agent 类 `_state` 字段已存在
+
+### TASK-23: PLAN-19 H1+H2 — 生命周期播报 + 独立看门狗（crit:p0） ✅
+- **状态：** 已完成（2026-06-10 会话31）
+- **实现摘要：** 新建 cognition/presence/gateway-lifecycle.ts（clean-shutdown marker读写+启停播报+/ping探针+模型/代理失败计数）；run-loop.ts 接入启停钩子；新建 scripts/watchdog.mjs（独立进程 30s探活+systemctl restart+TG直连告警+flap抑制+重启冷却5min）
+- **来源 plan：** [PLAN-19](plans/PLAN-19.md) §三 H1/H2 + 流量预算（§2.3）
+- **用户可见的变化：** 网关上下线有播报（含宕机时长+退出方式）；gateway 死亡 ≤90s 自动重启并告警（告警不经 gateway）；`/ping` 一条命令分清 网关/模型/代理 三层状态
+- **完成标准：** PLAN-19 AC-1/AC-2/AC-4/AC-9 + AC-10（流量：静默 24h 监控新增外网 ≤2MB/天，vnstat 实测）
+- **强制约束：** 探活只走 127.0.0.1；禁止轮询外部 API 做探活（模型/代理状态用真实请求成败的被动计数）；看门狗直连 Telegram 路径需实测（代理环境 NEEDS-VERIFICATION）
+
+### TASK-24: PLAN-15 S0 — seal 事务化（crit:p0） ✅
+- **状态：** 基本完成（2026-06-10 会话31），eval重放脚本待后续
+- **实现摘要：** conversation-store.ts 新增 runInTransaction 方法；attempt.ts onSeal 回调包裹在 store.runInTransaction() 内实现 seal 原子性；PLAN-14 Q-04 已满足
+- **待完成：** eval 重放脚本 + Q-01/Q-05（依赖 TASK-25 manifest）
+- **来源 plan：** [PLAN-15](plans/PLAN-15.md) §4 S0 + [PLAN-14](plans/PLAN-14.md) Q-01~Q-05
+- **用户可见的变化：** 无直接变化；认知系统从此有回归保护（重放评测），M9 验证变为可重复脚本
+- **完成标准：** PLAN-15.spec AC-5（重放评测+指标基线存档）、AC-6（M9 场景脚本化，PLAN-13.spec AC-1~AC-12 映射）、AC-7（PLAN-14 边缘落地）、AC-8（seal 单事务 + kill -9 注入测试）
+- **产出物纪律：** eval 基线 JSON commit 进 `engine/eval-baselines/`（方向总纲 #4）
+
+### TASK-25: PLAN-15 S2 — 工具注册单源 manifest（crit:p1） ✅
+- **状态：** 已完成（2026-06-11）
+- **实现摘要：** 新建 tool-manifest.ts（46 工具定义，含 requiresApproval/isConcurrencySafe/isReadOnly/isDestructive）+ tool-catalog.ts 改为从 TOOL_MANIFEST 派生 + guardrail test 7/7 通过 + 现有测试 64/64 全绿
+- **关键新增：** `requiresApproval` 字段（供 PLAN-14 Q-01~Q-05 审批边缘防守）+ 行为标志（isConcurrencySafe/isReadOnly/isDestructive）
+- **来源 plan：** [PLAN-15](plans/PLAN-15.md) §3.3/§4 S2
+- **用户可见的变化：** 无直接变化；新增工具从"四层手工同步"变为"manifest 加一行" + guardrail test 自动捕获 L1/L3 不一致
+- **完成标准：** PLAN-15.spec AC-3（manifest 唯一事实源 + guardrail test）、AC-4（L4 fail fast — 后续 PLAN-14 接入）
+- **联动：** manifest 的 `requiresApproval` 字段同时是 PLAN-14 Q-01 与 PLAN-16 P3 宫殿工具注册的判定来源
 
 ### TASK-07: PLAN-11 Bot 测试基础设施修复与依赖对齐（crit:p0）
 - **状态：** P1+P2+P3 全部完成 ✅

@@ -1,5 +1,17 @@
 # ROADMAP — Elynyx
-> 当前版本：认知架构演进中期 | Last updated: 2026-06-09
+> 当前版本：认知架构演进中期 → 解耦与自治期 | Last updated: 2026-06-10
+
+
+## 方向总纲（2026-06-10 架构评审定调，PLAN-15~19 矩阵）
+> 本节是 PLAN-15~19 时代的执行原则，与里程碑正交。维护者已授权按此主导方向。
+
+1. **两条线并行，线内严格串行**：认知主线 PLAN-15 → 16 → 17（S0 没绿不动 S4，P1 没绿不动 D2）；体验线 PLAN-18/19 零硬前置，随时插入。最忌两个任务并行改同一个 attempt.ts。
+2. **AC 合同制派活**：派任务必须在 task prompt 中引用对应 plan 的 AC 编号，收活只认 AC 证据（PITFALLS #85 的制度化）。
+3. **里程碑打 git tag**（s1-done / s7-done / p16-p1-done…）：solo 维护无 staging，tag 即安全网，回滚粒度从 commit 升到里程碑。
+4. **eval 基线产物入库**：S0 之后所有 eval 指标 JSON commit 进 `engine/eval-baselines/`，漂移可 diff 可追溯。
+5. **PITFALLS 以清空为荣**：能转 guardrail test / lint 规则 / 启动校验的条目，转一条划掉一条（PLAN-15 S6）。
+6. **安全先于自治**：PLAN-08 L3/L4 安全层必须排在 PLAN-17 D3（技能固化，自主性最强的一步）之前落地——能力增长不得快于约束。
+7. **护城河是认知深度，不是功能广度**：见"明确不做的事"新增三条。
 
 
 ## 完成定义 (v1.0)
@@ -26,6 +38,10 @@
 | M5 | Tool Parity 100% | 📋 计划中 | 2026-06/07 |
 | M6 | World Model 数字孪生 | 📋 计划中 | 2026-07 |
 | M7 | 参与者持续性 v1 | 📋 计划中 | 2026-07/08 |
+| M8 | 资产-躯壳解耦（PLAN-15 S0-S7：eval 护栏+拔patch+注册单源+渠道冻结+cognition 模块+事件脊椎+汇入） | 📋 已定调（accepted） | 2026-06/07 |
+| M9 | 记忆宫殿（PLAN-16 P1-P4：准入+驱逐+分形地图+宫殿工具） | 📋 已定调（accepted） | 2026-07 |
+| M10 | 睡眠周期（PLAN-17 D1-D4：体检+整理+固化+预热，维护者已采纳） | 📋 已定调（accepted） | 2026-07 |
+| M11 | 体验线：全双工对话 + 存在与心跳（PLAN-18 F1-F3 / PLAN-19 H1-H4） | 📋 已定调（accepted），H1/H2 最先行 | 2026-06 起随时 |
 
 
 ## 里程碑详情
@@ -73,6 +89,11 @@
 - [FB-08] Swarm 并发 Worktree 调度器 (P4-A) — 优先级：低
 - [FB-09] LSP Tool — 优先级：低（探索性）
 
+### 种子积压（2026-06-10 架构评审，未立 plan，时机到再 INGEST）
+- [FB-10] **Agent 自我模型** — 睡眠周期体检班的 vitals 数据积累后，让 agent 拥有对自身能力边界的模型（擅长/常败），注入 B1 CAPABILITY 带，路由决策有据可依。成本近零（数据是 PLAN-17 副产品）。前置：PLAN-17 D1 跑满 ~2 周
+- [FB-11] **双脑容灾** — dead-man 接收端落在第二台廉价 VPS 时，顺手放冷备最小 agent（只读宫殿副本 + Telegram 接管），主机死透时能报告最后状态。前置：PLAN-19 H3 选型自建路线
+- [FB-12] **C4 epoch 聚合接口预留** — PLAN-16 溢出阶梯第 4 级，session 盒超预算时聚合为 epoch 盒（PLAN-16 P4 已含最小实现，此条跟踪后续演进）
+
 
 ## 已知的未来破坏性变更
 - ~~PLAN-09 P0：轮换机制废弃（rotation-controller/auto-trigger/rotate-session-tool删除），B3/B4/B5注入方向改为append~~ ✅ 已完成（2026-06-08）
@@ -89,6 +110,11 @@
 - attempt.ts 拆分重构：将 2861+ 行拆为 3 个文件，需要仔细迁移
 - 参与者持续性架构：可能改变 session 管理模型，从 chat/session 到 participant 绑定
 - World Model 注入：B2 层新增环境快照注入，可能影响 KV-cache 布局
+- **PLAN-15 S1：patch-agent.cjs 删除**，setSystemPrompt/replaceMessages 写入 packages/agent 源码，deploy.sh 删 Step 3/7 + Guard 2 重定义
+- **PLAN-15 S7：pi-mono 汇入**，packages/{agent,ai,tui} → elysiaclaw/src/framework/，根 workspace 收敛，import 全量重写（codemod）
+- **PLAN-15 S5：事件溯源脊椎**，cognitive_events 表成为唯一写路径，现有 store 降级为投影，限时双写迁移窗口
+- **PLAN-16 P1：IndexNode schema 扩展**（salience/kind/pinned/touches/lastTouchedSeq）+ B3 过滤改评分驱逐制
+- **PLAN-18 F1：Telegram 入站改 debounce + steering 队列**，弃用阻塞式排队
 
 
 ## 明确不做的事
@@ -96,3 +122,7 @@
 - 重建 Python 记忆系统（TS 引擎已取代）
 - 恢复 Code Mode（已由 delegate_code_task 取代）
 - 多语言支持（专注中文 + English 双语）
+- 多 agent 内阁/评审委员会 — 与"单循环极简"底色冲突，复杂度收益比为负（2026-06-10）
+- 插件生态化/市场化 — solo 维护无生态需求（2026-06-10）
+- 新增渠道（中期内） — 渠道全冻结于 extensions/，护城河是认知深度不是功能广度（2026-06-10，PLAN-15 R1①）
+- 删除任何已冻结渠道代码 — 冻结可逆，删除不可逆（维护者决策 2026-06-10）

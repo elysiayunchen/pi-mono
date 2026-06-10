@@ -1,5 +1,5 @@
 # ENGINE_MAP — Elynyx
-> Last updated: 2026-06-10 | Revision: 33 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+> Last updated: 2026-06-11 | Revision: 39 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -31,9 +31,9 @@
 |------|-------|---------------|----------|---------------|
 | ENGINE_MAP.md | index | 0 | 22 | 2026-06-10 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
-| CONTEXT.md | irreducible | 2 | 6 | 2026-06-10 |
-| HANDOFF.md | irreducible | 3 | 6 | 2026-06-10 |
-| SPRINT.md | irreducible | 4 | 6 | 2026-06-10 |
+| CONTEXT.md | irreducible | 2 | 7 | 2026-06-11 |
+| HANDOFF.md | irreducible | 3 | 7 | 2026-06-11 |
+| SPRINT.md | irreducible | 4 | 7 | 2026-06-11 |
 | ROADMAP.md | irreducible | 5 | 2 | 2026-06-09 |
 | PITFALLS.md | irreducible | 6 | 4 | 2026-06-10 |
 | ARCHITECTURE.md | mixed | 7 | 3 | 2026-06-09 |
@@ -121,11 +121,11 @@
 | PLAN-12 | SPRINT:TASK-08(会话轮换清理)/TASK-09(双轨注入修正)/TASK-10(压缩→seal连接)/TASK-11(PLAN-12 P0设计+存储), ROADMAP:统一记忆系统 | (暂无 spec) | elynx/src/session-rotation/memory-box-store.ts（P0新建）, elynx/src/session-rotation/conversation-store.ts（P3简化）, elynx/src/session-rotation/task-segment-tracker.ts（P1 group管理）, elynx/src/agents/pi-embedded-runner/run/attempt.ts（B3/B4/B5适配+compaction→seal）, elynx/src/agents/tools/task-get-tool.ts（P1扩展）, elynx/src/memory/qmd-manager.ts（P2 kind:"memory-box"）, engine/plans/PLAN-12.md（设计文档） |
 | PLAN-13 | SPRINT:TASK-12(M0 task边界改控制流)/TASK-13(M1 C2头模型写)/TASK-14(M2 B3单路径)/TASK-15(M3 删dual-track)/TASK-16(M4 滑动窗口)/TASK-17(M5 autoCompact seal-aware)/TASK-18(M6 统一预算阈值)/TASK-19(M7 C3元压缩)/TASK-20(M8 命名收尾)/TASK-21(M9 端到端验证+部署), ROADMAP:认知工作集脊椎(M4重定义), PITFALLS:#85/#91-94 | PLAN-13.spec:AC-1~AC-12 | M0:elynx/src/session-rotation/task-segment-tracker.ts+attempt.ts(task边界改控制流) · M1:attempt.ts seal区(C2头模型写) · M2/M3:attempt.ts:2641+dual-track-index.ts+conversation-store/types.ts(B3单路径+删双轨) · M4:attempt.ts(滑动窗口) · M5/M6:packages/coding-agent/src/core/compaction/auto-compact.ts+multi-layer.ts+sdk.ts(seal-aware改造+统一阈值) · M7:新增meta-compression.ts · M8:session-rotation/整目录重命名 |
 
-| PLAN-15 | SPRINT:TASK-22(S1)/TASK-24(S0,吸收TASK-21)/TASK-25(S2), ROADMAP:M8+方向总纲 | PLAN-15.spec:AC-1~AC-15 | packages/agent/src/agent.ts(S1) · deploy.sh(S1/S7) · scripts/patch-agent.cjs(S1 删除) · elysiaclaw/src/agents/tools/manifest.ts(S2 新建) · elysiaclaw/src/agents/pi-tools.ts(S2) · elysiaclaw/src/cognitive-memory/(S0/S4) · elysiaclaw/src/context-engine/(S4) · elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts(S4) · elysiaclaw/src/cognition/(S4 新建，R1② 落位) · elysiaclaw/src/framework/{agent,ai,tui}(S7 汇入) · cognition-eval(S0 新建) · elysiaclaw/src/{signal,whatsapp,imessage,line,discord,slack}(S3 全冻结至 extensions/) |
+| PLAN-15 | SPRINT:TASK-22✅(S1)/TASK-24✅(S0 seal事务化)/TASK-25⏳(S2), ROADMAP:M8+方向总纲 | PLAN-15.spec:AC-1~AC-15 | packages/agent/src/agent.ts ✅ · deploy.sh ✅ · scripts/patch-agent.cjs(已删除✅) · elysiaclaw/src/cognition/presence/(S0 新建) · elysiaclaw/src/cognitive-memory/conversation-store.ts(S0 runInTransaction) · elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts(S0 onSeal事务) · elysiaclaw/src/agents/tools/manifest.ts(S2 待建) · elysiaclaw/src/framework/{agent,ai,tui}(S7 汇入) |
 | PLAN-16 | ROADMAP:M9（执行任务待 S0 完成后派生） | PLAN-16:§七 AC-1~AC-10 | elysiaclaw/src/cognitive-memory/cognitive-types.ts(P1 IndexNodeMeta) · conversation-store.ts(P1 schema迁移) · meta-compression.ts(P1 filterNodesForB3Injection 评分制 / P4 C4) · attempt.ts(P1 buildIndexHeadPrompt) · index-head-injector.ts(P2 分形地图) · src/memory/temporal-decay.ts(P1 复用) · manager-search.ts+traverseGraph(P1 touch回写) · elysiaclaw/src/agents/tools/(P3 宫殿五工具) |
 | PLAN-17 | ROADMAP:M10（执行任务待 S0+P16-P1 完成后派生） | PLAN-17:§五 AC-1~AC-9 | elysiaclaw/src/cognition/sleep/(D1 新建 scheduler/tidy/distill/checkup/prefetch) · gateway 空闲信号(D1) · src/telegram(晨报发送) · meta-compression.ts(D2 复用) · skills-runtime.ts(D3 加载链复用) · ~/.elynx/skills-staging/(D3 约定) · src/memory/batch-*(D4 接入) · cognition_vitals 表(D1 新建) |
 | PLAN-18 | ROADMAP:M11（零前置，任务可随时派生） | PLAN-18:§五 AC-1~AC-10 | elysiaclaw/src/telegram/bot-message-dispatch.ts(F1 debounce) · src/auto-reply/reply/agent-runner-execution.ts(F1) · attempt.ts(F1 循环边界 drain) · src/cognition/steering/classifier.ts(F2 新建) · pi-embedded-runner/abort.ts(F2 复用) · packages/agent steering 队列 API(F1 复用，已验证存在) · sessions/transcript-events.ts(F2 编辑事件) |
-| PLAN-19 | SPRINT:TASK-23(H1+H2), ROADMAP:M11 | PLAN-19:§五 AC-1~AC-9 | gateway 启停钩子(H1) · src/agents/announce-idempotency.ts(H1 复用) · scripts/watchdog.mjs(H2 新建)+systemd unit · src/cognition/presence/notify-policy.ts(H4 新建) · providers/auth-profiles 失败钩子(H4) · deploy.sh(H2 看门狗部署验证) |
+| PLAN-19 | SPRINT:TASK-23✅(H1+H2), ROADMAP:M11 | PLAN-19:§五 AC-1~AC-10（AC-2✅ 2026-06-11 实测） | elysiaclaw/src/cognition/presence/gateway-lifecycle.ts(H1 新建✅) · elysiaclaw/src/cli/gateway-cli/run-loop.ts(H1 启停接线✅) · scripts/watchdog.mjs(H2 新建✅+修补✅：--user/代理告警/风暴退避/pause标记) · ~/.config/systemd/user/elysiaclaw-watchdog.service(H2 部署✅ 2026-06-11) · src/agents/announce-idempotency.ts(H1 复用) · elysiaclaw/src/cognition/presence/notify-policy.ts(H4 ✅会话34) · deploy.sh(H2 Guard 6 + watchdog-pause ✅) |
 
 [plan 派生新条目时，在其行内追加。执行层条目用 `文件:锚点` 格式引用，NEVER 复制条目正文。]
 
@@ -173,8 +173,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 33 |
-| 上次 RECONCILE | 2026-06-10（v5.1 RECONCILE：添加 §1.2 锚点注册表 + CLAUDE.md/AGENTS.md 改写为薄引导器 + 吸收独有规则进 SYSTEM.md + 生成 4 个包级 README 锚点 + 更新 §5 锚点事件） |
+| 全局 revision | 35 |
+| 上次 RECONCILE | 2026-06-11（会话35：PLAN-19 H2 看门狗部署+AC-2 实测 → HANDOFF 重写/CONTEXT 路径漂移修正/PLAN-19 AC 更新 + rev 34→35） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 

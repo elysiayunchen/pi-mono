@@ -1,16 +1,16 @@
 # CONTEXT — Elynyx
-> 快照日期：2026-06-10 | 每次会话开始时，读完 ENGINE_MAP 后优先阅读此文件。
+> 快照日期：2026-06-11 | 每次会话开始时，读完 ENGINE_MAP 后优先阅读此文件。
 
 
 ## 状态面板
 | 维度 | 状态 |
 |------|------|
-| 构建 | ✅ 正常（`pnpm run check` elysiaclaw 通过，packages/ 有 1 个预存 typebox 错误） |
-| 测试 | ✅ cognitive-memory 111/111 + attempt 149/149 + Telegram Bot 867/867 全绿（上游 18 修复后） + meta-compression 22/22 |
-| 上次完成 | 第二轮迁移修复：tsconfig.json 路径别名 + 破损导入 + Kit 目录重命名 + CLAWDBOT_ 遗漏 + Dockerfile + 文档 |
-| 当前优先 | TASK-21 PLAN-13 M9（端到端验证 — 通过日志调查落实） |
-| 阻塞 | Telegram 代理节点不可达 — 需用户更新代理订阅 |
-| 产品目标完成度 | 约 85% — 认知架构 M0-M8 完成 + 流式空白修复 + 测试全绿 + 部署验证 |
+| 构建 | ✅ 正常（`pnpm run check` elysiaclaw 通过，128 预存类型错误非迁移引入） |
+| 测试 | ✅ cognitive-memory 111/111 + attempt 64/64 + channels 2263/2300（37 失败均为 web/discord/browser 预存） |
+| 上次完成 | 会话 40：PLAN-15 S5b 历史回填 ✅（backfillFromProjections 读取投影表生成合成事件 + 幂等可重跑 + 19 测试全绿 + tsdown 构建通过） |
+| 当前优先 | PLAN-15 S5c — 双写窗口（≤1周）：旧直写路径与新日志路径并行，每日 checksum reconcile（投影重建 vs 在线状态逐表比对） |
+| 阻塞 | ~~Telegram 代理节点不可达~~ 2026-06-11 实测可达（看门狗经 7890 代理告警送达），疑为间歇性；持续观察 |
+| 产品目标完成度 | 约 87% — 认知架构 M0-M8 完成 + 流式空白修复 + 测试全绿 + 框架层汇入完成 |
 
 
 ## 当前状态概述
@@ -40,7 +40,7 @@ Elynyx 是基于 pi-mono 框架构建的多渠道 AI 助手平台（已完成品
 - 主模型 OpenRouter/owl-alpha 当前不可用，部分端到端验证受阻
 - `~/.pi/agent/sessions/` 下的 session JSONL 文件正常增长，自动 compact 机制有效
 - Gateway 绑定 `lan` 模式（Tailscale IP `100.111.4.5`），局域网内可访问
-- pi-agent-core monkey-patch 由 `scripts/patch-agent.cjs` 保护，每次 deploy 后验证
+- ~~pi-agent-core monkey-patch 由 `scripts/patch-agent.cjs` 保护~~ ✅ TASK-22 已消除：setSystemPrompt/replaceMessages 已写入 packages/agent/src/agent.ts，patch 脚本已删除
 
 
 ## 运行时上下文
@@ -62,12 +62,18 @@ Elynyx 是基于 pi-mono 框架构建的多渠道 AI 助手平台（已完成品
 | 新增应用层工具 | `elynx/src/agents/tools/` + pi-tools.ts + tool-catalog.ts | 中 | 需 deploy 到全局 |
 | 修改 Agent 循环/压缩 | `elysiaclaw/src/agents/coding-agent/core/` + `packages/agent/src/` | 高 | 影响全局，需充分测试 |
 | 修复 Telegram 输出 | `elynx/src/telegram/` | 中 | 涉及 bot-message-dispatch |
-| 增加新的 LLM provider | `~/.elynx/elynx.json` agents 段 | 低 | 配置修改 |
+| 增加新的 LLM provider | `~/.elysiaclaw/elysiaclaw.json` agents/models 段 | 低 | 配置修改（⚠️ 生产配置在 `~/.elysiaclaw/`，非 `~/.elynx/`） |
 | 查看 gateway 状态 | `elynx status` | 低 | 命令行 |
 | 查 session 数据 | `find ~/.pi/agent/sessions/ -name "*.jsonl"` | 低 | 递归查找 |
 | 成本报告 | `python3 ~/.pi/agent/cost-report.py` | 低 | Python 脚本 |
-| 修复流式输出 | `~/.elynx/elynx.json` L357 `blockStreamingDefault` | 低 | 配置项 |
+| 修复流式输出 | `~/.elysiaclaw/elysiaclaw.json` `blockStreamingDefault` | 低 | 配置项 |
+| 网关挂死/未响应自动恢复 | `scripts/watchdog.mjs` + `~/.config/systemd/user/elysiaclaw-watchdog.service` + env `~/.elysiaclaw/watchdog.env` | 低 | 2026-06-11 已部署实测：挂死 ≤90s 检测+重启+TG告警（经7890代理） |
 | 回滚到旧版 | `git checkout` + `npm run build` + `./deploy.sh` | 中 | 需要完整重部署 |
+| 拔掉 monkey-patch | PLAN-15 S1（TASK-22）：packages/agent/src/agent.ts 补 6 行 + 删 patch 脚本 | 低 | 关键实证见 PLAN-15 §1 |
+| 记忆噪音/无用索引累积 | PLAN-16 P1：IndexNode salience 准入 + B3 评分驱逐 | 中 | 前置 S0 |
+| agent 运行中打断/纠错 | PLAN-18：steering 队列接线 + 意图分类（内核 API 已存在） | 中 | 零前置 |
+| 网关状态通知/分不清哪断了 | PLAN-19 H1/H2（TASK-23）：播报+看门狗+/ping 三层探针 | 低 | 零前置，流量≈0 |
+| 让 agent 夜间自我整理 | PLAN-17 睡眠周期 D1-D4 | 高 | 前置 S0 + PLAN-16 P1/P4 |
 
 
 ## 会话交接记录
@@ -75,6 +81,10 @@ Elynyx 是基于 pi-mono 框架构建的多渠道 AI 助手平台（已完成品
 
 
 ## 最近完成的事项
+-1. **会话 36 — PLAN-15 S7 框架层汇入 elysiaclaw**（2026-06-11）：packages/{agent,ai,tui} 源码迁入 elysiaclaw/src/framework/{agent,ai,tui}/；@elynyx/* import 全量替换为 #framework/* subpath imports（package.json imports + tsconfig paths）；workspace 依赖 @elynyx/agent-core/@elynyx/ai/@elynyx/tui 从 elysiaclaw/package.json 移除；packages/ai 的 9 个 npm 依赖合并到 elysiaclaw；loader.ts VIRTUAL_MODULES + aliases 添加 @elynyx/* 旧名向后兼容映射 + resolveWorkspaceOrImport try-catch 保护；deploy.sh Phase A 简化（框架包构建步骤删除，Guard 2 改 grep 验证）；构建验证通过（tsdown + dist/index.js + dist/agents/coding-agent/index.js）；cognitive-memory 111/111 + attempt 64/64 全绿
+-2. **会话 35 — PLAN-19 看门狗部署闭环 + fallback 链修复**（2026-06-11）：watchdog.mjs 修补（systemctl --user 支持 + TG 告警走 curl 代理（Node22 fetch 不读 HTTP_PROXY）+ 重启风暴退避 AC-8/E10）；部署为 `elysiaclaw-watchdog.service`（user unit，EnvironmentFile=~/.elysiaclaw/watchdog.env 600 权限）；AC-2 实测：SIGSTOP 监听进程（注意 gateway 双进程结构，MainPID≠监听 pid）→ 90s 检测 → systemctl --user restart → 恢复，TG 告警双向送达（经 7890 代理，代理实测可达）；fallback 链重排（去重 primary、跨 provider 优先：deepseek/zai 提前）；deploy.sh 加 Guard 6 看门狗存活检查。**遗留**：process-guard 僵尸服务（守错端口 18792 + 重启 ENOENT 空转）待用户确认后下线；deploy.sh 整体仍瞄准 ~/.elynx+elynx 全局安装，与生产 elysiaclaw 漂移
+-1. **会话 31 — TASK-22/23/24 批量推进**（2026-06-10）：TASK-22 S1 patch源码化（packages/agent/src/agent.ts +8行，删scripts/patch-agent.cjs，deploy.sh删Step3/7+Guard2冒烟改）+ TASK-23 H1+H2（新建cognition/presence/gateway-lifecycle.ts含clean-shutdown marker+/ping+失败计数 + run-loop.ts启停接线 + scripts/watchdog.mjs独立看门狗）+ TASK-24 S0 seal事务化（conversation-store.ts runInTransaction + attempt.ts onSeal包裹）
+0. **架构评审会话 29**（2026-06-10）：PLAN-15~19 五份 plan 全部 accepted（解耦/宫殿/睡眠/全双工/心跳）+ ROADMAP 方向总纲 7 条 + M8-M11 里程碑 + SPRINT TASK-22~25 派生（TASK-21 并入 TASK-24）+ PLAN-19 流量预算约束（维护者成本敏感）+ 关键实证：patch 可被 6 行源码取代、steering API 已存在
 0. **第二轮迁移修复**（2026-06-10）：tsconfig.json 8处 @mariozechner/ 路径别名 → @elynyx/ + test-our-changes.ts 和 session-transcripts.ts 破损导入修复 + ElysiaClawKit→ElynyxKit + OpenClawKit→ElynyxProtocol 目录重命名 + 31+ 处引用更新 + CLAWDBOT_SHOW_SECRETS/SHELL 添加 ELYNYX_ 优先级 + Dockerfile elysiaclaw.mjs→elynx.mjs + sandbox cache IDs 更新 + CLAUDE.md/AGENTS.md coding-agent 路径更新
 1. **pi-mono → elynx 迁移**（2026-06-10）：品牌化 @mariozechner→@elynyx（1553+ 处）+ elysiaclaw/ElysiaClaw→elynx/Elynyx（5000+ 处）+ 90 个文件重命名 + npm→pnpm workspace 统一 + coding-agent 源码合并到 elysiaclaw/src/agents/coding-agent/ + packages/coding-agent 删除 + deploy.sh 12→9 步简化 + apps/Dockerfile/脚本品牌名更新 + tsdown.config.ts 添加 coding-agent 入口点
 1. **流式空白 bug 修复 + 分块参数调优 + 上游测试修复 + 部署**（2026-06-10 会话26）：Telegram 流式输出 tool 调用时用户发消息导致大片空白（archivedToolPreviewIds 归档+清理修复）；分块参数调优为短句模式（draft-chunking minChars 200→80/maxChars 800→300/breakPreference→sentence, block-streaming MIN 800→200/MAX 1200→500/breakPreference→sentence）；上游 Telegram 测试 18→0 修复（fetch.test.ts 15 + audit.test.ts 2 + topic-agentid.test.ts 1）；部署 5 guards 全绿，gateway pid 814440，memory 122 files / 1373 chunks

@@ -1,9 +1,16 @@
 #!/bin/bash
 set -e
 
+# Pause the watchdog for the whole deploy window — gateway restarts during
+# deploy must not trigger a false watchdog restart + Telegram alarm.
+WATCHDOG_PAUSE="$HOME/.elysiaclaw/watchdog-pause"
+mkdir -p "$(dirname "$WATCHDOG_PAUSE")"
+touch "$WATCHDOG_PAUSE"
+trap 'rm -f "$WATCHDOG_PAUSE"' EXIT
+
 ELYNYX="$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/elynx"
 NM="$ELYNYX/node_modules/@elynyx"
-AGENT_JS="$NM/agent-core/dist/agent.js"
+AGENT_JS="$ELYNYX/dist/agents/coding-agent/index.js"
 ELYNYX_DIST="$HOME/projects/pi-mono/elysiaclaw/dist"
 
 echo "==========================================="
@@ -54,49 +61,31 @@ else:
     print('  config.yaml not found')
 " || exit 1
 
-# ── Phase A: Framework packages (ai, agent-core, tui) ──
+# ── Phase A: Framework (now inlined into elysiaclaw build) ──
 echo ""
-echo "=== Step 1: Build framework packages ==="
-cd ~/projects/pi-mono
-pnpm run build
+echo "=== Step 1: Framework packages are inlined (no separate build needed) ==="
+echo "  #framework/agent, #framework/ai, #framework/tui → built by tsdown"
 
+# ── Post-deploy Guard 2: Verify Agent methods exist (no patch needed) ──
 echo ""
-echo "=== Step 2: Deploy framework packages to global install ==="
-rm -rf "$NM/agent-core/dist" && cp -r ~/projects/pi-mono/packages/agent/dist "$NM/agent-core/dist"
-echo "[OK] agent-core deployed"
-rm -rf "$NM/ai/dist" && cp -r ~/projects/pi-mono/packages/ai/dist "$NM/ai/dist"
-echo "[OK] ai deployed"
-rm -rf "$NM/tui/dist" && cp -r ~/projects/pi-mono/packages/tui/dist "$NM/tui/dist"
-echo "[OK] tui deployed"
-
-echo ""
-echo "=== Step 3: Re-apply agent.js patch (0.64 anchor) ==="
-node ~/projects/pi-mono/scripts/patch-agent.cjs
-
-# ── Post-patch Guard 2: Verify patch injection ──
-echo ""
-echo "[Guard 2] Verifying patch injection..."
+echo "[Guard 2] Verifying Agent methods exist in built bundle..."
 if [ -f "$AGENT_JS" ]; then
-    SET_SP=$(grep -c "setSystemPrompt" "$AGENT_JS" 2>/dev/null || echo 0)
-    REPLACE_MSG=$(grep -c "replaceMessages" "$AGENT_JS" 2>/dev/null || echo 0)
-    if [ "$SET_SP" -ge 1 ] && [ "$REPLACE_MSG" -ge 1 ]; then
-        echo "  setSystemPrompt: $SET_SP occurrence(s)"
-        echo "  replaceMessages: $REPLACE_MSG occurrence(s)"
-    else
-        echo "  ERROR: Patch missing! setSystemPrompt=$SET_SP replaceMessages=$REPLACE_MSG"
-        echo "  agent.js may be corrupted. Aborting."
+    PATCH_COUNT=$(grep -c '\[patch\]' "$AGENT_JS" 2>/dev/null || true)
+    PATCH_COUNT=${PATCH_COUNT:-0}
+    if [ "$PATCH_COUNT" -gt 0 ]; then
+        echo "  ERROR: bundle still contains [patch] markers ($PATCH_COUNT). Old patch residue detected."
         exit 1
     fi
-    # Syntax check
-    node -c "$AGENT_JS" 2>/dev/null
-    if [ $? -eq 0 ]; then
-        echo "  Syntax check ... OK"
+    if grep -q 'setSystemPrompt' "$AGENT_JS" && grep -q 'replaceMessages' "$AGENT_JS"; then
+        echo "  setSystemPrompt: OK"
+        echo "  replaceMessages: OK"
+        echo "  No [patch] markers: OK"
     else
-        echo "  ERROR: agent.js has syntax errors! (Pitfall #22b)"
+        echo "  ERROR: Agent methods missing in built bundle!"
         exit 1
     fi
 else
-    echo "  WARNING: agent.js not found at $AGENT_JS"
+    echo "  WARNING: bundle not found at $AGENT_JS"
 fi
 
 # ── Phase B: Elynyx application layer ──
@@ -183,10 +172,6 @@ else
 fi
 
 # ── Phase C: Post-deploy ──
-echo ""
-echo "=== Step 7: Sync postinstall script ==="
-cp ~/projects/pi-mono/scripts/patch-agent.cjs "$ELYNYX/scripts-patch/patch-agent.cjs"
-echo "[OK] postinstall script synced"
 
 # ── Guard 4: Framework tool registration parity ──
 echo ""
@@ -236,13 +221,25 @@ else
     echo "  WARNING: Could not resolve gateway token for E2E check"
 fi
 
+# ── Guard 6: Watchdog aliveness (PLAN-19 H2 / AC-9) ──
+echo ""
+echo "[Guard 6] Watchdog aliveness..."
+WD_STATE=$(systemctl --user is-active elysiaclaw-watchdog.service 2>/dev/null || true)
+if [ "$WD_STATE" = "active" ]; then
+    echo "  elysiaclaw-watchdog ... active"
+else
+    echo "  WARNING: elysiaclaw-watchdog not active (state: ${WD_STATE:-unknown})"
+    echo "  Start with: systemctl --user start elysiaclaw-watchdog"
+fi
+
 ~/.nvm/versions/node/v22.22.1/bin/elynx status
 echo ""
 echo "==========================================="
 echo "  Deploy complete. Guards passed:"
 echo "    [G1] Config validation"
-echo "    [G2] Patch injection"
+echo "    [G2] Agent methods (no patch)"
 echo "    [G3] Dist integrity (memory modules)"
 echo "    [G4] Framework tool parity"
 echo "    [G5] memory_search E2E"
+echo "    [G6] Watchdog aliveness"
 echo "==========================================="

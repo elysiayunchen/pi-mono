@@ -224,6 +224,16 @@ export class Agent {
 		return () => this.listeners.delete(listener);
 	}
 
+	/** Replace the system prompt. Used by the host to update the prompt between runs. */
+	setSystemPrompt(systemPrompt: string): void {
+		this._state.systemPrompt = systemPrompt;
+	}
+
+	/** Replace the message transcript. The provided array is shallow-copied. */
+	replaceMessages(messages: AgentMessage[]): void {
+		this._state.messages = messages.slice();
+	}
+
 	/**
 	 * Current agent state.
 	 *
