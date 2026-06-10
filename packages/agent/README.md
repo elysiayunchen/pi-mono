@@ -1,18 +1,18 @@
-# @mariozechner/pi-agent-core
+# @elynyx/agent-core
 
-具有工具执行和事件流的有状态代理。基于 `@mariozechner/pi-ai` 构建。
+具有工具执行和事件流的有状态代理。基于 `@elynyx/ai` 构建。
 
 ## 安装
 
 ```bash
-npm install @mariozechner/pi-agent-core
+npm install @elynyx/agent-core
 ```
 
 ## 快速上手
 
 ```typescript
-import { Agent } from "@mariozechner/pi-agent-core";
-import { getModel } from "@mariozechner/pi-ai";
+import { Agent } from "@elynyx/agent-core";
+import { getModel } from "@elynyx/ai";
 
 const agent = new Agent({
   initialState: {
@@ -337,7 +337,7 @@ agent.clearAllQueues();
 通过声明合并扩展 `AgentMessage`：
 
 ```typescript
-declare module "@mariozechner/pi-agent-core" {
+declare module "@elynyx/agent-core" {
   interface CustomAgentMessages {
     notification: { role: "notification"; text: string; timestamp: number };
   }
@@ -409,7 +409,7 @@ execute: async (toolCallId, params, signal, onUpdate) => {
 适用于通过后端代理的浏览器应用：
 
 ```typescript
-import { Agent, streamProxy } from "@mariozechner/pi-agent-core";
+import { Agent, streamProxy } from "@elynyx/agent-core";
 
 const agent = new Agent({
   streamFn: (model, context, options) =>
@@ -426,7 +426,7 @@ const agent = new Agent({
 无需 Agent 类即可直接控制：
 
 ```typescript
-import { agentLoop, agentLoopContinue } from "@mariozechner/pi-agent-core";
+import { agentLoop, agentLoopContinue } from "@elynyx/agent-core";
 
 const context: AgentContext = {
   systemPrompt: "You are helpful.",

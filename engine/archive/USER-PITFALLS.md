@@ -1,6 +1,6 @@
-# ElysiaClaw — 完整踩坑记录 (Complete Pitfalls)
+# Elynyx — 完整踩坑记录 (Complete Pitfalls)
 > 合并自 5 个源文件 | 生成: 2026-06-07 06:33:02
-> 源: LEARNINGS.md + openclaw-bugs.md + ERRORS.md + PITFALLS.md + RESOLVED.md
+> 源: LEARNINGS.md + elynx-bugs.md + ERRORS.md + PITFALLS.md + RESOLVED.md
 
 ---
 
@@ -134,7 +134,7 @@ Avoid exceeding concurrent limits by keeping parallel engines ≤ 3.
 Cron 任务 `c087e8a5`（每日记忆维护）曾硬编码 `memory/$(date +%Y-%m-%d).md` 导致文件出现在 memory/ 根目录。
 **修复**：路径更正为 `memory/daily-notes/$(date +%Y-%m-%d).md`。
 **预防**：infra-guard 架构扫描检测 misplaced files。
-✅ HARDENED → cron job c087e8a5 path fixed, infra-guard scan detects (infra-guard skill: ~/.openclaw/skills/infra-guard/SKILL.md)
+✅ HARDENED → cron job c087e8a5 path fixed, infra-guard scan detects (infra-guard skill: ~/.elynx/skills/infra-guard/SKILL.md)
 
 ### LRN-20260403-001  [?] pri=?
 — 多步骤查询任务用 task/plan 组织
@@ -167,7 +167,7 @@ Process name "Python" is too generic. Need window title matching.
 
 ---
 
-## PART 2: openclaw-bugs.md (Bug 记录)
+## PART 2: elynx-bugs.md (Bug 记录)
 
 ### 坑1
 - **症状**: `gateway.host` 报 Unrecognized key
@@ -196,8 +196,8 @@ Process name "Python" is too generic. Need window title matching.
 
 ### 坑3
 - **症状**: 所有模型 401，systemctl show 里找不到 key
-- **原因**: openclaw.json 的 env 块只有进程运行后才读，systemd 启动时进程还不存在
-- **解决**: 所有 API key 必须写入 proxy.conf drop-in（~/.config/systemd/user/openclaw-gateway.service.d/proxy.conf），改后 daemon-reload + restart
+- **原因**: elynx.json 的 env 块只有进程运行后才读，systemd 启动时进程还不存在
+- **解决**: 所有 API key 必须写入 proxy.conf drop-in（~/.config/systemd/user/elynx-gateway.service.d/proxy.conf），改后 daemon-reload + restart
 
 ### 坑2
 - **症状**: getUpdates 409 冲突
@@ -207,7 +207,7 @@ Process name "Python" is too generic. Need window title matching.
 ### 坑5
 - **症状**: 本机 CLI 报 SECURITY ERROR: plaintext
 - **原因**: bind=lan/tailnet 后本机 CLI 也需要显式允许
-- **解决**: 每次 Ubuntu CLI 操作加前缀：OPENCLAW_ALLOW_INSECURE_PRIVATE_WS=1 OPENCLAW_GATEWAY_URL=ws://100.111.4.5:18789 openclaw <cmd> --token [REDACTED]
+- **解决**: 每次 Ubuntu CLI 操作加前缀：OPENCLAW_ALLOW_INSECURE_PRIVATE_WS=1 OPENCLAW_GATEWAY_URL=ws://100.111.4.5:18789 elynx <cmd> --token [REDACTED]
 
 ### 坑10
 - **症状**: Windows 端口被 VS Code 占用
@@ -215,14 +215,14 @@ Process name "Python" is too generic. Need window title matching.
 - **解决**: Windows node host 改用其他端口（如 19000），或启动加 --force
 
 ### 坑16
-- **症状**: Start-Process "openclaw" 报"不是有效 Win32 应用程序"
-- **原因**: openclaw 是 .ps1 shim，不是 .exe
-- **解决**: 改用 & "E:\nodejs\openclaw.ps1" node run ...；$LASTEXITCODE 可正常获取
+- **症状**: Start-Process "elynx" 报"不是有效 Win32 应用程序"
+- **原因**: elynx 是 .ps1 shim，不是 .exe
+- **解决**: 改用 & "E:\nodejs\elynx.ps1" node run ...；$LASTEXITCODE 可正常获取
 
 ### 坑6
 - **症状**: nodes run 在 Windows headless node 永久卡住
 - **原因**: Windows 端缺少 `exec-approvals.json`，approval socket 从未建立；**不是** Bug #22176，之前误判
-- **解决**: 在 Windows 上创建 `C:\Users\19645\.openclaw\exec-approvals.json`（见下方说明），重启 node host 后 system.run 立即正常
+- **解决**: 在 Windows 上创建 `C:\Users\19645\.elynx\exec-approvals.json`（见下方说明），重启 node host 后 system.run 立即正常
 
 ### 坑18
 - **症状**: execApprovals.enabled: false 后 exec 完全失权
@@ -236,8 +236,8 @@ Process name "Python" is too generic. Need window title matching.
 
 ### 坑11
 - **症状**: 隔几天 Windows 节点需要重新配对
-- **原因**: openclaw doctor --fix 重新生成 gateway token
-- **解决**: 固定 token：openclaw config set gateway.auth.token "***"; 每次 doctor 后检查 token 并同步 Windows 两处配置
+- **原因**: elynx doctor --fix 重新生成 gateway token
+- **解决**: 固定 token：elynx config set gateway.auth.token "***"; 每次 doctor 后检查 token 并同步 Windows 两处配置
 
 ### 坑7
 - **症状**: SSH 启动 GUI 程序黑屏
@@ -255,19 +255,19 @@ Process name "Python" is too generic. Need window title matching.
 - **解决**: 改用 Python 写入：python3 -c "with open('/path','w') as f: f.write('内容')"
 
 ### 坑15
-- **症状**: 手动改了 openclaw.json，doctor --fix 后被覆盖
+- **症状**: 手动改了 elynx.json，doctor --fix 后被覆盖
 - **原因**: doctor 会重新生成标准配置
-- **解决**: 避免用 doctor --fix；只用 openclaw config set 或直接编辑 JSON
+- **解决**: 避免用 doctor --fix；只用 elynx config set 或直接编辑 JSON
 
 ### 坑17
 - **症状**: 任务计划程序中 node 日志停止更新
-- **原因**: while 循环卡在 openclaw 调用（进程运行中），只有退出重试时才写日志
+- **原因**: while 循环卡在 elynx 调用（进程运行中），只有退出重试时才写日志
 - **解决**: 日志不动 = 连接稳定，属正常现象
 
 ### 坑20
 - **症状**: allowlist 已配置 `"*"` + `main`，exec 仍卡死；Telegram 点批准后报 `unknown or expired approval id`，每次超时约 2 分钟
 - **原因**: `exec-approvals.json` 里 socket 路径硬编码为错误用户名（`/home/claw/...`），实际用户是 `elysia`；gateway 启动时找不到路径，socket 创建失败；你在 Telegram 点批准，gateway 根本接收不到信号
-- **解决**: 用 python3 把 socket path 改为正确路径，重启 gateway：`python3 -c "import json; f=open('/home/elysia/.openclaw/exec-approvals.json','r+'); d=json.load(f); d['socket']['path']='/home/elysia/.openclaw/exec-approvals.sock'; f.seek(0); json.dump(d,f,indent=2); f.truncate()"` 然后 `systemctl --user restart openclaw-gateway.service`
+- **解决**: 用 python3 把 socket path 改为正确路径，重启 gateway：`python3 -c "import json; f=open('/home/elysia/.elynx/exec-approvals.json','r+'); d=json.load(f); d['socket']['path']='/home/elysia/.elynx/exec-approvals.sock'; f.seek(0); json.dump(d,f,indent=2); f.truncate()"` 然后 `systemctl --user restart elynx-gateway.service`
 
 ---
 
@@ -452,7 +452,7 @@ Cron agent 使用付费 web_search (Perplexity Sonar) 导致 OpenRouter 扣费
 
 ### Resolution
 - **Resolved**: 2026-03-25T04:35:00+08:00
-- **Notes**: 已从 openclaw.json tools.allow 中移除 web_search，gateway 重启生效
+- **Notes**: 已从 elynx.json tools.allow 中移除 web_search，gateway 重启生效
 
 ### Metadata
 - Reproducible: no (已禁用)
@@ -481,15 +481,15 @@ sessions_spawn 调用被拒绝：agentId not allowed
 ### Context
 - Command: `sessions_spawn(mode="run", agentId="coder", task="...", timeout=600)`
 - Purpose: 创建运维子代理修复 cron 任务
-- System: OpenClaw agent routing
-- Root cause: 调用时指定了 agentId="coder"，但 OpenClaw 当前不允许显式指定 agentId（可能是 agentId="none" 或未配置容许列表）
+- System: Elynyx agent routing
+- Root cause: 调用时指定了 agentId="coder"，但 Elynyx 当前不允许显式指定 agentId（可能是 agentId="none" 或未配置容许列表）
 
 ### Suggested Fix
 移除 agentId 参数，让系统自动路由到 appropriate 模型。如需强制特定模型，使用 `model` 参数（如 model="openrouter/minimax/minimax-m2.5:free"）而不是 agentId。
 
 ### Metadata
 - Reproducible: yes
-- Related Files: openclaw.json (agents defaults)
+- Related Files: elynx.json (agents defaults)
 - See Also: LRN-20260324-006 (PUA ≠ skip confirmation)
 - Recurrence-Cou
 
@@ -619,7 +619,7 @@ with open(path, "w") as f:
 
 ### #4 — pi-ai 覆盖风险
 **现象**: 第一次替换 pi 包时意外把 pi-ai 也覆盖了  
-**解决**: 出现后用 `npm install @mariozechner/pi-ai@0.58.0 --no-save` 恢复
+**解决**: 出现后用 `npm install @elynyx/ai@0.58.0 --no-save` 恢复
 **后续**: 2026-04-07 统一升级到 0.64，deploy.sh 明确列出替换包  
 **预防**: deploy.sh 只替换 `pi-coding-agent`，明确不动其他包
 
@@ -638,8 +638,8 @@ with open(path, "w") as f:
 ---
 
 ### #7 — 包加载路径
-**现象**: ElysiaClaw 从 `node_modules/@mariozechner/` 加载 pi 包，不从系统全局  
-**解决**: 替换对应的目录：`~/.nvm/.../elysiaclaw/node_modules/@mariozechner/pi-coding-agent/`
+**现象**: Elynyx 从 `node_modules/@mariozechner/` 加载 pi 包，不从系统全局  
+**解决**: 替换对应的目录：`~/.nvm/.../elynx/node_modules/@elynyx/coding-agent/`
 
 ---
 
@@ -700,7 +700,7 @@ with open(path, "w") as f:
 ---
 
 ### #17 — 两个工具注册路径
-**现象**: TUI 走 `createPiCodingTools`，Bot 走 `createElysiaClawCodingTools`，是完全独立的路径  
+**现象**: TUI 走 `createPiCodingTools`，Bot 走 `createElynyxCodingTools`，是完全独立的路径  
 **解决**: 新增工具时，两个路径都需要注册
 
 ---
@@ -759,9 +759,9 @@ with open(path, "w") as f:
 ---
 
 ### #25 — Bot 模式绕过 pi-coding-agent ⚠️
-**现象**: `elysiaclaw` 是完全自包含 bundle，bot 请求不经过我们替换的 `pi-coding-agent`，`wrapStreamForCost()` 对 bot 无效  
+**现象**: `elynx` 是完全自包含 bundle，bot 请求不经过我们替换的 `pi-coding-agent`，`wrapStreamForCost()` 对 bot 无效  
 **解决**: 双轨方案：TUI 走 `wrapStreamForCost()` 拦截 done 事件；Bot 走读取 `sessions.json` 的 Python 报告脚本  
-**关键**: 这是理解 ElysiaClaw 架构的核心差异点，永远记住
+**关键**: 这是理解 Elynyx 架构的核心差异点，永远记住
 
 ---
 
@@ -783,8 +783,8 @@ with open(path, "w") as f:
 
 ---
 
-### #29 — openclaw→elysiaclaw 包名迁移导致入口断裂
-**现象**: `elysiaclaw.mjs` 里的 `import("./dist/entry.js")` 是相对路径，通过 symlink 运行时 CWD 不对，CLI 静默失败无输出  
+### #29 — elynx→elynx 包名迁移导致入口断裂
+**现象**: `elynx.mjs` 里的 `import("./dist/entry.js")` 是相对路径，通过 symlink 运行时 CWD 不对，CLI 静默失败无输出  
 **解决**: symlink 直接指向 `dist/entry.js`，不指向 `dist/`
 
 ---
@@ -814,19 +814,19 @@ with open(path, "w") as f:
 ---
 
 ### #33 — Plugin manifest 文件名跟包名走
-**现象**: extensions 目录里的 `openclaw.plugin.json` 需要复制为 `elysiaclaw.plugin.json`，否则 34 个插件全部报 manifest not found  
-**解决**: 批量 rename `openclaw.plugin.json` → `elysiaclaw.plugin.json`
+**现象**: extensions 目录里的 `elynx.plugin.json` 需要复制为 `elynx.plugin.json`，否则 34 个插件全部报 manifest not found  
+**解决**: 批量 rename `elynx.plugin.json` → `elynx.plugin.json`
 
 ---
 
 ### #34 — .bashrc 补全脚本路径残留
-**现象**: 原来引用 `~/.openclaw/completions/openclaw.bash`，每次开终端报 No such file or directory  
-**解决**: 修改 `.bashrc` 中的 source 路径为 `~/.elysiaclaw/completions/elysiaclaw.bash` 或直接删除
+**现象**: 原来引用 `~/.elynx/completions/elynx.bash`，每次开终端报 No such file or directory  
+**解决**: 修改 `.bashrc` 中的 source 路径为 `~/.elynx/completions/elynx.bash` 或直接删除
 
 ---
 
 ### #35 — CLI 输出被吞（根因是 symlink）
-**现象**: `elysiaclaw status` exit 0 但无输出  
+**现象**: `elynx status` exit 0 但无输出  
 **根因**: 同坑 #29，入口 symlink 问题，不是 stdout 被劫持  
 **解决**: 修复入口 symlink 后解决
 
@@ -848,17 +848,17 @@ with open(path, "w") as f:
 
 ### #38 — DTS 类型错误阻塞完整构建
 **现象**: `pnpm build` 在 `build:plugin-sdk:dts` 阶段报 4 个 TS 错误（compaction.ts / compaction-safeguard.ts / model-discovery.ts / skills/config.ts），导致整个构建失败
-**根因**: 这些是 elysiaclaw 与 pi-mono 0.64 API 的预存类型不匹配，不是我们引入的
+**根因**: 这些是 elynx 与 pi-mono 0.64 API 的预存类型不匹配，不是我们引入的
 **解决**: 绕过 `pnpm build`，直接运行 `node scripts/tsdown-build.mjs` + 手动跑剩余构建步骤
 **预防**: 考虑修复这 4 个类型错误，或在 `build:plugin-sdk:dts` 增加 `--skipLibCheck`
 
 ---
 
-### #39 — elysiaclaw 自建 system prompt 不使用 agent-session 的 _buildSystemPrompt
+### #39 — elynx 自建 system prompt 不使用 agent-session 的 _buildSystemPrompt
 **现象**: 在 agent-session.ts 的 `_buildSystemPrompt` 里注入 CODE MODE ACTIVE 段，但 Bot 模式下 LLM 仍然以普通模式回复
-**根因**: elysiaclaw 的 `attempt.ts` 自己通过 `createSystemPromptOverride()` 构建 system prompt，然后用 `applySystemPromptOverrideToSession()` 覆盖 agent session 的 system prompt。agent session 的 `_buildSystemPrompt` 返回值被覆盖掉了
+**根因**: elynx 的 `attempt.ts` 自己通过 `createSystemPromptOverride()` 构建 system prompt，然后用 `applySystemPromptOverrideToSession()` 覆盖 agent session 的 system prompt。agent session 的 `_buildSystemPrompt` 返回值被覆盖掉了
 **解决**: 在 `attempt.ts` 里直接检测 `/code` 和 `/exit`，注入 code mode system prompt 到 `systemPromptText`，同时改变 `effectivePrompt` 为友好消息
-**关键文件**: `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`
+**关键文件**: `elynx/src/agents/pi-embedded-runner/run/attempt.ts`
 **预防**: 理解 Bot 模式和 TUI 模式的 system prompt 构建路径不同（Pitfall #25 的延伸）
 
 ---
@@ -866,16 +866,16 @@ with open(path, "w") as f:
 ### #40 — OpenRouter→阿里云路由劫持
 **现象**: OpenRouter 免费模型请求被静默路由到阿里云 Bailian 端点，响应头显示 provider 不一致，部分工具调用格式不兼容
 **根因**: OpenRouter 对某些免费模型启用了透明代理，实际执行模型与请求模型不同
-**解决**: 临时规避——在 `elysiaclaw.json` 中对受影响模型添加 `baseUrl` 直连阿里云，绕过 OpenRouter 路由层
+**解决**: 临时规避——在 `elynx.json` 中对受影响模型添加 `baseUrl` 直连阿里云，绕过 OpenRouter 路由层
 **状态**: 根因未修，规避方案稳定运行中
-**影响文件**: `~/.elysiaclaw/elysiaclaw.json`（agents 段 baseUrl 配置）
+**影响文件**: `~/.elynx/elynx.json`（agents 段 baseUrl 配置）
 
 ---
 
 ### #41 — config.yaml 结构性损坏导致 gateway 启动报错
 **现象**: gateway 启动时报 schema 校验错误，字段缺失或类型不匹配
 **根因**: 手动编辑 config.yaml 时引入了结构错误（嵌套层级错误或非法字段值）
-**解决**: 用 `python3 -c "import yaml; print(yaml.safe_load(open('/home/elysia/.elysiaclaw/config.yaml').read()))"` 验证，对照错误信息逐字段修正
+**解决**: 用 `python3 -c "import yaml; print(yaml.safe_load(open('/home/elysia/.elynx/config.yaml').read()))"` 验证，对照错误信息逐字段修正
 **预防**: deploy.sh Guard 1 已加入 config.yaml 校验；修改 YAML 后必须先验证再重启
 
 ---
@@ -889,7 +889,7 @@ with open(path, "w") as f:
 ---
 
 ### #49 — pnpm install 污染 npm workspace 依赖树
-**现象**: 在 pi-mono 根目录运行 `pnpm install` 后，`npm run build` 报大量 `@mariozechner/pi-agent-core@0.30.2` 相关类型错误，而正确版本是 0.64.0
+**现象**: 在 pi-mono 根目录运行 `pnpm install` 后，`npm run build` 报大量 `@elynyx/agent-core@0.30.2` 相关类型错误，而正确版本是 0.64.0
 **根因**: pnpm 从 registry 拉取了旧版本放进 `node_modules/.pnpm/`，pods 包的 TypeScript 解析器找到了错误版本
 **解决**: `rm -rf node_modules && npm install` — 清掉 pnpm 引入的垃圾，恢复 npm workspace
 **预防**: pi-mono 的包管理器是 npm，**永远不要在根目录运行 pnpm install**；新增依赖用 `npm install --workspace=packages/coding-agent <pkg>`
@@ -903,9 +903,9 @@ with open(path, "w") as f:
 
 ---
 
-### #44 — elysiaclaw status 显示 Tailscale off 但实际运行中（原 #38 重编号）
-**现象**: `elysiaclaw status` 显示 "Tailscale off"，但 `tailscale status` 确认 Tailscale active (IP 100.111.4.5)
-**原因**: elysiaclaw status 的 Tailscale 检测逻辑可能未正确识别运行状态
+### #44 — elynx status 显示 Tailscale off 但实际运行中（原 #38 重编号）
+**现象**: `elynx status` 显示 "Tailscale off"，但 `tailscale status` 确认 Tailscale active (IP 100.111.4.5)
+**原因**: elynx status 的 Tailscale 检测逻辑可能未正确识别运行状态
 **影响**: 文档记录需以 `tailscale status` 实际输出为准
 
 ---
@@ -928,7 +928,7 @@ with open(path, "w") as f:
 
 ### #47 — src/index.ts 缺少 undoAction/fileHistoryList/modelSpeedProbe re-export
 **现象**: `tools/index.ts` 已导出 `modelSpeedProbeTool/Definition`、`undoActionTool/Definition`、`fileHistoryListTool/Definition`，但 `src/index.ts`（Master tool export）未 re-export
-**影响**: 外部消费者（如 elysiaclaw.mjs bundle）无法通过 `@mariozechner/pi-coding-agent` 包导入这三对工具
+**影响**: 外部消费者（如 elynx.mjs bundle）无法通过 `@elynyx/coding-agent` 包导入这三对工具
 **解决**: 2026-04-05 架构优化 Sprint 中在 src/index.ts 追加 6 个 re-export
 **预防**: 同 #46
 
@@ -970,13 +970,13 @@ with open(path, "w") as f:
 | 工具注册遗漏 | #46, #47 |
 | pnpm/npm 混用 | #49, #52 |
 | 工具注册四层遗漏 | #51 |
-| elysiaclaw 构建部署 | #53 |
+| elynx 构建部署 | #53 |
 | Bot/TUI 工具路径 | #54 |
 | web_search API 密钥 | #55 |
 | 新工具 ToolDefinition 接口 | #50 |
 | pnpm/npm 混用 | #49, #52 |
 | 工具注册四层遗漏 | #51 |
-| elysiaclaw 构建部署 | #53 |
+| elynx 构建部署 | #53 |
 | Bot/TUI 工具路径 | #54 |
 | web_search API 密钥 | #55 |
 | OpenRouter 路由 | #40 |
@@ -992,10 +992,10 @@ with open(path, "w") as f:
 
 ### #50 — The "Vibe" vs. "Environment" Discrepancy
 **Phenomenon**: Code that works in Claude Artifacts/WebContainers fails in the real `elysiaserver`.
-**Root Cause**: Permission gates, environment variables, or specific Python async loops (OpenClaw) not being simulated in the browser.
+**Root Cause**: Permission gates, environment variables, or specific Python async loops (Elynyx) not being simulated in the browser.
 **Prevention**: Always treat Web-based output as "Prototype Only". Final validation must happen via `npm run build` and `deploy.sh`.
 
-### #51 — elysiaclaw tool registration four-layer gap
+### #51 — elynx tool registration four-layer gap
 **Phenomenon**: pi-coding-agent tools not available in Bot mode
 **Root Cause**: Tool needs four layers correct: pi-coding-agent define, pi-tools.ts import, tool-catalog.ts define, tools.allow
 **Missing**: grep, find, ls, plan_mode, todo_write, worktree, file_history, model_speed_probe
@@ -1005,21 +1005,21 @@ with open(path, "w") as f:
 ### #52 — pnpm/npm mix causes dependency pollution
 **Phenomenon**: Running pnpm install in pi-mono root corrupts npm workspace
 **Fix**: rm -rf node_modules && npm install
-**Prevention**: pi-mono uses npm, elysiaclaw uses pnpm, never mix
+**Prevention**: pi-mono uses npm, elynx uses pnpm, never mix
 
-### #53 — elysiaclaw build needs manual deploy
-**Phenomenon**: pnpm build in elysiaclaw does not update global install
-**Fix**: cp -r dist/* to ~/.nvm/.../elysiaclaw/dist/
+### #53 — elynx build needs manual deploy
+**Phenomenon**: pnpm build in elynx does not update global install
+**Fix**: cp -r dist/* to ~/.nvm/.../elynx/dist/
 **Prevention**: deploy.sh only handles pi-coding-agent
 
 ### #54 — Bot vs TUI tool path difference
 **Phenomenon**: Tools available in TUI but not Bot (or vice versa)
-**Root Cause**: TUI uses createPiCodingTools, Bot uses createElysiaClawCodingTools
+**Root Cause**: TUI uses createPiCodingTools, Bot uses createElynyxCodingTools
 **Fix**: Check both paths when adding tools
 
 ### #55 — web_search needs API key
 **Phenomenon**: web_search registered but fails with missing API key
-**Fix**: Add BRAVE_API_KEY to ~/.elysiaclaw/.env or use OPENROUTER_API_KEY
+**Fix**: Add BRAVE_API_KEY to ~/.elynx/.env or use OPENROUTER_API_KEY
 
 ### #56 — Pure interface re-export breaks ESM runtime
 **现象**: `export { LearningData, TaskPattern } from "./session-learner.js"` 在 tsx 运行时抛出 `SyntaxError: does not provide an export named 'LearningData'`
@@ -1066,7 +1066,7 @@ with open(path, "w") as f:
 
 ### #63 -- DTS 类型错误数量在增加而非减少
 **现象**: `pnpm build` 在 `build:plugin-sdk:dts` 阶段报错。2026-04-07 记录为 4 个错误，2026-04-10 确认为 6 个错误（compaction.ts / attempt.ts / compaction-safeguard.ts / model-discovery.ts / skills/config.ts + 新增 1 个）
-**根因**: elysiaclaw 与 pi-mono 0.64 API 的预存类型不匹配，每次新增代码可能引入新的类型冲突
+**根因**: elynx 与 pi-mono 0.64 API 的预存类型不匹配，每次新增代码可能引入新的类型冲突
 **当前状态**: 绕过方式 `node scripts/tsdown-build.mjs` + 手动步骤（PITFALLS #38）
 **风险**: 绕过方式不应成为常态。错误数量在增加说明类型系统正在漂移，继续绕过会导致最终无法修复
 **建议**: 专项安排一个 Sprint 修复全部 6 个 DTS 错误，目标是 `pnpm build` 全流程通过
@@ -1088,17 +1088,17 @@ with open(path, "w") as f:
 | pnpm build 阻塞 | #38, #63 |
 | delegate_code_task / 子代理分发 | #64 |
 | tsdown tree-shake | #68 |
-| elysiaclaw dist 部署遗漏 | #69 |
+| elynx dist 部署遗漏 | #69 |
 | deploy.sh extensions 未同步 | #71 |
 | plugin allowlist 时序误报 | #72 |
 
 ---
 
 ### #65 — createDelegateCodeTaskTool 未注册到工具数组
-**现象**: `delegate_code_task` 在 tool-catalog.ts 中有定义，elysiaclaw-tools.ts 有 import，但 Gateway 启动日志始终报 `tools.allow allowlist contains unknown entries (delegate_code_task)`
-**根因**: `createElysiaClawTools()` 函数中 `tools` 数组从未调用 `createDelegateCodeTaskTool()`。import 了函数但没有使用它。
-**解决**: 在 `elysiaclaw-tools.ts` 的 `tools` 数组中添加 `createDelegateCodeTaskTool({...})` 调用
-**预防**: 新增工具后必须确认：(1) import 存在 (2) 在 `createElysiaClawTools` 的 `tools` 数组中有调用 (3) deploy 后 `grep "unknown entries"` 日志为空
+**现象**: `delegate_code_task` 在 tool-catalog.ts 中有定义，elynx-tools.ts 有 import，但 Gateway 启动日志始终报 `tools.allow allowlist contains unknown entries (delegate_code_task)`
+**根因**: `createElynyxTools()` 函数中 `tools` 数组从未调用 `createDelegateCodeTaskTool()`。import 了函数但没有使用它。
+**解决**: 在 `elynx-tools.ts` 的 `tools` 数组中添加 `createDelegateCodeTaskTool({...})` 调用
+**预防**: 新增工具后必须确认：(1) import 存在 (2) 在 `createElynyxTools` 的 `tools` 数组中有调用 (3) deploy 后 `grep "unknown entries"` 日志为空
 
 ### #66 — 子代理 label 重名冲突
 **现象**: `sessions.patch` 返回 `errorCode=INVALID_REQUEST errorMessage=label already in use: code-analysis`
@@ -1114,21 +1114,21 @@ with open(path, "w") as f:
 
 ### #68 — tsdown tree-shake 误删未识别的动态导入函数
 **现象**: `createDelegateCodeTaskTool` 在源码中存在 import + 调用，tool-catalog.ts 中有 `delegate_code_task` 定义，但 Gateway 启动日志始终报 `tools.allow allowlist contains unknown entries (delegate_code_task)`
-**根因**: tsdown (esbuild) 在构建 elysiaclaw 时，将 `createDelegateCodeTaskTool` 函数声明 tree-shake 掉了——函数体未出现在任何 dist chunk 中，但 tool-catalog 的字符串元数据保留了下来。结果是 catalog 注册了名字，runtime 却找不到工具对象。
+**根因**: tsdown (esbuild) 在构建 elynx 时，将 `createDelegateCodeTaskTool` 函数声明 tree-shake 掉了——函数体未出现在任何 dist chunk 中，但 tool-catalog 的字符串元数据保留了下来。结果是 catalog 注册了名字，runtime 却找不到工具对象。
 **排查过程**:
 1. `grep -rl "delegate_code_task" dist/` → 找到 reply chunk（6 处）
 2. `grep "createDelegateCodeTaskTool" dist/reply-*.js` → 空（函数体丢失）
 3. 结论：tsdown tree-shake 误删
 **解决**: 重新执行 `node scripts/tsdown-build.mjs` + `cp -r dist/*` 到全局 + `gateway restart`
-**预防**: deploy.sh 中 elysiaclaw 构建步骤应验证关键工具函数是否被打包
+**预防**: deploy.sh 中 elynx 构建步骤应验证关键工具函数是否被打包
 
 ---
 
-### #69 — elysiaclaw dist 部署遗漏（deploy.sh 不覆盖 elysiaclaw 全局安装）
-**现象**: elysiaclaw 源码已修改并本地构建成功，但全局安装的 dist 未更新，Gateway 运行的是旧产物
-**根因**: `deploy.sh` 只负责 pi-mono 框架层的 4 个包部署到 `node_modules/@mariozechner/`，不负责 elysiaclaw dist 部署到全局（PITFALLS #53 已记录但容易遗忘）
-**解决**: 构建后手动 `cp -r dist/* ~/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw/dist/`
-**预防**: 高频警告中增加"elysiaclaw 构建后必须手动部署到全局"
+### #69 — elynx dist 部署遗漏（deploy.sh 不覆盖 elynx 全局安装）
+**现象**: elynx 源码已修改并本地构建成功，但全局安装的 dist 未更新，Gateway 运行的是旧产物
+**根因**: `deploy.sh` 只负责 pi-mono 框架层的 4 个包部署到 `node_modules/@mariozechner/`，不负责 elynx dist 部署到全局（PITFALLS #53 已记录但容易遗忘）
+**解决**: 构建后手动 `cp -r dist/* ~/.nvm/versions/node/v22.22.1/lib/node_modules/elynx/dist/`
+**预防**: 高频警告中增加"elynx 构建后必须手动部署到全局"
 
 ### #70 — Telegram tool lane 因 minInitialChars 防抖导致短标签无法显示
 **现象**: 工具调用流式输出偶尔出现但不显著——工具标签（如 "📖 Read" 7字符）显示后立即消失，实际执行命令未输出
@@ -1137,10 +1137,10 @@ with open(path, "w") as f:
 **预防**: Draft lane 的新消费者应检查 minInitialChars 是否适合其内容长度
 
 ### #71 — deploy.sh 未同步 extensions 导致 plugin 代码陈旧（根因级）
-**现象**: 源码中 `extensions/memory-core/index.ts` 已更新为新 API（`ElysiaClawPluginApi`），但 Agent session 中 `memory_search` 工具不可用。Gateway API `/tools/invoke` 返回 `"Tool not available: memory_search"`
-**诊断链**: 源码验证（T4-T6 代码正确）→ CLI 验证（memory status ✅）→ Gateway API（❌）→ 日志（group:memory unknown）→ session JSONL（"Tool not found"）→ plugin 加载链追踪 → **部署版本对比：全局 `node_modules/elysiaclaw/extensions/memory-core/index.ts` 仍是 4 月旧版（`OpenClawPluginApi` 类型）**
-**根因**: `deploy.sh` 只负责 pi-mono 框架层 4 个包 + elysiaclaw dist 部署，**从未同步 `extensions/` 目录**。Plugin 源码通过 jiti 直接加载 `.ts` 文件，旧版 plugin factory 使用错误的 API 类型导致 `registerTool` 回调返回 null，工具静默缺失。
-**解决**: deploy.sh 新增 Step 9 — 遍历 `elysiaclaw/extensions/*/` 下每个子目录，`rm -rf` 目标后 `cp -r` 同步到全局 `node_modules/elysiaclaw/extensions/`。同时新增 Guard 3（dist 完整性校验）和 Guard 5（E2E 验证）防止复发。
+**现象**: 源码中 `extensions/memory-core/index.ts` 已更新为新 API（`ElynyxPluginApi`），但 Agent session 中 `memory_search` 工具不可用。Gateway API `/tools/invoke` 返回 `"Tool not available: memory_search"`
+**诊断链**: 源码验证（T4-T6 代码正确）→ CLI 验证（memory status ✅）→ Gateway API（❌）→ 日志（group:memory unknown）→ session JSONL（"Tool not found"）→ plugin 加载链追踪 → **部署版本对比：全局 `node_modules/elynx/extensions/memory-core/index.ts` 仍是 4 月旧版（`ElynyxPluginApi` 类型）**
+**根因**: `deploy.sh` 只负责 pi-mono 框架层 4 个包 + elynx dist 部署，**从未同步 `extensions/` 目录**。Plugin 源码通过 jiti 直接加载 `.ts` 文件，旧版 plugin factory 使用错误的 API 类型导致 `registerTool` 回调返回 null，工具静默缺失。
+**解决**: deploy.sh 新增 Step 9 — 遍历 `elynx/extensions/*/` 下每个子目录，`rm -rf` 目标后 `cp -r` 同步到全局 `node_modules/elynx/extensions/`。同时新增 Guard 3（dist 完整性校验）和 Guard 5（E2E 验证）防止复发。
 **预防**: 
 1. 每次修改 `extensions/` 下的 plugin 源码后，必须执行 `./deploy.sh` 或手动同步 extensions
 2. deploy.sh Guard 5 的 E2E 验证会在 Gateway 重启后实际调用 `memory_search`，确保 plugin 工具可用
@@ -1179,14 +1179,14 @@ with open(path, "w") as f:
 **未修待定**: `input-classifier.ts:224` 路径检测 `/[./]\w{2,}/` 中 `\w` 不匹配中文，且 `text.includes("/")` 让"和/或"误判 task。over-broad 但方向与设计一致，已写测试锁定当前行为，未改（收紧需产品决策）。
 
 ### #76 — deploy.sh Step 9 extensions 同步丢弃子目录，且旧版 manifest 名未适配
-**现象**: deploy.sh 运行后 `elysiaclaw gateway restart` 失败：① `plugin manifest not found: extensions/acpx/elysiaclaw.plugin.json`（40 个 plugin 全部报错）；② telegram plugin 加载失败 `Cannot find module './src/channel.js'`
-**根因 A — manifest 命名**: 各 extension 源目录中 manifest 文件名为 `openclaw.plugin.json`（继承自 OpenClaw 上游），但 gateway 校验器期望 `elysiaclaw.plugin.json`。deploy.sh Step 9 原样同步，旧名跟着来，gateway 找不到。
+**现象**: deploy.sh 运行后 `elynx gateway restart` 失败：① `plugin manifest not found: extensions/acpx/elynx.plugin.json`（40 个 plugin 全部报错）；② telegram plugin 加载失败 `Cannot find module './src/channel.js'`
+**根因 A — manifest 命名**: 各 extension 源目录中 manifest 文件名为 `elynx.plugin.json`（继承自 Elynyx 上游），但 gateway 校验器期望 `elynx.plugin.json`。deploy.sh Step 9 原样同步，旧名跟着来，gateway 找不到。
 **根因 B — 子目录丢弃**: Step 9 用 `find "$ext_dir" -maxdepth 1 -type f` 只复制顶层文件，忽略子目录。telegram extension 的 `src/channel.ts` 在 `telegram/src/` 子目录下，未同步到全局，jiti 加载时找不到 `./src/channel.js`。
 **影响**: 所有 plugin 加载失败，gateway 无法启动（config invalid）。
 **解决**:
-1. 源目录批量 `cp openclaw.plugin.json elysiaclaw.plugin.json`（40 个 extension）
-2. 手动 `cp -r elysiaclaw/extensions/telegram/src $GLOBAL/extensions/telegram/src`
-3. deploy.sh Step 9 修复：① 增加子目录递归复制（排除 node_modules/skills/dist）；② 自动检测并复制 `elysiaclaw.plugin.json`（当全局只有 `openclaw.plugin.json` 时）
+1. 源目录批量 `cp elynx.plugin.json elynx.plugin.json`（40 个 extension）
+2. 手动 `cp -r elynx/extensions/telegram/src $GLOBAL/extensions/telegram/src`
+3. deploy.sh Step 9 修复：① 增加子目录递归复制（排除 node_modules/skills/dist）；② 自动检测并复制 `elynx.plugin.json`（当全局只有 `elynx.plugin.json` 时）
 **预防**: extension 子目录同步必须显式处理；manifest 命名不一致是 fork 遗留历史债，在 deploy.sh 中用自动适配而非手动修。
 
 ### #77 — deploy.sh Step 9 子目录递归在「无子目录 extension」上 glob 字面量 + set -e 中止
@@ -1222,7 +1222,7 @@ When using `parallel-search-aggregator`:
 | 来源 | 条目数 |
 |------|--------|
 | LEARNINGS.md | 22 |
-| openclaw-bugs.md | 20 |
+| elynx-bugs.md | 20 |
 | ERRORS.md | 9 |
 | PITFALLS.md | 76 |
 | RESOLVED.md | 1 |

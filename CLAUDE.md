@@ -27,7 +27,7 @@ pi-mono fork，由 **aoseluo (云尘 / 奈緒)** 以 AI 协作模式独立维护
 | 层级 | 包管理器 | 位置 |
 |------|----------|------|
 | pi-mono 框架层 | **npm** (workspaces) | 根目录 + `packages/*` |
-| elysiaclaw 应用层 | **pnpm** | `elysiaclaw/` |
+| elynx 应用层 | **pnpm** | `elynx/` |
 
 两者不可混用。
 
@@ -111,9 +111,9 @@ Create provider file exporting:
 ### 5. Tests (`packages/ai/test/`)
 Add provider to: `stream.test.ts`, `tokens.test.ts`, `abort.test.ts`, `empty.test.ts`, `context-overflow.test.ts`, `image-limits.test.ts`, `unicode-surrogate.test.ts`, `tool-call-without-result.test.ts`, `image-tool-result.test.ts`, `total-tokens.test.ts`, `cross-provider-handoff.test.ts`.
 
-### 6. Coding Agent (`packages/coding-agent/`)
-- `src/core/model-resolver.ts`: Add default model ID to `DEFAULT_MODELS`
-- `src/cli/args.ts`: Add env var documentation
+### 6. Coding Agent (`elysiaclaw/src/agents/coding-agent/`)
+- `core/model-resolver.ts`: Add default model ID to `DEFAULT_MODELS`
+- `cli/args.ts`: Add env var documentation
 - `README.md`: Add provider setup instructions
 
 ### 7. Documentation

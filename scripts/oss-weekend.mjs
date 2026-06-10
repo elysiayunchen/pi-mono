@@ -3,7 +3,7 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import process from "node:process";
 
 const TIME_ZONE = "Europe/Berlin";
-const DEFAULT_README_PATHS = ["README.md", "packages/coding-agent/README.md"];
+const DEFAULT_README_PATHS = ["README.md"];
 const DEFAULT_STATE_PATH = ".github/oss-weekend.json";
 const MARKER_START = "<!-- OSS_WEEKEND_START -->";
 const MARKER_END = "<!-- OSS_WEEKEND_END -->";
@@ -225,7 +225,7 @@ function printUsage() {
       "Options:",
       "  --mode=close|open     Required. close enables OSS weekend mode. open disables it.",
       "  --end-date=YYYY-MM-DD Required for --mode=close.",
-      "  --readme=PATHS        Optional comma-separated README paths. Defaults to README.md,packages/coding-agent/README.md.",
+      "  --readme=PATHS        Optional comma-separated README paths. Defaults to README.md.",
       "  --state=PATH          Optional state file path. Defaults to .github/oss-weekend.json.",
       "  --git                 Stage only the OSS weekend files, commit, and push after updating them.",
       "  --dry-run             Preview without editing files or running git operations.",

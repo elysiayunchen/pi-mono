@@ -1,14 +1,14 @@
-# Claude Code vs ElysiaClaw — 逐层对标分析
+# Claude Code vs Elynyx — 逐层对标分析
 
 > 基于 Claude Code v2.1.88 源码分析（`/home/elysia/pi-mono/claude-code-source-code-main/src`）
-> 与 ElysiaClaw 0.64 自研扩展的逐层机制对比。
+> 与 Elynyx 0.64 自研扩展的逐层机制对比。
 > 面向 AI 协作者和未来维护者，用于指导功能补全和架构演进。
 
 ---
 
 ## 对标总览
 
-| 层 | 机制 | Claude Code | ElysiaClaw | 对等度 |
+| 层 | 机制 | Claude Code | Elynyx | 对等度 |
 |---|---|---|---|---|
 | s01 | The Loop | `query.ts` while-true 循环 | `agent-loop.ts` Agent.runLoop() | ✅ 对等 |
 | s02 | Tool Dispatch | `buildTool()` factory + registry | `ToolDefinition` + `createXxxTool()` | ✅ 对等 |
@@ -45,7 +45,7 @@ no → return text
 text
 text
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/agent/src/agent-loop.ts`
 - **核心模式**: `Agent.runLoop()`，相同 while-true + tool_use 检查
@@ -55,7 +55,7 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | 循环结构 | while-true + stop_reason 检查 | 相同 |
 | 流式 | 全链路 AsyncGenerator | subscribe 事件模型 |
@@ -63,13 +63,13 @@ text
 | 速率调度 | 无内置（依赖 API 限流） | P2-D 令牌桶调度器 ✅ 优势 |
 | Token 预算 | 无内置 | P1-C context_pressure ✅ 优势 |
 
-**结论**: ✅ 对等。ElysiaClaw 在速率调度和 token 管理方面有额外优势。
+**结论**: ✅ 对等。Elynyx 在速率调度和 token 管理方面有额外优势。
 
 ---
 
 ### 接口增强 — ToolDefinition 扩展 (Task 0, 2026-04-10)
 
-ElysiaClaw 的 `ToolDefinition` 接口已从 7 个核心字段扩展到 **18 个可选字段**，对标 Claude Code `Tool` 接口的 25+ 方法。
+Elynyx 的 `ToolDefinition` 接口已从 7 个核心字段扩展到 **18 个可选字段**，对标 Claude Code `Tool` 接口的 25+ 方法。
 
 **新增字段** (11 个):
 - 能力声明: `isConcurrencySafe?`, `isReadOnly?`, `isDestructive?`
@@ -108,7 +108,7 @@ buildTool(definition) → Tool<Input, Output, Progress>
 text
 text
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/coding-agent/src/tools/index.ts` + `src/index.ts`
 - **核心模式**: `ToolDefinition` 接口 (18 字段) + `createXxxTool()` 工厂 + `wrapToolDefinition()` 包装器
@@ -117,7 +117,7 @@ text
 
 **已实现工具映射**:
 
-| Claude Code 工具 | ElysiaClaw 工具 | 状态 |
+| Claude Code 工具 | Elynyx 工具 | 状态 |
 |---|---|---|
 | FileReadTool | readToolDefinition | ✅ |
 | FileEditTool | editToolDefinition | ✅ |
@@ -155,7 +155,7 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | 工厂数 | 40+ | 31 (接口已扩展至 18 字段) |
 | 并行执行 | StreamingToolExecutor（自动分区） | 串行执行 |
@@ -175,14 +175,14 @@ text
 - **机制**: 进入 Plan Mode 后，LLM 先列出步骤清单，用户确认后逐步执行
 - **效果**: 文档称"doubles completion rate"
 
-### ElysiaClaw
+### Elynyx
 
 - **工具**: `enterPlanModeToolDefinition` / `exitPlanModeToolDefinition` / `todoWriteToolDefinition`
 - **机制**: 相同的 Plan Mode + Todo 清单模式
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | Plan Mode | ✅ | ✅ |
 | TodoWrite | ✅ | ✅ |
@@ -204,7 +204,7 @@ text
   - `remote`: bridge 到 Claude Code Remote / 容器
 - **通信**: SendMessageTool 异步邮箱
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/coding-agent/src/core/agent-session.ts` (fork path)
 - **spawn 模式**:
@@ -214,7 +214,7 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | 进程级 fork | ✅ (child process) | ❌ (同进程) |
 | Remote agent | ✅ (bridge) | ❌ |
@@ -233,7 +233,7 @@ text
 - **机制**: CLAUDE.md 文件按目录懒加载，通过 `tool_result` 注入而非 system prompt
 - **优势**: 保护 prompt cache，只在需要时加载知识
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/coding-agent/src/core/claude-md-loader.ts`
 - **机制**: 相同的 CLAUDE.md 懒加载 + skills 系统（`~/.pi/agent/skills/`）
@@ -241,7 +241,7 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | CLAUDE.md 懒加载 | ✅ | ✅ |
 | tool_result 注入 | ✅ | ✅ |
@@ -271,7 +271,7 @@ text
 text
 - **环境变量**: `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/coding-agent/src/core/compaction/multi-layer.ts` + `auto-compact.ts`
 - **三层策略**:
@@ -291,7 +291,7 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | 摘要层数 | 3 层 (auto + snip + collapse) | 3 层 (snip + micro + auto) |
 | 摘要 API 调用 | ✅ | ✅ |
@@ -300,7 +300,7 @@ text
 | Token 预算管理 | 基于 contextWindow 动态计算 | 固定常量 |
 | context_pressure 事件 | 无 | ✅ P1-C 优势 |
 
-**结论**: ⚠️ 核心压缩对等，但 Claude Code 的动态阈值计算和 contextCollapse 更精细。ElysiaClaw 的 context_pressure 事件是独有优势。
+**结论**: ⚠️ 核心压缩对等，但 Claude Code 的动态阈值计算和 contextCollapse 更精细。Elynyx 的 context_pressure 事件是独有优势。
 
 ---
 
@@ -311,7 +311,7 @@ text
 - **工具**: TaskCreateTool / TaskUpdateTool / TaskGetTool / TaskListTool / TaskStopTool
 - **机制**: 文件持久化的任务图，支持状态追踪和依赖关系
 
-### ElysiaClaw
+### Elynyx
 
 - **工具**: taskCreate / taskUpdate / taskGet / taskList / taskStop / taskOutput
 - **文件**: `packages/coding-agent/src/core/tasks/task-store.ts`
@@ -319,13 +319,13 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | CRUD | Create/Update/Get/List/Stop | Create/Update/Get/List/Stop + Output ✅ |
 | 持久化 | 文件系统 | 文件系统 |
 | 依赖关系 | ✅ | 未确认 |
 
-**结论**: ✅ 对等，ElysiaClaw 多一个 taskOutput 工具。
+**结论**: ✅ 对等，Elynyx 多一个 taskOutput 工具。
 
 ---
 
@@ -337,14 +337,14 @@ text
 - **机制**: daemon 线程运行命令，完成后注入通知
 - **feature-gated**: `daemon/main.js`, `daemon/workerRegistry.js` (DAEMON flag)
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/coding-agent/src/core/background-runner.ts`
 - **机制**: 单例模式，后台运行 bash 命令，通过 `injectNotification()` 通知 agent
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | 后台执行 | ✅ (daemon 线程) | ✅ (singleton) |
 | 完成通知 | ✅ | ✅ (injectNotification) |
@@ -362,7 +362,7 @@ text
 - **工具**: TeamCreateTool / TeamDeleteTool + InProcessTeammateTask
 - **机制**: 持久化 teammates + 异步邮箱
 
-### ElysiaClaw
+### Elynyx
 
 - **工具**: teamCreate / teamDelete / teamList
 - **文件**: `packages/coding-agent/src/core/team-create.ts`
@@ -370,13 +370,13 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | 团队 CRUD | Create/Delete | Create/Delete/List ✅ |
 | 异步邮箱 | ✅ | ✅ (send-message) |
 | InProcessTeammate | ✅ | 同进程 teammate |
 
-**结论**: ✅ 对等，ElysiaClaw 多一个 teamList。
+**结论**: ✅ 对等，Elynyx 多一个 teamList。
 
 ---
 
@@ -387,7 +387,7 @@ text
 - **工具**: SendMessageTool
 - **机制**: 统一 request-response 模式驱动所有 agent 间协商
 
-### ElysiaClaw
+### Elynyx
 
 - **工具**: sendMessageToolDefinition
 - **文件**: `packages/coding-agent/src/core/send-message.ts`
@@ -405,14 +405,14 @@ text
 - **实现**: `coordinator/coordinatorMode.ts`
 - **机制**: idle 循环 + 自动认领任务，无需 lead agent 逐一分配
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/coding-agent/src/core/autonomous-runner.ts`
 - **机制**: `claimAndRun()` — fire-and-forget 执行器
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | 自主认领 | ✅ (coordinator mode) | ✅ (claimAndRun) |
 | idle 扫描 | ✅ | 未确认 |
@@ -429,7 +429,7 @@ text
 - **工具**: EnterWorktreeTool / ExitWorktreeTool
 - **机制**: git worktree 创建隔离目录，任务绑定 ID
 
-### ElysiaClaw
+### Elynyx
 
 - **文件**: `packages/coding-agent/src/core/worktree-manager.ts`
 - **工具**: enterWorktreeToolDefinition / exitWorktreeToolDefinition
@@ -438,28 +438,28 @@ text
 
 ### 差异分析
 
-| 维度 | Claude Code | ElysiaClaw |
+| 维度 | Claude Code | Elynyx |
 |---|---|---|
 | git worktree | ✅ | ✅ |
 | 降级策略 | 未确认 | ✅ (降级为普通目录) |
 | 天然沙箱 | ✅ | ✅ (createBashTool 绑定 cwd) |
 
-**结论**: ✅ 对等，ElysiaClaw 有降级策略优势。
+**结论**: ✅ 对等，Elynyx 有降级策略优势。
 
 ---
 
-## 补丁层对比（P 系列 — ElysiaClaw 独有）
+## 补丁层对比（P 系列 — Elynyx 独有）
 
-Claude Code 没有对应的"补丁"概念，这些是 ElysiaClaw 在 pi-mono 基础上的独有增强：
+Claude Code 没有对应的"补丁"概念，这些是 Elynyx 在 pi-mono 基础上的独有增强：
 
 | 补丁 | 机制 | Claude Code 对应 | 说明 |
 |---|---|---|---|
 | P1-A | patch-agent.cjs 幂等保护 | N/A (闭源，无需 patch) | 保护 monkey-patch |
-| P1-B | CLAUDE.md 懒加载 | s05 原生支持 | ElysiaClaw 移植 |
-| P1-C | context_pressure 事件 | 无对应 | ElysiaClaw 独有 |
+| P1-B | CLAUDE.md 懒加载 | s05 原生支持 | Elynyx 移植 |
+| P1-C | context_pressure 事件 | 无对应 | Elynyx 独有 |
 | P2-A | Session Persistence + Resume | `--continue` / `--resume` | 功能对等 |
 | P2-B | Cost Tracker | cost-tracker.ts | 功能对等 |
-| P2-D | 速率调度器（三阶段） | 无内置 | ElysiaClaw 独有优势 |
+| P2-D | 速率调度器（三阶段） | 无内置 | Elynyx 独有优势 |
 | P3-A | PreToolUse Shell Hooks | settings.json hooks | 功能对等 |
 | P3-B | File History / Undo | FileHistoryState | 功能对等 |
 
@@ -493,7 +493,7 @@ Claude Code 没有对应的"补丁"概念，这些是 ElysiaClaw 在 pi-mono 基
 | **Remote agent** | 无远程 agent 支持 | 个人使用场景不需要 |
 | **DreamTask** | 无"思考"型后台任务 | 可通过 background-runner 模拟 |
 
-### 🟢 ElysiaClaw 独有优势
+### 🟢 Elynyx 独有优势
 
 | 优势 | 说明 |
 |---|---|
@@ -535,4 +535,4 @@ Claude Code 没有对应的"补丁"概念，这些是 ElysiaClaw 在 pi-mono 基
 
 ---
 
-*文档版本: 2026-04-10 (v2)，2026-06-05 小幅更新。基于 Claude Code v2.1.88 源码分析与 ElysiaClaw 0.64 架构。ToolDefinition 接口已扩展 (Task 0)。GrepTool 已增强 (Task 1)。BashTool 已增强 (Task 2)。Tool Parity 完成率 3/16 (18.75%)。Code Mode 已废弃，由 delegate_code_task 替代。DTS 错误 6 个需专项修复。*
+*文档版本: 2026-04-10 (v2)，2026-06-05 小幅更新。基于 Claude Code v2.1.88 源码分析与 Elynyx 0.64 架构。ToolDefinition 接口已扩展 (Task 0)。GrepTool 已增强 (Task 1)。BashTool 已增强 (Task 2)。Tool Parity 完成率 3/16 (18.75%)。Code Mode 已废弃，由 delegate_code_task 替代。DTS 错误 6 个需专项修复。*

@@ -1,24 +1,24 @@
-# ElysiaClaw — 个人 AI 助手平台
+# Elynyx — 个人 AI 助手平台
 
 <p align="center">
   <a href="https://github.com/elysiayunchen/pi-mono"><img alt="GitHub Repo" src="https://img.shields.io/badge/repo-elysiayunchen%2Fpi--mono-333?style=flat-square&logo=github" /></a>
 </p>
 
-> 多渠道个人 AI 助手平台。Telegram bot `@ElysiaClaw_Bot` 是主要交互入口。
+> 多渠道个人 AI 助手平台。Telegram bot `@Elynyx_Bot` 是主要交互入口。
 
-ElysiaClaw 的代码继承链：**pi-mono**（Agent 框架，by Mario Zechner）→ **OpenClaw**（多渠道 Gateway，by Peter Steinberger，fork pi-mono 作为 SDK 依赖）→ **ElysiaClaw**（fork OpenClaw，因此同时继承了 pi-mono 和 OpenClaw 两个代码库，并进行统一深度定制），实现了对标 Claude Code 的完整 Agent 架构。
+Elynyx 的代码继承链：**pi-mono**（Agent 框架，by Mario Zechner）→ **Elynyx**（多渠道 Gateway，by Peter Steinberger，fork pi-mono 作为 SDK 依赖）→ **Elynyx**（fork Elynyx，因此同时继承了 pi-mono 和 Elynyx 两个代码库，并进行统一深度定制），实现了对标 Claude Code 的完整 Agent 架构。
 
 ## 项目结构
 
 ```
 pi-mono/                         ← 本仓库
 ├── packages/
-│   ├── agent/                   @mariozechner/pi-agent-core    Agent 核心循环 + 事件流
-│   ├── ai/                      @mariozechner/pi-ai            统一 LLM API（20+ 提供商）
-│   ├── coding-agent/            @mariozechner/pi-coding-agent  编码 Agent SDK + 工具框架
-│   └── tui/                     @mariozechner/pi-tui           终端 UI（差分渲染）
+│   ├── agent/                   @elynyx/agent-core    Agent 核心循环 + 事件流
+│   ├── ai/                      @elynyx/ai            统一 LLM API（20+ 提供商）
+│   ├── coding-agent/            @elynyx/coding-agent  编码 Agent SDK + 工具框架
+│   └── tui/                     @elynyx/tui           终端 UI（差分渲染）
 │
-├── elysiaclaw/                  ← 应用层（独立 git 仓库，需单独 clone）
+├── elynx/                  ← 应用层（独立 git 仓库，需单独 clone）
 │   └── src/agents/              渠道适配 / Gateway / 应用工具 / Cron 系统
 │
 ├── engine/                      ← AI 协作文档体系（v5 引擎文件系统）
@@ -40,7 +40,7 @@ pi-mono/                         ← 本仓库
 
 ## 已完成的 Agent 架构
 
-ElysiaClaw 在 pi-mono 的 SDK/Hooks/Extension 体系之上，实现了完整的 **12 层 Agent 框架** + **8 个基础设施补丁**。所有扩展通过框架预留的扩展点实现，未侵入核心循环。
+Elynyx 在 pi-mono 的 SDK/Hooks/Extension 体系之上，实现了完整的 **12 层 Agent 框架** + **8 个基础设施补丁**。所有扩展通过框架预留的扩展点实现，未侵入核心循环。
 
 ### 12 层 Agent 框架
 
@@ -109,9 +109,9 @@ ElysiaClaw 在 pi-mono 的 SDK/Hooks/Extension 体系之上，实现了完整的
 | 服务器 | `elysiaserver` (Ubuntu 24.04) |
 | Node.js | v22.22.1 (nvm) |
 | 网络 | Tailscale (IP 100.111.4.5) |
-| Telegram Bot | `@ElysiaClaw_Bot` |
+| Telegram Bot | `@Elynyx_Bot` |
 | Gateway | ws://127.0.0.1:18789 (mode=local) |
-| 配置目录 | `~/.elysiaclaw/` |
+| 配置目录 | `~/.elynx/` |
 | 数据目录 | `~/.pi/agent/` |
 | 主要模型 | OpenRouter `qwen/qwen3.6-plus:free` |
 
@@ -133,25 +133,25 @@ cd ~/pi-mono && ./deploy.sh
 
 `deploy.sh` 执行流程：
 1. `npm run build`
-2. 替换全局 `node_modules/@mariozechner/pi-coding-agent/dist`
+2. 替换全局 `node_modules/@elynyx/coding-agent/dist`
 3. 重新应用 `scripts/patch-agent.cjs`（幂等）
 4. 同步 postinstall 保护脚本
-5. `elysiaclaw gateway restart`
+5. `elynx gateway restart`
 6. 6 道守卫自动验证（YAML 配置 / patch 语法 / 工具一致性 / config.yaml mode / Gateway 响应）
 
 ### 测试基线
 
 | 包 | 结果 |
 |------|------|
-| `@mariozechner/pi-agent-core` | 36/36 |
-| `@mariozechner/pi-coding-agent` | 858/861 (3 failures 预存) |
-| `@mariozechner/pi-tui` | 505/506 (1 flaky) |
+| `@elynyx/agent-core` | 36/36 |
+| `@elynyx/coding-agent` | 858/861 (3 failures 预存) |
+| `@elynyx/tui` | 505/506 (1 flaky) |
 
 ### 已知技术债
 
 | 项目 | 说明 |
 |------|------|
-| DTS 类型错误 ×6 | `pnpm build` 在 elysiaclaw 端阻塞，绕过方式：`node scripts/tsdown-build.mjs` |
+| DTS 类型错误 ×6 | `pnpm build` 在 elynx 端阻塞，绕过方式：`node scripts/tsdown-build.mjs` |
 | models.generated.ts | 手动编辑了模型参数，需迁移到 `scripts/generate-models.ts` 数据源 |
 | pi-agent-core monkey-patch | `setSystemPrompt`/`replaceMessages` 依赖运行时注入 |
 | OpenRouter 路由劫持 | 临时绕过直连阿里云 Bailian，根因未修 |

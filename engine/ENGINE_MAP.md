@@ -1,5 +1,5 @@
-# ENGINE_MAP — ElysiaClaw
-> Last updated: 2026-06-10 | Revision: 16 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
+# ENGINE_MAP — Elynyx
+> Last updated: 2026-06-10 | Revision: 18 | 引擎系统的索引层。每次会话 MUST 最先读此文件。
 > ⚠️ 本文件只记录关系与元数据，NEVER 复制其他文件的正文内容。它是 RECONCILE 的首要核对对象。
 
 
@@ -29,7 +29,7 @@
 
 | File | Class | Read priority | Revision | Last verified |
 |------|-------|---------------|----------|---------------|
-| ENGINE_MAP.md | index | 0 | 16 | 2026-06-10 |
+| ENGINE_MAP.md | index | 0 | 18 | 2026-06-10 |
 | SYSTEM.md | irreducible | 1 | 1 | 2026-06-08 |
 | CONTEXT.md | irreducible | 2 | 6 | 2026-06-10 |
 | HANDOFF.md | irreducible | 3 | 6 | 2026-06-10 |
@@ -71,7 +71,7 @@
 | PLAN-14 | 审批流感知的 Task 休止判定（setToolCallPendingApproval 死代码复活） | implemented | engine/plans/PLAN-14.md | (暂无 spec) | P096 系统化修复方案；核心路径已实现：subscribe.handlers.tools → approvalPending → attempt.ts → setToolCallPendingApproval → isQuiescent；Q-01~Q-05 边缘场景待定 | 2026-06-10 |
 
 [新 plan 追加到表格末尾。ID 按 PLAN‑[N+1] 递增。状态变更时直接改对应行。]
-[原设计文档已迁移至 `engine/plans/`，旧目录 `elysiaclaw_engine/` 已删除。]
+[原设计文档已迁移至 `engine/plans/`，旧目录 `elynx_engine/` 已删除。]
 
 **Status 定义：**
 - `proposed` —— 已录入，尚未派生任务
@@ -87,19 +87,19 @@
 ### 3.1 Plan → 派生条目 / 验收标准 / 触及模块
 | Plan | 派生的执行层条目 | 关联验收标准 | 触及的模块/目录 |
 |------|------------------|--------------|------------------|
-| PLAN-01 | ROADMAP:序1-5, SPRINT:序1-7统一实施, SYSTEM:AI Agent Rules | PLAN-01.spec:AC-1~AC-5 | elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts, elysiaclaw/src/context-engine/ |
-| PLAN-02 | SPRINT:序8阶段1-4/健全性修复/深度审查, ROADMAP:序8-9, PITFALLS:#87-#94 | PLAN-02.spec:AC-1~AC-8 | elysiaclaw/src/session-rotation/, elysiaclaw/src/agents/tools/rotate-session-tool.ts |
-| PLAN-03 | ROADMAP:记忆引擎激活/World Model, SPRINT:记忆引擎激活T1-T6, PITFALLS:memory相关 | PLAN-03.spec:AC-1~AC-6 | elysiaclaw/src/memory/, elysiaclaw/src/agents/tools/memory-tool.ts |
-| PLAN-04 | ROADMAP:序6-7/11-12, SPRINT:用户画像/输入分类器 | PLAN-04.spec:AC-1~AC-4 | elysiaclaw/src/user-model/, elysiaclaw/src/context-engine/input-classifier.ts |
-| PLAN-05 | ROADMAP:序2-3, SPRINT:流式输出修复/压缩可见性/SPRINT-21 Tool Update 进度传播, PITFALLS:#95 | PLAN-05.spec:AC-1~AC-3 | elysiaclaw/src/telegram/bot-message-dispatch.ts, elysiaclaw/src/auto-reply/reply/agent-runner-execution.ts, elysiaclaw/src/agents/pi-embedded-subscribe.handlers.tools.ts, elysiaclaw/src/agents/pi-embedded-subscribe.ts, elysiaclaw/src/agents/pi-embedded-runner/ |
-| PLAN-06 | ROADMAP:delegate_code_task, SPRINT:子代理分发实施, PITFALLS:#65-#68 | PLAN-06.spec:AC-1~AC-4 | elysiaclaw/src/agents/tools/delegate-code-task.ts |
-| PLAN-07 | ROADMAP:Tool Parity, SPRINT:Tool Parity Task 0-13, PITFALLS:#46-#56 | PLAN-07.spec:AC-1~AC-17 | packages/coding-agent/src/core/tools/, elysiaclaw/src/agents/pi-tools.ts |
-| PLAN-08 | SPRINT:W0闭环session-rotation, ROADMAP:参与者持续性, SYSTEM:协作协议 | PLAN-08.spec:AC-1~AC-7 | elysiaclaw/src/session-rotation/, elysiaclaw/src/participant/ |
-| PLAN-09 | SPRINT:PLAN-09-P0✅(注入修正+死代码清理)/P1✅(预算器+IndexNode+图谱表+B3图谱注入)/P2(元压缩+图遍历)/P3(端到端验证), ROADMAP:事件记忆闭环(M4重定义), PITFALLS:#91→P0✅已删除/#92→P1✅封口+图谱表/#93→P0✅已删除 | PLAN-09.spec:AC-1~AC-10 | elysiaclaw/src/session-rotation/(P0:rotation-controller/auto-trigger/rotate-session-tool已删除; P1:index_nodes+edges表+CRUD+traverseGraph), elysiaclaw/src/context-engine/(P1:computeInjectionBudget接入运行时), elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts(P0:prepend→append; P1:onSeal回调+B3图谱注入), elysiaclaw/src/memory/(图遍历基础) |
-| PLAN-10 | SPRINT:TASK-06✅(PLAN-10审计修复:AC-1~AC-4) | PLAN-10.spec:AC-1~AC-4 | elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts（AC-1:injectionTokens语义修复 / AC-2:traverseGraph 1-hop接入B3）, elysiaclaw/src/session-rotation/conversation-store.ts（AC-3:consumeHandoffPacket删除 / BFS off-by-one修复）, elysiaclaw/src/session-rotation/dual-track-index.ts（AC-3:buildMacroEntryFromHandoff删除）, elysiaclaw/src/session-rotation/handoff-types.ts（AC-3:validateHandoffCompleteness/formatHandoffForInjection删除,HandoffPacket@deprecated）, elysiaclaw/src/session-rotation/handoff-inject.ts（AC-3:3个废弃函数删除）, elysiaclaw/src/session-rotation/conversation-store.test.ts（AC-4:6条IndexNode/Edge/traverseGraph测试） |
-| PLAN-11 | SPRINT:TASK-07(PLAN-11 Bot测试修复:AC-1~AC-4) | PLAN-11.spec:AC-1~AC-4 | elysiaclaw/package.json（AC-1:pi-tui升级）, elysiaclaw/src/telegram/fetch.test.ts（AC-2:3条断言修复）, elysiaclaw/src/telegram/*.test.ts（AC-3:28文件恢复加载） |
-| PLAN-12 | SPRINT:TASK-08(会话轮换清理)/TASK-09(双轨注入修正)/TASK-10(压缩→seal连接)/TASK-11(PLAN-12 P0设计+存储), ROADMAP:统一记忆系统 | (暂无 spec) | elysiaclaw/src/session-rotation/memory-box-store.ts（P0新建）, elysiaclaw/src/session-rotation/conversation-store.ts（P3简化）, elysiaclaw/src/session-rotation/task-segment-tracker.ts（P1 group管理）, elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts（B3/B4/B5适配+compaction→seal）, elysiaclaw/src/agents/tools/task-get-tool.ts（P1扩展）, elysiaclaw/src/memory/qmd-manager.ts（P2 kind:"memory-box"）, engine/plans/PLAN-12.md（设计文档） |
-| PLAN-13 | SPRINT:TASK-12(M0 task边界改控制流)/TASK-13(M1 C2头模型写)/TASK-14(M2 B3单路径)/TASK-15(M3 删dual-track)/TASK-16(M4 滑动窗口)/TASK-17(M5 autoCompact seal-aware)/TASK-18(M6 统一预算阈值)/TASK-19(M7 C3元压缩)/TASK-20(M8 命名收尾)/TASK-21(M9 端到端验证+部署), ROADMAP:认知工作集脊椎(M4重定义), PITFALLS:#85/#91-94 | PLAN-13.spec:AC-1~AC-12 | M0:elysiaclaw/src/session-rotation/task-segment-tracker.ts+attempt.ts(task边界改控制流) · M1:attempt.ts seal区(C2头模型写) · M2/M3:attempt.ts:2641+dual-track-index.ts+conversation-store/types.ts(B3单路径+删双轨) · M4:attempt.ts(滑动窗口) · M5/M6:packages/coding-agent/src/core/compaction/auto-compact.ts+multi-layer.ts+sdk.ts(seal-aware改造+统一阈值) · M7:新增meta-compression.ts · M8:session-rotation/整目录重命名 |
+| PLAN-01 | ROADMAP:序1-5, SPRINT:序1-7统一实施, SYSTEM:AI Agent Rules | PLAN-01.spec:AC-1~AC-5 | elynx/src/agents/pi-embedded-runner/run/attempt.ts, elynx/src/context-engine/ |
+| PLAN-02 | SPRINT:序8阶段1-4/健全性修复/深度审查, ROADMAP:序8-9, PITFALLS:#87-#94 | PLAN-02.spec:AC-1~AC-8 | elynx/src/session-rotation/, elynx/src/agents/tools/rotate-session-tool.ts |
+| PLAN-03 | ROADMAP:记忆引擎激活/World Model, SPRINT:记忆引擎激活T1-T6, PITFALLS:memory相关 | PLAN-03.spec:AC-1~AC-6 | elynx/src/memory/, elynx/src/agents/tools/memory-tool.ts |
+| PLAN-04 | ROADMAP:序6-7/11-12, SPRINT:用户画像/输入分类器 | PLAN-04.spec:AC-1~AC-4 | elynx/src/user-model/, elynx/src/context-engine/input-classifier.ts |
+| PLAN-05 | ROADMAP:序2-3, SPRINT:流式输出修复/压缩可见性/SPRINT-21 Tool Update 进度传播, PITFALLS:#95 | PLAN-05.spec:AC-1~AC-3 | elynx/src/telegram/bot-message-dispatch.ts, elynx/src/auto-reply/reply/agent-runner-execution.ts, elynx/src/agents/pi-embedded-subscribe.handlers.tools.ts, elynx/src/agents/pi-embedded-subscribe.ts, elynx/src/agents/pi-embedded-runner/ |
+| PLAN-06 | ROADMAP:delegate_code_task, SPRINT:子代理分发实施, PITFALLS:#65-#68 | PLAN-06.spec:AC-1~AC-4 | elynx/src/agents/tools/delegate-code-task.ts |
+| PLAN-07 | ROADMAP:Tool Parity, SPRINT:Tool Parity Task 0-13, PITFALLS:#46-#56 | PLAN-07.spec:AC-1~AC-17 | elysiaclaw/src/agents/coding-agent/core/tools/, elysiaclaw/src/agents/pi-tools.ts |
+| PLAN-08 | SPRINT:W0闭环session-rotation, ROADMAP:参与者持续性, SYSTEM:协作协议 | PLAN-08.spec:AC-1~AC-7 | elynx/src/session-rotation/, elynx/src/participant/ |
+| PLAN-09 | SPRINT:PLAN-09-P0✅(注入修正+死代码清理)/P1✅(预算器+IndexNode+图谱表+B3图谱注入)/P2(元压缩+图遍历)/P3(端到端验证), ROADMAP:事件记忆闭环(M4重定义), PITFALLS:#91→P0✅已删除/#92→P1✅封口+图谱表/#93→P0✅已删除 | PLAN-09.spec:AC-1~AC-10 | elynx/src/session-rotation/(P0:rotation-controller/auto-trigger/rotate-session-tool已删除; P1:index_nodes+edges表+CRUD+traverseGraph), elynx/src/context-engine/(P1:computeInjectionBudget接入运行时), elynx/src/agents/pi-embedded-runner/run/attempt.ts(P0:prepend→append; P1:onSeal回调+B3图谱注入), elynx/src/memory/(图遍历基础) |
+| PLAN-10 | SPRINT:TASK-06✅(PLAN-10审计修复:AC-1~AC-4) | PLAN-10.spec:AC-1~AC-4 | elynx/src/agents/pi-embedded-runner/run/attempt.ts（AC-1:injectionTokens语义修复 / AC-2:traverseGraph 1-hop接入B3）, elynx/src/session-rotation/conversation-store.ts（AC-3:consumeHandoffPacket删除 / BFS off-by-one修复）, elynx/src/session-rotation/dual-track-index.ts（AC-3:buildMacroEntryFromHandoff删除）, elynx/src/session-rotation/handoff-types.ts（AC-3:validateHandoffCompleteness/formatHandoffForInjection删除,HandoffPacket@deprecated）, elynx/src/session-rotation/handoff-inject.ts（AC-3:3个废弃函数删除）, elynx/src/session-rotation/conversation-store.test.ts（AC-4:6条IndexNode/Edge/traverseGraph测试） |
+| PLAN-11 | SPRINT:TASK-07(PLAN-11 Bot测试修复:AC-1~AC-4) | PLAN-11.spec:AC-1~AC-4 | elynx/package.json（AC-1:pi-tui升级）, elynx/src/telegram/fetch.test.ts（AC-2:3条断言修复）, elynx/src/telegram/*.test.ts（AC-3:28文件恢复加载） |
+| PLAN-12 | SPRINT:TASK-08(会话轮换清理)/TASK-09(双轨注入修正)/TASK-10(压缩→seal连接)/TASK-11(PLAN-12 P0设计+存储), ROADMAP:统一记忆系统 | (暂无 spec) | elynx/src/session-rotation/memory-box-store.ts（P0新建）, elynx/src/session-rotation/conversation-store.ts（P3简化）, elynx/src/session-rotation/task-segment-tracker.ts（P1 group管理）, elynx/src/agents/pi-embedded-runner/run/attempt.ts（B3/B4/B5适配+compaction→seal）, elynx/src/agents/tools/task-get-tool.ts（P1扩展）, elynx/src/memory/qmd-manager.ts（P2 kind:"memory-box"）, engine/plans/PLAN-12.md（设计文档） |
+| PLAN-13 | SPRINT:TASK-12(M0 task边界改控制流)/TASK-13(M1 C2头模型写)/TASK-14(M2 B3单路径)/TASK-15(M3 删dual-track)/TASK-16(M4 滑动窗口)/TASK-17(M5 autoCompact seal-aware)/TASK-18(M6 统一预算阈值)/TASK-19(M7 C3元压缩)/TASK-20(M8 命名收尾)/TASK-21(M9 端到端验证+部署), ROADMAP:认知工作集脊椎(M4重定义), PITFALLS:#85/#91-94 | PLAN-13.spec:AC-1~AC-12 | M0:elynx/src/session-rotation/task-segment-tracker.ts+attempt.ts(task边界改控制流) · M1:attempt.ts seal区(C2头模型写) · M2/M3:attempt.ts:2641+dual-track-index.ts+conversation-store/types.ts(B3单路径+删双轨) · M4:attempt.ts(滑动窗口) · M5/M6:packages/coding-agent/src/core/compaction/auto-compact.ts+multi-layer.ts+sdk.ts(seal-aware改造+统一阈值) · M7:新增meta-compression.ts · M8:session-rotation/整目录重命名 |
 
 [plan 派生新条目时，在其行内追加。执行层条目用 `文件:锚点` 格式引用，NEVER 复制条目正文。]
 
@@ -147,8 +147,8 @@
 
 | 字段 | 值 |
 |------|-----|
-| 全局 revision | 26 |
-| 上次 RECONCILE | 2026-06-10（流式空白 bug 修复 + 分块参数调优 + 上游 Telegram 测试 18→0 修复 + 部署 5 guards 全绿；867 测试全绿） |
+| 全局 revision | 28 |
+| 上次 RECONCILE | 2026-06-10（第二轮迁移修复：tsconfig.json 8处 @mariozechner/ 路径别名 → @elynyx/ + 2个破损导入修复 + ElysiaClawKit→ElynyxKit + OpenClawKit→ElynyxProtocol 目录重命名 + CLAWDBOT_ 遗漏变量添加 ELYNYX_ 优先级 + Dockerfile elysiaclaw.mjs→elynx.mjs + CLAUDE.md/AGENTS.md 文档更新） |
 | 悬空引用 (dangling refs) | 无 |
 | 漂移警告 (drift) | 无 |
 

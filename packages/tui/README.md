@@ -1,4 +1,4 @@
-# @mariozechner/pi-tui
+# @elynyx/tui
 
 轻量级终端 UI 框架，支持差异渲染和同步输出，实现无闪烁的交互式 CLI 应用。
 
@@ -16,7 +16,7 @@
 ## 快速开始
 
 ```typescript
-import { TUI, Text, Editor, ProcessTerminal } from "@mariozechner/pi-tui";
+import { TUI, Text, Editor, ProcessTerminal } from "@elynyx/tui";
 
 // 创建终端
 const terminal = new ProcessTerminal();
@@ -147,7 +147,7 @@ TUI 在每行渲染末尾追加完整的 SGR 重置和 OSC 8 重置。样式不�
 显示文本光标且需要 IME（输入法编辑器）支持的组件应实现 `Focusable` 接口：
 
 ```typescript
-import { CURSOR_MARKER, type Component, type Focusable } from "@mariozechner/pi-tui";
+import { CURSOR_MARKER, type Component, type Focusable } from "@elynyx/tui";
 
 class MyInput implements Component, Focusable {
   focused: boolean = false;  // 焦点变化时由 TUI 设置
@@ -171,7 +171,7 @@ class MyInput implements Component, Focusable {
 **包含内嵌输入的容器组件：** 当容器组件（对话框、选择器等）包含 `Input` 或 `Editor` 子组件时，容器必须实现 `Focusable` 并将焦点状态传播给子组件：
 
 ```typescript
-import { Container, type Focusable, Input } from "@mariozechner/pi-tui";
+import { Container, type Focusable, Input } from "@elynyx/tui";
 
 class SearchDialog extends Container implements Focusable {
   private searchInput: Input;
@@ -518,7 +518,7 @@ tui.addChild(image);
 同时支持斜杠命令和文件路径。
 
 ```typescript
-import { CombinedAutocompleteProvider } from "@mariozechner/pi-tui";
+import { CombinedAutocompleteProvider } from "@elynyx/tui";
 
 const provider = new CombinedAutocompleteProvider(
   [
@@ -543,7 +543,7 @@ editor.setAutocompleteProvider(provider);
 使用 `matchesKey()` 配合 `Key` 辅助工具检测键盘输入（支持 Kitty 键盘协议）：
 
 ```typescript
-import { matchesKey, Key } from "@mariozechner/pi-tui";
+import { matchesKey, Key } from "@elynyx/tui";
 
 if (matchesKey(data, Key.ctrl("c"))) {
   process.exit(0);
@@ -601,7 +601,7 @@ interface Terminal {
 ## 工具函数
 
 ```typescript
-import { visibleWidth, truncateToWidth, wrapTextWithAnsi } from "@mariozechner/pi-tui";
+import { visibleWidth, truncateToWidth, wrapTextWithAnsi } from "@elynyx/tui";
 
 // 获取字符串的可见宽度（忽略 ANSI 代码）
 const width = visibleWidth("\x1b[31m你好\x1b[0m"); // 2
@@ -626,8 +626,8 @@ const lines = wrapTextWithAnsi("这是一段很长的文本需要换行处理", 
 使用 `matchesKey()` 配合 `Key` 辅助工具处理键盘输入：
 
 ```typescript
-import { matchesKey, Key, truncateToWidth } from "@mariozechner/pi-tui";
-import type { Component } from "@mariozechner/pi-tui";
+import { matchesKey, Key, truncateToWidth } from "@elynyx/tui";
+import type { Component } from "@elynyx/tui";
 
 class MyInteractiveComponent implements Component {
   private selectedIndex = 0;
@@ -662,8 +662,8 @@ class MyInteractiveComponent implements Component {
 使用提供的工具函数确保行宽合适：
 
 ```typescript
-import { visibleWidth, truncateToWidth } from "@mariozechner/pi-tui";
-import type { Component } from "@mariozechner/pi-tui";
+import { visibleWidth, truncateToWidth } from "@elynyx/tui";
+import type { Component } from "@elynyx/tui";
 
 class MyComponent implements Component {
   private text: string;

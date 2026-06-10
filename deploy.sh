@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
 
-ELYSIACLAW="$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw"
-NM="$ELYSIACLAW/node_modules/@mariozechner"
-AGENT_JS="$NM/pi-agent-core/dist/agent.js"
-ELYSIACLAW_DIST="$HOME/projects/pi-mono/elysiaclaw/dist"
+ELYNYX="$HOME/.nvm/versions/node/v22.22.1/lib/node_modules/elynx"
+NM="$ELYNYX/node_modules/@elynyx"
+AGENT_JS="$NM/agent-core/dist/agent.js"
+ELYNYX_DIST="$HOME/projects/pi-mono/elysiaclaw/dist"
 
 echo "==========================================="
-echo "  ElysiaClaw Deploy (with guards)"
+echo "  Elynyx Deploy (with guards)"
 echo "==========================================="
 
 # ── Pre-flight Guard 1: Config validation ──
@@ -16,25 +16,25 @@ echo "[Guard 1] Validating configuration files..."
 python3 -c "
 import json, sys, os, yaml
 
-# elysiaclaw.json
-json_path = os.path.expanduser('~/.elysiaclaw/elysiaclaw.json')
+# elynx.json
+json_path = os.path.expanduser('~/.elynx/elynx.json')
 if os.path.exists(json_path):
     try:
         with open(json_path) as f:
             cfg = json.load(f)
         missing = [k for k in ['agents','channels','gateway'] if k not in cfg]
         if missing:
-            print(f'  ERROR: elysiaclaw.json missing keys: {missing}', file=sys.stderr)
+            print(f'  ERROR: elynx.json missing keys: {missing}', file=sys.stderr)
             sys.exit(1)
-        print('  elysiaclaw.json ... OK')
+        print('  elynx.json ... OK')
     except json.JSONDecodeError as e:
-        print(f'  ERROR: elysiaclaw.json parse failed: {e}', file=sys.stderr)
+        print(f'  ERROR: elynx.json parse failed: {e}', file=sys.stderr)
         sys.exit(1)
 else:
-    print('  elysiaclaw.json not found (first deploy?)')
+    print('  elynx.json not found (first deploy?)')
 
 # config.yaml
-yaml_path = os.path.expanduser('~/.elysiaclaw/config.yaml')
+yaml_path = os.path.expanduser('~/.elynx/config.yaml')
 if os.path.exists(yaml_path):
     try:
         with open(yaml_path) as f:
@@ -54,34 +54,23 @@ else:
     print('  config.yaml not found')
 " || exit 1
 
-# ── Phase A: pi-mono framework layer ──
+# ── Phase A: Framework packages (ai, agent-core, tui) ──
 echo ""
-echo "=== Step 1: Build pi-mono framework ==="
+echo "=== Step 1: Build framework packages ==="
 cd ~/projects/pi-mono
-npm run build
+pnpm run build
 
 echo ""
-echo "=== Step 2: Deploy pi-agent-core (0.64) ==="
-rm -rf "$NM/pi-agent-core/dist" && cp -r ~/projects/pi-mono/packages/agent/dist "$NM/pi-agent-core/dist"
-echo "[OK] pi-agent-core deployed"
+echo "=== Step 2: Deploy framework packages to global install ==="
+rm -rf "$NM/agent-core/dist" && cp -r ~/projects/pi-mono/packages/agent/dist "$NM/agent-core/dist"
+echo "[OK] agent-core deployed"
+rm -rf "$NM/ai/dist" && cp -r ~/projects/pi-mono/packages/ai/dist "$NM/ai/dist"
+echo "[OK] ai deployed"
+rm -rf "$NM/tui/dist" && cp -r ~/projects/pi-mono/packages/tui/dist "$NM/tui/dist"
+echo "[OK] tui deployed"
 
 echo ""
-echo "=== Step 3: Deploy pi-ai (0.64) ==="
-rm -rf "$NM/pi-ai/dist" && cp -r ~/projects/pi-mono/packages/ai/dist "$NM/pi-ai/dist"
-echo "[OK] pi-ai deployed"
-
-echo ""
-echo "=== Step 4: Deploy pi-tui (0.64) ==="
-rm -rf "$NM/pi-tui/dist" && cp -r ~/projects/pi-mono/packages/tui/dist "$NM/pi-tui/dist"
-echo "[OK] pi-tui deployed"
-
-echo ""
-echo "=== Step 5: Deploy pi-coding-agent (0.64) ==="
-rm -rf "$NM/pi-coding-agent/dist" && cp -r ~/projects/pi-mono/packages/coding-agent/dist "$NM/pi-coding-agent/dist"
-echo "[OK] pi-coding-agent deployed"
-
-echo ""
-echo "=== Step 6: Re-apply agent.js patch (0.64 anchor) ==="
+echo "=== Step 3: Re-apply agent.js patch (0.64 anchor) ==="
 node ~/projects/pi-mono/scripts/patch-agent.cjs
 
 # ── Post-patch Guard 2: Verify patch injection ──
@@ -110,9 +99,9 @@ else
     echo "  WARNING: agent.js not found at $AGENT_JS"
 fi
 
-# ── Phase B: elysiaclaw application layer ──
+# ── Phase B: Elynyx application layer ──
 echo ""
-echo "=== Step 7: Build elysiaclaw application ==="
+echo "=== Step 4: Build elynx application ==="
 cd ~/projects/pi-mono/elysiaclaw
 
 # tsdown main build (skips DTS errors - Pitfall #38)
@@ -126,21 +115,21 @@ node --import tsx scripts/copy-export-html-templates.ts 2>/dev/null || true
 node --import tsx scripts/write-build-info.ts 2>/dev/null || true
 node --import tsx scripts/write-cli-startup-metadata.ts 2>/dev/null || true
 node --import tsx scripts/write-cli-compat.ts 2>/dev/null || true
-echo "[OK] elysiaclaw built"
+echo "[OK] elynx built"
 
 echo ""
-echo "=== Step 8: Deploy elysiaclaw dist (clean slate) ==="
-if [ -d "$ELYSIACLAW_DIST" ]; then
-    DIST_FILE_COUNT=$(find "$ELYSIACLAW_DIST" -type f | wc -l)
+echo "=== Step 5: Deploy elynx dist (clean slate) ==="
+if [ -d "$ELYNYX_DIST" ]; then
+    DIST_FILE_COUNT=$(find "$ELYNYX_DIST" -type f | wc -l)
     if [ "$DIST_FILE_COUNT" -lt 100 ]; then
         echo "  ERROR: dist has only $DIST_FILE_COUNT files — build likely incomplete"
         exit 1
     fi
-    rm -rf "$ELYSIACLAW/dist"
-    cp -r "$ELYSIACLAW_DIST" "$ELYSIACLAW/dist"
-    echo "[OK] elysiaclaw dist deployed ($DIST_FILE_COUNT files → $ELYSIACLAW/dist/)"
+    rm -rf "$ELYNYX/dist"
+    cp -r "$ELYNYX_DIST" "$ELYNYX/dist"
+    echo "[OK] elynx dist deployed ($DIST_FILE_COUNT files → $ELYNYX/dist/)"
 else
-    echo "  ERROR: elysiaclaw dist not found at $ELYSIACLAW_DIST"
+    echo "  ERROR: elynx dist not found at $ELYNYX_DIST"
     exit 1
 fi
 
@@ -155,7 +144,7 @@ REQUIRED_PATTERNS=(
 )
 MISSING_MODULES=()
 for pattern in "${REQUIRED_PATTERNS[@]}"; do
-  if ! grep -rq "$pattern" "$ELYSIACLAW/dist/" 2>/dev/null; then
+  if ! grep -rq "$pattern" "$ELYNYX/dist/" 2>/dev/null; then
     MISSING_MODULES+=("$pattern")
   fi
 done
@@ -166,25 +155,19 @@ fi
 echo "  All required modules present (memory_search, memory_get, memory-core, createMemorySearchTool)"
 
 echo ""
-echo "=== Step 9: Deploy extensions ==="
+echo "=== Step 6: Deploy extensions ==="
 EXTS_SRC="$HOME/projects/pi-mono/elysiaclaw/extensions"
-EXTS_DST="$ELYSIACLAW/extensions"
+EXTS_DST="$ELYNYX/extensions"
 if [ -d "$EXTS_SRC" ]; then
     for ext_dir in "$EXTS_SRC"/*/; do
         ext_name=$(basename "$ext_dir")
         if [ -f "$ext_dir/index.ts" ]; then
             rm -rf "$EXTS_DST/$ext_name"
             mkdir -p "$EXTS_DST/$ext_name"
-            # Copy top-level source files (exclude node_modules, .gitignore)
             find "$ext_dir" -maxdepth 1 -type f \
               -not -name '.gitignore' \
               -exec cp {} "$EXTS_DST/$ext_name/" \;
-            # Copy subdirectories (e.g. telegram/src/) — exclude node_modules/skills/dist
-            # Pitfall #76: -maxdepth 1 drops src/ subdirs, breaking plugins that import from ./src/
             for sub_dir in "$ext_dir"*/; do
-                # Pitfall #77: when an extension has NO subdirs, the glob "$ext_dir"*/
-                # does not expand and bash passes the literal "*/" to cp, which fails
-                # under `set -e` and aborts the whole deploy. Guard with -d.
                 [ -d "$sub_dir" ] || continue
                 sub_name=$(basename "$sub_dir")
                 if [ "$sub_name" = "node_modules" ] || [ "$sub_name" = "skills" ] || [ "$sub_name" = "dist" ]; then
@@ -201,15 +184,15 @@ fi
 
 # ── Phase C: Post-deploy ──
 echo ""
-echo "=== Step 10: Sync postinstall script ==="
-cp ~/projects/pi-mono/scripts/patch-agent.cjs "$ELYSIACLAW/scripts-patch/patch-agent.cjs"
+echo "=== Step 7: Sync postinstall script ==="
+cp ~/projects/pi-mono/scripts/patch-agent.cjs "$ELYNYX/scripts-patch/patch-agent.cjs"
 echo "[OK] postinstall script synced"
 
 # ── Guard 4: Framework tool registration parity ──
 echo ""
 echo "[Guard 4] Framework tool registration parity..."
-TOOLS_SRC="$HOME/projects/pi-mono/packages/coding-agent/src/core/tools/index.ts"
-MASTER_SRC="$HOME/projects/pi-mono/packages/coding-agent/src/index.ts"
+TOOLS_SRC="$HOME/projects/pi-mono/elysiaclaw/src/agents/coding-agent/core/tools/index.ts"
+MASTER_SRC="$HOME/projects/pi-mono/elysiaclaw/src/agents/coding-agent/index.ts"
 if [ -f "$TOOLS_SRC" ] && [ -f "$MASTER_SRC" ]; then
     TOOLS_COUNT=$(grep -A999 "^export const allTools" "$TOOLS_SRC" | sed '/^};$/q' | grep -c "Tool," || echo 0)
     MASTER_EXPORTS=$(grep -c "ToolDefinition\|toolDefinition" "$MASTER_SRC" || echo 0)
@@ -221,12 +204,12 @@ if [ -f "$TOOLS_SRC" ] && [ -f "$MASTER_SRC" ]; then
 fi
 
 echo ""
-echo "=== Step 11: Restart gateway ==="
-~/.nvm/versions/node/v22.22.1/bin/elysiaclaw gateway restart
+echo "=== Step 8: Restart gateway ==="
+~/.nvm/versions/node/v22.22.1/bin/elynx gateway restart
 echo "[OK] Gateway restarted"
 
 echo ""
-echo "=== Step 12: Verify ==="
+echo "=== Step 9: Verify ==="
 sleep 3
 
 # ── Guard 5: memory_search end-to-end check ──
@@ -234,7 +217,7 @@ echo ""
 echo "[Guard 5] memory_search end-to-end check..."
 GW_TOKEN=$(python3 -c "
 import json, os
-with open(os.path.expanduser('~/.elysiaclaw/elysiaclaw.json')) as f:
+with open(os.path.expanduser('~/.elynx/elynx.json')) as f:
     cfg = json.load(f)
 print(cfg.get('gateway',{}).get('auth',{}).get('token',''))
 " 2>/dev/null)
@@ -253,7 +236,7 @@ else
     echo "  WARNING: Could not resolve gateway token for E2E check"
 fi
 
-~/.nvm/versions/node/v22.22.1/bin/elysiaclaw status
+~/.nvm/versions/node/v22.22.1/bin/elynx status
 echo ""
 echo "==========================================="
 echo "  Deploy complete. Guards passed:"

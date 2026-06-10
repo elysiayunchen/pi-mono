@@ -1,10 +1,10 @@
-# HANDOFF — ElysiaClaw
-> 初始化日期：2026-06-09 | 会话：26（流式空白 bug 修复 + 分块参数调优 + 上游测试修复 + 部署）
+# HANDOFF — Elynyx
+> 初始化日期：2026-06-09 | 会话：28（第二轮迁移修复）
 > 每次会话结束后重写此文件。
 
 
 ## ⚡ 立即恢复点
-> "Telegram 流式输出空白 bug 修复（tool lane archivedToolPreviewIds 归档+清理）+ 分块参数调优（短句模式 sentence breakPreference）+ 上游 Telegram 测试 18→0 修复（fetch.test.ts globalThis.fetch 替换 + audit.test.ts 同方案 + topic-agentid.test.ts pickFirstExistingAgentId mock）+ 部署 5 guards 全绿（gateway pid 814440, memory 122 files / 1373 chunks）。"
+> "第二轮迁移修复完成：tsconfig.json 8处 @mariozechner/ 路径别名 → @elynyx/ + 2个破损导入修复 + ElysiaClawKit→ElynyxKit + OpenClawKit→ElynyxProtocol 目录重命名 + 31+ 处引用更新 + CLAWDBOT_SHOW_SECRETS/SHELL 添加 ELYNYX_ 优先级 + Dockerfile elysiaclaw.mjs→elynx.mjs + sandbox cache IDs 更新 + CLAUDE.md/AGENTS.md coding-agent 路径更新。P106/P107 已录入 PITFALLS。"
 > 当前优先：TASK-21 PLAN-13 M9 端到端验证（通过日志调查落实）
 
 
@@ -12,60 +12,50 @@
 
 ### ✅ 完成内容
 
-#### Telegram 流式输出空白 bug 修复
+#### 第二轮迁移修复（7 项）
 
-- **问题**：手机端 Telegram 流式输出 tool 调用时，用户发送消息导致对话页面出现大片空白（空气墙）
-- **根因**：tool lane `forceNewMessage()` 重置 `streamMessageId` 导致旧 preview 消息孤儿化，answer lane 有 `archivedAnswerPreviews` 归档机制但 tool lane 没有
-- **修复**：`bot-message-dispatch.ts` 添加 `archivedToolPreviewIds` 数组，在 `forceNewMessage()` 前归档 tool preview ID，finally 块中清理归档消息
-- **GitHub**: https://github.com/elysiayunchen/pi-mono
+1. **tsconfig.json 路径别名修复** — 8 处 `@mariozechner/` 路径别名 → `@elynyx/`（pi-mom、pi、pi-web-ui、pi-agent-old 等）
+2. **破损导入修复** — test-our-changes.ts 和 session-transcripts.ts 中残留的旧包名导入
+3. **ElysiaClawKit→ElynyxKit 目录重命名** — `apps/shared/ElysiaClawKit/` → `apps/shared/ElynyxKit/`
+4. **OpenClawKit→ElynyxProtocol 目录重命名** — `apps/shared/OpenClawKit/` → `apps/shared/ElynyxProtocol/`
+5. **CLAWDBOT_ 遗漏变量修复** — CLAWDBOT_SHOW_SECRETS/CLAWDBOT_SHELL 添加 ELYNYX_ 优先级 fallback
+6. **Dockerfile 修复** — elysiaclaw.mjs → elynx.mjs 入口点引用
+7. **文档更新** — CLAUDE.md/AGENTS.md coding-agent 路径更新 + sandbox cache IDs 更新
 
-#### 消息分块参数调优（短句模式）
+#### PITFALLS 新增
 
-- **目标**：改变 elysiaclaw 发送信息频率，发短句避免大段长句子，更符合流式输出观感
-- **改动**：
-  - `draft-chunking.ts`: minChars 200→80, maxChars 800→300, breakPreference "paragraph"→"sentence"
-  - `block-streaming.ts`: DEFAULT_BLOCK_STREAM_MIN 800→200, DEFAULT_BLOCK_STREAM_MAX 1200→500, breakPreference 默认 "paragraph"→"sentence"
-  - `pi-embedded-block-chunker.ts`: fallback breakPreference "paragraph"→"sentence"
-- **测试**：draft-chunking 3/3, block-streaming 3/3, block-chunker 7/7 全绿
-
-#### 上游 Telegram 测试修复（18→0）
-
-1. **fetch.test.ts 15 failures** — `agent.dispatch is not a function`
-   - 根因：`resolveTelegramTransport` 内部 `globalThis.fetch` 优先于 mock 的 `undiciFetch`
-   - 修复：`beforeAll` 中手动替换 `globalThis.fetch = undiciFetch`，`afterAll` 恢复
-2. **audit.test.ts 2 failures** — 同 fetch.test.ts 根因和修复方案
-3. **topic-agentid.test.ts 1 failure** — `agent:ghost:` vs expected `agent:main:`
-   - 根因：vitest ESM mock 无法拦截 `bot-message-context.ts` 中的 `loadConfig()` 调用
-   - 修复：直接 mock `pickFirstExistingAgentId`（从 `../routing/resolve-route.js`）
-
-#### 部署验证
-
-- `npm run check` 零错误
-- `deploy.sh` 5 guards 全部通过（G1 Config / G2 Patch / G3 Dist / G4 Tool parity / G5 memory_search E2E）
-- Gateway 正常运行（pid 814440, Telegram OK, memory 122 files / 1373 chunks）
+- P106: tsconfig.json @mariozechner/ 路径别名未迁移（🟡 MEDIUM, Resolved）
+- P107: ElysiaClawKit/OpenClawKit 目录名未迁移（🟠 HIGH, Resolved）
 
 ### 📋 代码改动清单
-| 文件 | 改动 |
-|------|------|
-| `elysiaclaw/src/telegram/bot-message-dispatch.ts` | 添加 `archivedToolPreviewIds` 归档 + finally 清理（流式空白 bug 修复） |
-| `elysiaclaw/src/telegram/draft-chunking.ts` | minChars 200→80, maxChars 800→300, breakPreference→"sentence" |
-| `elysiaclaw/src/telegram/draft-chunking.test.ts` | 更新期望值匹配新默认参数 |
-| `elysiaclaw/src/auto-reply/reply/block-streaming.ts` | MIN 800→200, MAX 1200→500, breakPreference→"sentence" |
-| `elysiaclaw/src/agents/pi-embedded-block-chunker.ts` | fallback breakPreference→"sentence" |
-| `elysiaclaw/src/telegram/fetch.test.ts` | beforeAll/afterAll 替换 globalThis.fetch 修复 15 failures |
-| `elysiaclaw/src/telegram/audit.test.ts` | 同 fetch.test.ts 方案修复 2 failures |
-| `elysiaclaw/src/telegram/bot-message-context.topic-agentid.test.ts` | mock pickFirstExistingAgentId 修复 1 failure |
+| 文件/目录 | 改动 |
+|-----------|------|
+| `packages/*/tsconfig.json` | 8 处 @mariozechner/ → @elynyx/ 路径别名 |
+| `elysiaclaw/src/agents/coding-agent/cli/test-our-changes.ts` | 破损导入修复 |
+| `elysiaclaw/src/agents/coding-agent/core/session-transcripts.ts` | 破损导入修复 |
+| `elysiaclaw/apps/shared/ElysiaClawKit/` | 目录重命名为 ElynyxKit + 31+ 处引用更新 |
+| `elysiaclaw/apps/shared/OpenClawKit/` | 目录重命名为 ElynyxProtocol + 引用更新 |
+| `elysiaclaw/src/agents/coding-agent/core/sandbox/` | CLAWDBOT_ 添加 ELYNYX_ 优先级 |
+| `elysiaclaw/Dockerfile*` | elysiaclaw.mjs → elynx.mjs |
+| `CLAUDE.md` / `AGENTS.md` | coding-agent 路径更新 |
+| `engine/ENGINE_MAP.md` | Revision 16→18, 全局 revision 27→28 |
+| `engine/CONTEXT.md` | 上次完成 + 最近完成事项更新 |
+| `engine/HANDOFF.md` | 第二轮修复记录 |
+| `engine/PITFALLS.md` | P106/P107 新增, 计数 103→105 |
 
 ### ⏳ 未完成 / 待追踪
 - **TASK-21 PLAN-13 M9**（端到端验证+部署）— 需通过日志调查验证认知架构端到端功能
 - **Telegram 网络恢复** — 代理节点全部不可达，需用户更新代理订阅
+- **@mariozechner/jiti 和 @mariozechner/clipboard** — 实际 npm 包名，无法重命名
+- **CLAWDBOT_* 环境变量** — 作为向后兼容 fallback 保留（已添加 ELYNYX_ 优先级）
+- **packages/ typebox 版本冲突** — 预存问题，非迁移引起
 
 
 ## 架构状态
 | 维度 | 状态 |
 |------|------|
+| 迁移 | ✅ 完成（品牌化 + pnpm 统一 + coding-agent 合并 + 部署简化 + 第二轮修复） |
 | PLAN-13 迁移链 | M0✅ M1✅ M2✅ M3✅ M4✅ M5✅ M6✅ M7✅ M8✅ — M9 进行中（端到端日志验证） |
-| PITFALLS Active | P080 Mitigated + P101 + 基础工具条目 |
-| attempt.ts 行数 | 2359（4 个新模块提取） |
-| 测试覆盖 | cognitive-memory 111/111 + attempt 149/149 + Telegram 867/867（上游 18 修复后全绿） |
-| 风险点 | P101(Active) — 🟠 MEDIUM |
+| PITFALLS Active | P080 Mitigated + P101 + P103 + 基础工具条目 |
+| 测试覆盖 | elysiaclaw tsgo 通过 + packages/ 1 个预存 typebox 错误 |
+| 风险点 | P101(Active) — 🟠 MEDIUM / P103(Active) — 🟠 HIGH |

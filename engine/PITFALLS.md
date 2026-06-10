@@ -1,5 +1,5 @@
-# PITFALLS — ElysiaClaw
-> 100 条记录 | Last updated: 2026-06-10
+# PITFALLS — Elynyx
+> 105 条记录 | Last updated: 2026-06-10
 > ⚠️ 修改代码库前必读。
 
 ## 严重程度说明
@@ -57,7 +57,7 @@
 | P026 | 🟡 | ModelSpeedMetrics 字段名猜错 | api | Active |
 | P027 | 🟡 | EfficiencyGuardConfig 是比例阈值 | api | Active |
 | P028 | 🟡 | 四脚本部署路径硬编码错误 | tooling | Resolved |
-| P029 | 🟠 | openclaw→elysiaclaw 包名迁移导致入口断裂 | arch | Resolved |
+| P029 | 🟠 | elynx→elynx 包名迁移导致入口断裂 | arch | Resolved |
 | P030 | 🔴 | config.yaml 缩进错误静默破坏 gateway | config | Active |
 | P031 | 🟡 | 新版 schema 校验比旧版严格 | config | Active |
 | P032 | 🟡 | Token 认证是两层的 | config | Active |
@@ -67,12 +67,12 @@
 | P036 | 🟡 | systemd service ExecStart 路径旧包名 | config | Resolved |
 | P037 | 🟡 | Python 补丁脚本重复应用 | tooling | Active |
 | P038 | 🟠 | DTS 类型错误阻塞完整构建 | tooling | Resolved |
-| P039 | 🟡 | elysiaclaw 自建 system prompt 不使用 agent-session | arch | Active |
+| P039 | 🟡 | elynx 自建 system prompt 不使用 agent-session | arch | Active |
 | P040 | 🟠 | OpenRouter→阿里云路由劫持 | api | Mitigated |
 | P041 | 🟡 | config.yaml 结构性损坏导致 gateway 启动报错 | config | Active |
 | P042 | 🟡 | Telegram inline keyboard / 富文本渲染限制 | api | Active |
 | P043 | 🔵 | pi-coding-agent package.json 版本号未同步 | deps | Resolved |
-| P044 | 🔵 | elysiaclaw status 显示 Tailscale off 但实际运行中 | tooling | Active |
+| P044 | 🔵 | elynx status 显示 Tailscale off 但实际运行中 | tooling | Active |
 | P045 | 🔵 | Session 文件存储在 tmp-pi-runtime-events 子目录 | arch | Active |
 | P046 | 🟠 | allTools/createAllTools 缺少 worktree 和 model_speed_probe 工具 | arch | Resolved |
 | P047 | 🟠 | src/index.ts 缺少 undoAction/fileHistoryList/modelSpeedProbe re-export | arch | Resolved |
@@ -81,7 +81,7 @@
 | P050 | 🟡 | 新工具 ToolDefinition 接口扩展 | api | Resolved |
 | P051 | 🟠 | 工具注册四层遗漏 | arch | Active |
 | P052 | 🔴 | pnpm/npm 混用导致依赖树损坏 | deps | Active |
-| P053 | 🟡 | elysiaclaw 构建部署需要手动步骤 | tooling | Active |
+| P053 | 🟡 | elynx 构建部署需要手动步骤 | tooling | Active |
 | P054 | 🟠 | Bot/TUI 工具路径不同 | arch | Active |
 | P055 | 🟡 | web_search API 密钥配置 | config | Active |
 | P056 | 🟠 | 工具注册四层链修复 | arch | Resolved |
@@ -95,7 +95,7 @@
 | P066 | 🟡 | 子代理 label 重名冲突 | arch | Active |
 | P067 | 🟡 | 子代理继承主 agent 模型（不可用时全部失败） | arch | Active |
 | P068 | 🟠 | tsdown tree-shake 误删未识别的动态导入函数 | tooling | Active |
-| P069 | 🟠 | elysiaclaw dist 部署遗漏 | tooling | Active |
+| P069 | 🟠 | elynx dist 部署遗漏 | tooling | Active |
 | P070 | 🟡 | Telegram tool lane 因 minInitialChars 防抖导致短标签无法显示 | api | Resolved |
 | P071 | 🔴 | deploy.sh 未同步 extensions 导致 plugin 代码陈旧 | tooling | Resolved |
 | P072 | 🔵 | stripPluginOnlyAllowlist 时序导致 group:memory 误报 unknown | config | Active |
@@ -129,6 +129,11 @@
 | P100 | 🟠 | tracker 创建时 conversationId 为 null 阻塞 onSeal → 新会话首 task 密封无 IndexNode 写入 | data | Resolved（setConversationId 惰性注入） |
 | P101 | 🟠 | Vitest vi.mock 只在测试文件中被 hoist，非测试文件中的 vi.mock 不生效 | testing | Active |
 | P102 | 🟠 | temporal 边永不创建（taskTracker.clear() 清空 segments Map，sealedSegments 始终为空） | data | Resolved（onSeal 回调从 ConversationStore 补建 temporal 边） |
+| P103 | 🟠 | coding-agent 入口点缺失导致扩展加载失败 | arch | Active |
+| P104 | 🟡 | 品牌名迁移不彻底（ELYSIACLAW_ 残留） | tooling | Resolved |
+| P105 | 🟡 | pnpm workspace 嵌套冲突 | deps | Resolved |
+| P106 | 🟡 | tsconfig.json @mariozechner/ 路径别名未迁移 | tooling | Resolved |
+| P107 | 🟠 | ElysiaClawKit/OpenClawKit 目录名未迁移 | arch | Resolved |
 
 ## 条目
 
@@ -196,10 +201,10 @@
 - **严重程度：** 🟡 MEDIUM
 - **类别：** arch
 - **状态：** Active
-- **你能观察到的现象：** ElysiaClaw 从 `node_modules/@mariozechner/` 加载 pi 包，不从系统全局
+- **你能观察到的现象：** Elynyx 从 `node_modules/@mariozechner/` 加载 pi 包，不从系统全局
 - **根因：** npm workspace 的包解析优先级
 - **错误做法：** 替换系统全局的 pi 包
-- **正确做法：** 替换 `~/.nvm/.../elysiaclaw/node_modules/@mariozechner/pi-coding-agent/` 目录
+- **正确做法：** 替换 `~/.nvm/.../elynx/node_modules/@elynyx/coding-agent/` 目录
 - **发现时间：** 来自采访
 
 ### P008 — isContextOverflow 名称错误
@@ -296,8 +301,8 @@
 - **严重程度：** 🔴 CRITICAL
 - **类别：** arch
 - **状态：** Active
-- **你能观察到的现象：** TUI 走 `createPiCodingTools`，Bot 走 `createElysiaClawCodingTools`，是完全独立的路径
-- **根因：** 双轨架构设计——TUI 加载自定义 pi-coding-agent dist，Bot 使用 elysiaclaw 自包含 bundle
+- **你能观察到的现象：** TUI 走 `createPiCodingTools`，Bot 走 `createElynyxCodingTools`，是完全独立的路径
+- **根因：** 双轨架构设计——TUI 加载自定义 pi-coding-agent dist，Bot 使用 elynx 自包含 bundle
 - **错误做法：** 新增工具只注册一个路径
 - **正确做法：** 新增工具时，两个路径都需要注册并验证
 - **发现时间：** 来自采访
@@ -386,7 +391,7 @@
 - **严重程度：** 🔴 CRITICAL
 - **类别：** arch
 - **状态：** Active
-- **你能观察到的现象：** `elysiaclaw` 是完全自包含 bundle，bot 请求不经过替换的 `pi-coding-agent`，`wrapStreamForCost()` 对 bot 无效
+- **你能观察到的现象：** `elynx` 是完全自包含 bundle，bot 请求不经过替换的 `pi-coding-agent`，`wrapStreamForCost()` 对 bot 无效
 - **根因：** 双轨架构——TUI 和 Bot 走完全不同的代码路径
 - **错误做法：** 假设 Bot 和 TUI 行为一致
 - **正确做法：** TUI 走 `wrapStreamForCost()` 拦截 done 事件；Bot 走读取 `sessions.json` 的 Python 报告脚本
@@ -422,11 +427,11 @@
 - **正确做法：** 所有部署统一单文件，路径用 `__file__` 所在目录推导
 - **发现时间：** 来自采访
 
-### P029 — openclaw→elysiaclaw 包名迁移导致入口断裂
+### P029 — elynx→elynx 包名迁移导致入口断裂
 - **严重程度：** 🟠 HIGH
 - **类别：** arch
 - **状态：** Resolved
-- **你能观察到的现象：** `elysiaclaw.mjs` 里的 `import('./dist/entry.js')` 是相对路径，通过 symlink 运行时 CWD 不对，CLI 静默失败无输出
+- **你能观察到的现象：** `elynx.mjs` 里的 `import('./dist/entry.js')` 是相对路径，通过 symlink 运行时 CWD 不对，CLI 静默失败无输出
 - **根因：** symlink 指向目录而非文件，CWD 解析错误
 - **错误做法：** symlink 指向 `dist/` 目录
 - **正确做法：** symlink 直接指向 `dist/entry.js`
@@ -447,7 +452,7 @@
 - **类别：** config
 - **状态：** Active
 - **你能观察到的现象：** `gateway.mode: 'lan'` → 只允许 `local`/`remote`；`agents.defaults.defaultModel` → 不再支持
-- **根因：** 新版 elysiaclaw schema 校验更严格
+- **根因：** 新版 elynx schema 校验更严格
 - **错误做法：** 照搬旧配置
 - **正确做法：** 按新版 schema 修正字段值
 - **发现时间：** 来自采访
@@ -466,10 +471,10 @@
 - **严重程度：** 🟡 MEDIUM
 - **类别：** config
 - **状态：** Resolved
-- **你能观察到的现象：** extensions 目录里的 `openclaw.plugin.json` 需要复制为 `elysiaclaw.plugin.json`，否则 34 个插件全部报 manifest not found
+- **你能观察到的现象：** extensions 目录里的 `elynx.plugin.json` 需要复制为 `elynx.plugin.json`，否则 34 个插件全部报 manifest not found
 - **根因：** fork 后包名变更但 manifest 未同步
 - **错误做法：** 只保留旧名 manifest
-- **正确做法：** 批量 rename `openclaw.plugin.json` → `elysiaclaw.plugin.json`
+- **正确做法：** 批量 rename `elynx.plugin.json` → `elynx.plugin.json`
 - **发现时间：** 来自采访
 
 ### P034 — .bashrc 补全脚本路径残留
@@ -486,7 +491,7 @@
 - **严重程度：** 🟡 MEDIUM
 - **类别：** arch
 - **状态：** Resolved
-- **你能观察到的现象：** `elysiaclaw status` exit 0 但无输出
+- **你能观察到的现象：** `elynx status` exit 0 但无输出
 - **根因：** 入口 symlink 问题（同 P029），不是 stdout 被劫持
 - **错误做法：** 排查 stdout 重定向
 - **正确做法：** 修复入口 symlink
@@ -517,17 +522,17 @@
 - **类别：** tooling
 - **状态：** Resolved
 - **你能观察到的现象：** `pnpm build` 在 `build:plugin-sdk:dts` 阶段报 4 个 TS 错误，导致整个构建失败
-- **根因：** elysiaclaw 与 pi-mono 0.64 API 的预存类型不匹配
+- **根因：** elynx 与 pi-mono 0.64 API 的预存类型不匹配
 - **错误做法：** 用 `pnpm build` 构建
 - **正确做法：** 绕过 `pnpm build`，直接运行 `node scripts/tsdown-build.mjs` + 手动跑剩余构建步骤
 - **发现时间：** 来自采访
 
-### P039 — elysiaclaw 自建 system prompt 不使用 agent-session
+### P039 — elynx 自建 system prompt 不使用 agent-session
 - **严重程度：** 🟡 MEDIUM
 - **类别：** arch
 - **状态：** Active
 - **你能观察到的现象：** Bot 模式下 LLM 仍然以普通模式回复，尽管在 agent-session.ts 注入了 CODE MODE ACTIVE 段
-- **根因：** elysiaclaw 的 `attempt.ts` 自己构建 system prompt 并覆盖 agent session 的
+- **根因：** elynx 的 `attempt.ts` 自己构建 system prompt 并覆盖 agent session 的
 - **错误做法：** 在 agent-session 的 `_buildSystemPrompt` 里注入
 - **正确做法：** 在 `attempt.ts` 里直接检测并注入，理解 Bot 和 TUI 的 system prompt 构建路径不同
 - **发现时间：** 来自采访
@@ -539,7 +544,7 @@
 - **你能观察到的现象：** OpenRouter 免费模型请求被静默路由到阿里云 Bailian 端点，部分工具调用格式不兼容
 - **根因：** OpenRouter 对某些免费模型启用了透明代理
 - **错误做法：** 假设 OpenRouter 返回的模型与请求一致
-- **正确做法：** 在 `elysiaclaw.json` 中对受影响模型添加 `baseUrl` 直连
+- **正确做法：** 在 `elynx.json` 中对受影响模型添加 `baseUrl` 直连
 - **发现时间：** 来自采访
 
 ### P041 — config.yaml 结构性损坏导致 gateway 启动报错
@@ -572,13 +577,13 @@
 - **正确做法：** 手动更新 package.json 版本号；考虑在 deploy.sh 中增加同步步骤
 - **发现时间：** 来自采访
 
-### P044 — elysiaclaw status 显示 Tailscale off 但实际运行中
+### P044 — elynx status 显示 Tailscale off 但实际运行中
 - **严重程度：** 🔵 INFO
 - **类别：** tooling
 - **状态：** Active
-- **你能观察到的现象：** `elysiaclaw status` 显示 'Tailscale off'，但 `tailscale status` 确认 Tailscale active
-- **根因：** elysiaclaw status 的 Tailscale 检测逻辑可能未正确识别运行状态
-- **错误做法：** 以 elysiaclaw status 为准
+- **你能观察到的现象：** `elynx status` 显示 'Tailscale off'，但 `tailscale status` 确认 Tailscale active
+- **根因：** elynx status 的 Tailscale 检测逻辑可能未正确识别运行状态
+- **错误做法：** 以 elynx status 为准
 - **正确做法：** 以 `tailscale status` 实际输出为准
 - **发现时间：** 来自采访
 
@@ -646,7 +651,7 @@
 - **严重程度：** 🟠 HIGH
 - **类别：** arch
 - **状态：** Active
-- **你能观察到的现象：** 新增工具后忘记在四层注册（L1 allTools → L2 pi-tools.ts → L3 tool-catalog.ts → L4 elysiaclaw.json）
+- **你能观察到的现象：** 新增工具后忘记在四层注册（L1 allTools → L2 pi-tools.ts → L3 tool-catalog.ts → L4 elynx.json）
 - **根因：** 四层注册机制复杂，容易遗漏某一层
 - **错误做法：** 只注册一两层就认为完成
 - **正确做法：** 每层逐一检查并注册
@@ -657,26 +662,26 @@
 - **类别：** deps
 - **状态：** Active
 - **你能观察到的现象：** pnpm 和 npm 混用后依赖树损坏，构建失败
-- **根因：** pi-mono 框架层用 npm workspaces，elysiaclaw 应用层用 pnpm，两者不能在根目录混用
+- **根因：** pi-mono 框架层用 npm workspaces，elynx 应用层用 pnpm，两者不能在根目录混用
 - **错误做法：** 在根目录运行 pnpm install
-- **正确做法：** pi-mono 根目录只用 npm；elysiaclaw 子目录用 pnpm
+- **正确做法：** pi-mono 根目录只用 npm；elynx 子目录用 pnpm
 - **发现时间：** 来自采访
 
-### P053 — elysiaclaw 构建部署需要手动步骤
+### P053 — elynx 构建部署需要手动步骤
 - **严重程度：** 🟡 MEDIUM
 - **类别：** tooling
 - **状态：** Active
-- **你能观察到的现象：** elysiaclaw 构建后 dist 未自动部署到全局安装目录
-- **根因：** deploy.sh 只负责 pi-mono 框架层，不负责 elysiaclaw dist 部署到全局
+- **你能观察到的现象：** elynx 构建后 dist 未自动部署到全局安装目录
+- **根因：** deploy.sh 只负责 pi-mono 框架层，不负责 elynx dist 部署到全局
 - **错误做法：** 构建后忘记手动部署
-- **正确做法：** 构建后手动 `cp -r dist/* ~/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw/dist/`
+- **正确做法：** 构建后手动 `cp -r dist/* ~/.nvm/versions/node/v22.22.1/lib/node_modules/elynx/dist/`
 - **发现时间：** 来自采访
 
 ### P054 — Bot/TUI 工具路径不同
 - **严重程度：** 🟠 HIGH
 - **类别：** arch
 - **状态：** Active
-- **你能观察到的现象：** TUI 走 `createPiCodingTools`，Bot 走 `createElysiaClawCodingTools`，工具注册路径完全独立
+- **你能观察到的现象：** TUI 走 `createPiCodingTools`，Bot 走 `createElynyxCodingTools`，工具注册路径完全独立
 - **根因：** 双轨架构（同 P017 的延伸）
 - **错误做法：** 只验证一个路径
 - **正确做法：** 新增工具必须两边验证
@@ -689,7 +694,7 @@
 - **你能观察到的现象：** web_search 工具需要 API 密钥，配置不当导致搜索失败
 - **根因：** API 密钥配置位置和格式不明确
 - **错误做法：** 硬编码 API 密钥
-- **正确做法：** 在 `~/.elysiaclaw/.env` 中配置
+- **正确做法：** 在 `~/.elynx/.env` 中配置
 - **发现时间：** 来自采访
 
 ### P056 — 工具注册四层链修复
@@ -747,7 +752,7 @@
 - **类别：** tooling
 - **状态：** Resolved
 - **你能观察到的现象：** `pnpm build` 在 DTS 阶段报错数量从 4 增加到 6
-- **根因：** elysiaclaw 与 pi-mono 0.64 API 的预存类型不匹配，每次新增代码可能引入新的类型冲突
+- **根因：** elynx 与 pi-mono 0.64 API 的预存类型不匹配，每次新增代码可能引入新的类型冲突
 - **错误做法：** 继续绕过不修复
 - **正确做法：** 专项 Sprint 修复全部 DTS 错误（已通过 tsgo 53→0 清零解决）
 - **发现时间：** 来自采访
@@ -766,10 +771,10 @@
 - **严重程度：** 🟠 HIGH
 - **类别：** arch
 - **状态：** Resolved
-- **你能观察到的现象：** `delegate_code_task` 在 tool-catalog.ts 中有定义，elysiaclaw-tools.ts 有 import，但 Gateway 启动报 `unknown entries`
-- **根因：** `createElysiaClawTools()` 函数中 `tools` 数组从未调用 `createDelegateCodeTaskTool()`
+- **你能观察到的现象：** `delegate_code_task` 在 tool-catalog.ts 中有定义，elynx-tools.ts 有 import，但 Gateway 启动报 `unknown entries`
+- **根因：** `createElynyxTools()` 函数中 `tools` 数组从未调用 `createDelegateCodeTaskTool()`
 - **错误做法：** import 了函数但没有使用
-- **正确做法：** 在 `elysiaclaw-tools.ts` 的 `tools` 数组中添加调用
+- **正确做法：** 在 `elynx-tools.ts` 的 `tools` 数组中添加调用
 - **发现时间：** 来自采访
 
 ### P066 — 子代理 label 重名冲突
@@ -799,15 +804,15 @@
 - **你能观察到的现象：** `createDelegateCodeTaskTool` 函数声明被 tree-shake 掉，但 tool-catalog 的字符串元数据保留
 - **根因：** tsdown (esbuild) 误判函数为未使用
 - **错误做法：** 不验证 dist 产物完整性
-- **正确做法：** deploy.sh 中 elysiaclaw 构建步骤应验证关键工具函数是否被打包
+- **正确做法：** deploy.sh 中 elynx 构建步骤应验证关键工具函数是否被打包
 - **发现时间：** 来自采访
 
-### P069 — elysiaclaw dist 部署遗漏
+### P069 — elynx dist 部署遗漏
 - **严重程度：** 🟠 HIGH
 - **类别：** tooling
 - **状态：** Active
-- **你能观察到的现象：** elysiaclaw 源码已修改并本地构建成功，但全局安装的 dist 未更新
-- **根因：** deploy.sh 只负责 pi-mono 框架层，不负责 elysiaclaw dist 部署到全局
+- **你能观察到的现象：** elynx 源码已修改并本地构建成功，但全局安装的 dist 未更新
+- **根因：** deploy.sh 只负责 pi-mono 框架层，不负责 elynx dist 部署到全局
 - **错误做法：** 构建后忘记手动部署
 - **正确做法：** 构建后手动 `cp -r dist/*` 到全局 node_modules
 - **发现时间：** 来自采访
@@ -1067,9 +1072,9 @@
 - **类别：** config
 - **状态：** Resolved
 - **你能观察到的现象：** agent 在 Telegram 中没有流式输出（token-by-token 逐字显示），消息在生成完成后才一次性出现
-- **根因：** `elysiaclaw.json:357` `blockStreamingDefault` 默认为 `'on'`，块流式传输与流式草稿预览互斥
+- **根因：** `elynx.json:357` `blockStreamingDefault` 默认为 `'on'`，块流式传输与流式草稿预览互斥
 - **错误做法：** 保留默认 blockStreamingDefault='on'
-- **正确做法：** `elysiaclaw.json` L357 `blockStreamingDefault` 从 `'on'` 改为 `'off'`。需重启服务生效
+- **正确做法：** `elynx.json` L357 `blockStreamingDefault` 从 `'on'` 改为 `'off'`。需重启服务生效
 - **发现时间：** 来自采访
 
 ### P096 — setToolCallPendingApproval 无生产调用者（M0 死代码）
@@ -1150,6 +1155,56 @@
 - **发现时间：** 2026-06-10（TASK-21 M9 端到端验证 — DB 检查发现 edges 表为空）
 - **解决时间：** 2026-06-10
 
+### P103 — coding-agent 入口点缺失导致扩展加载失败
+- **严重程度：** 🟠 HIGH
+- **类别：** arch
+- **状态：** Active
+- **你能观察到的现象：** coding-agent 源码合并到 elysiaclaw/src/agents/coding-agent/ 后，Node.js 模式下扩展加载 `@elynyx/coding-agent` 失败——loader.ts 的 `getAliases()` 解析 `path.resolve(__dirname, "../..", "index.js")` 指向 `dist/agents/coding-agent/index.js`，但 tsdown 不生成此文件
+- **根因：** tsdown.config.ts 没有为 `src/agents/coding-agent/index.ts` 配置独立入口点，构建产物不保留 `dist/agents/coding-agent/` 目录结构
+- **错误做法：** 假设 tsdown 自动保留源码目录结构
+- **正确做法：** 在 tsdown.config.ts 中显式添加 coding-agent 入口点：`{ entry: { "agents/coding-agent/index": "src/agents/coding-agent/index.ts" } }`
+- **发现时间：** 2026-06-10（迁移验证）
+
+### P104 — 品牌名迁移不彻底（ELYSIACLAW_ 残留）
+- **严重程度：** 🟡 MEDIUM
+- **类别：** tooling
+- **状态：** Resolved
+- **你能观察到的现象：** 品牌名替换脚本只替换了字符串内容，但 shell 变量名（如 `$ELYSIACLAW`）、大写环境变量前缀（`ELYSIACLAW_`）、Dockerfile ARG 前缀（`elysiaclaw_`）未被匹配
+- **根因：** 替换脚本的正则只匹配了常见模式，遗漏了 shell 变量名、大写前缀、小写 ARG 前缀等变体
+- **错误做法：** 只做一次全局替换就认为迁移完成
+- **正确做法：** 替换后全量 grep 残留引用，逐类修复；对 shell 变量名、环境变量前缀、Dockerfile ARG 等做分类专项替换
+- **发现时间：** 2026-06-10（迁移验证）
+
+### P105 — pnpm workspace 嵌套冲突
+- **严重程度：** 🟡 MEDIUM
+- **类别：** deps
+- **状态：** Resolved
+- **你能观察到的现象：** `pnpm install` 报错 `ERR_PNPM_WORKSPACE_CONFIG_INCONSISTENCY`，elysiaclaw 子目录有自己的 pnpm-workspace.yaml 与根目录冲突
+- **根因：** pnpm 不支持嵌套 workspace，子目录的 pnpm-workspace.yaml 必须删除，所有 workspace 配置集中到根目录
+- **错误做法：** 在 pnpm workspace 子项目中保留独立的 pnpm-workspace.yaml
+- **正确做法：** 删除子项目的 pnpm-workspace.yaml，将所有 workspace 包路径合并到根目录的 pnpm-workspace.yaml
+- **发现时间：** 2026-06-10（迁移验证）
+
+### P106 — tsconfig.json @mariozechner/ 路径别名未迁移
+- **严重程度：** 🟡 MEDIUM
+- **类别：** tooling
+- **状态：** Resolved
+- **你能观察到的现象：** tsconfig.json 中仍有 `@mariozechner/pi-mom`、`@mariozechner/pi`、`@mariozechner/pi-web-ui`、`@mariozechner/pi-agent-old` 等 8 处路径别名，TypeScript 路径解析可能不一致
+- **根因：** 品牌化替换脚本只处理了 `packages/*/package.json` 中的包名，未处理 tsconfig.json 的 paths 映射
+- **错误做法：** 假设品牌化脚本覆盖了所有配置文件
+- **正确做法：** 品牌化替换后，逐个检查 tsconfig.json、biome.json、.eslintrc 等配置文件中的包名引用
+- **发现时间：** 2026-06-10（第二轮排查）
+
+### P107 — ElysiaClawKit/OpenClawKit 目录名未迁移
+- **严重程度：** 🟠 HIGH
+- **类别：** arch
+- **状态：** Resolved
+- **你能观察到的现象：** `apps/shared/ElysiaClawKit/` 和 `apps/shared/OpenClawKit/` 目录仍使用旧品牌名，xcfilelist 引用小写 `elysiaclawKit` 在区分大小写的文件系统上可能找不到目录
+- **根因：** 文件重命名脚本跳过了 `apps/` 目录，Kit 框架目录需要单独处理
+- **错误做法：** 假设文件重命名脚本覆盖了所有目录
+- **正确做法：** 迁移后全量检查 apps/ 目录中的目录名和文件名，特别是 Swift/Android 框架目录
+- **发现时间：** 2026-06-10（第二轮排查）
+
 ### 新条目模板
 ```markdown
 ### P[NNN] — [标题]
@@ -1172,11 +1227,11 @@
 - 字段名猜测（先 grep 实际接口定义）
 
 ## 绝对禁止
-- [ ] NEVER 在 pi-mono 根目录运行 pnpm install（P049/P052）
+- [ ] NEVER 在根目录运行 npm install（与 pnpm workspace 冲突）
 - [ ] NEVER 用 heredoc 写文件（P001）
 - [ ] NEVER 用 sed 做字符串替换（P002）
 - [ ] NEVER 直接调 tsgo（P006）
-- [ ] NEVER 覆盖 `~/.elysiaclaw/.env` 中的密钥
+- [ ] NEVER 覆盖 `~/.elynx/.env` 中的密钥
 - [ ] NEVER 提交密钥到 git
 - [ ] NEVER 在 bot 和 TUI 模式只验证一个路径（P017/P054）
 - [ ] NEVER 用 `as` 类型断言偷懒传播工具定义字段（P082）

@@ -1,5 +1,5 @@
 {
-	"name": "@mariozechner/pi-ai",
+	"name": "@elynyx/ai",
 	"version": "0.64.0",
 	"description": "Unified LLM API with automatic model discovery and provider configuration",
 	"type": "module",
@@ -76,7 +76,7 @@
 		"@aws-sdk/client-bedrock-runtime": "^3.983.0",
 		"@google/genai": "^1.40.0",
 		"@mistralai/mistralai": "1.14.1",
-		"@sinclair/typebox": "^0.34.41",
+		"@sinclair/typebox": "0.34.49",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"chalk": "^5.6.2",
@@ -100,7 +100,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/badlogic/pi-mono.git",
+		"url": "git+https://github.com/elysiayunchen/elynx.git",
 		"directory": "packages/ai"
 	},
 	"engines": {

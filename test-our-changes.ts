@@ -3,7 +3,7 @@
  * No API key needed — tests the logic directly.
  */
 
-import { applyMultiLayerCompaction, snipDeadMessages, microcompact } from "./packages/coding-agent/src/core/compaction/multi-layer.js";
+import { applyMultiLayerCompaction, snipDeadMessages, microcompact } from "./elysiaclaw/src/agents/coding-agent/core/compaction/multi-layer.js";
 
 // ============================================================================
 // Test 1: Multi-layer compaction — Snip

@@ -1,4 +1,4 @@
-# SOURCEMAP — ElysiaClaw
+# SOURCEMAP — Elynyx
 > [derivable — 由 agent 从代码现生，见 ENGINE_MAP §0]
 > Last updated: 2026-06-08 | 把这个当作 GPS，不是文档。
 > ⚠️ CLI-LEAN 下本文件为 stub。agent 按需从代码库重建并核对，NEVER 信任本文件正文。
@@ -23,7 +23,7 @@
 > ```bash
 > # 入口点
 > find ~/projects/pi-mono/packages -name "index.ts" -maxdepth 3
-> find ~/projects/pi-mono/elysiaclaw/src -name "index.ts" -maxdepth 2
+> find ~/projects/pi-mono/elynx/src -name "index.ts" -maxdepth 2
 > 
 > # 核心逻辑
 > ls ~/projects/pi-mono/packages/coding-agent/src/core/
@@ -31,7 +31,7 @@
 > 
 > # 工具
 > ls ~/projects/pi-mono/packages/coding-agent/src/core/tools/
-> ls ~/projects/pi-mono/elysiaclaw/src/agents/tools/
+> ls ~/projects/pi-mono/elynx/src/agents/tools/
 > ```
 
 
@@ -45,7 +45,7 @@
 
 ## 5. 配置注册表
 > [derivable — 由 agent 从代码现生]
-> 现生来源：`~/.elysiaclaw/elysiaclaw.json`、`~/.elysiaclaw/config.yaml`、`~/.elysiaclaw/.env`
+> 现生来源：`~/.elynx/elynx.json`、`~/.elynx/config.yaml`、`~/.elynx/.env`
 
 
 ## 6. 依赖图（非显而易见的）
@@ -55,7 +55,7 @@
 ## 7. 扩展点
 > [derivable — 由 agent 从代码现生]
 > 参考模式：新增框架层工具 → `packages/coding-agent/src/core/tools/` + 四层注册
-> 新增应用层工具 → `elysiaclaw/src/agents/tools/` + pi-tools.ts + tool-catalog.ts
+> 新增应用层工具 → `elynx/src/agents/tools/` + pi-tools.ts + tool-catalog.ts
 
 
 ## 8. 功能地图

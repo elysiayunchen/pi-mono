@@ -1,20 +1,20 @@
-# CONTEXT — ElysiaClaw
+# CONTEXT — Elynyx
 > 快照日期：2026-06-10 | 每次会话开始时，读完 ENGINE_MAP 后优先阅读此文件。
 
 
 ## 状态面板
 | 维度 | 状态 |
 |------|------|
-| 构建 | ✅ 正常（`npm run check` 零新增错误，500 文件） |
+| 构建 | ✅ 正常（`pnpm run check` elysiaclaw 通过，packages/ 有 1 个预存 typebox 错误） |
 | 测试 | ✅ cognitive-memory 111/111 + attempt 149/149 + Telegram Bot 867/867 全绿（上游 18 修复后） + meta-compression 22/22 |
-| 上次完成 | 流式空白 bug 修复 + 分块参数调优（短句模式）+ 上游 Telegram 测试 18→0 修复 + 部署 5 guards 全绿 |
+| 上次完成 | 第二轮迁移修复：tsconfig.json 路径别名 + 破损导入 + Kit 目录重命名 + CLAWDBOT_ 遗漏 + Dockerfile + 文档 |
 | 当前优先 | TASK-21 PLAN-13 M9（端到端验证 — 通过日志调查落实） |
 | 阻塞 | Telegram 代理节点不可达 — 需用户更新代理订阅 |
 | 产品目标完成度 | 约 85% — 认知架构 M0-M8 完成 + 流式空白修复 + 测试全绿 + 部署验证 |
 
 
 ## 当前状态概述
-ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行在 `elysiaserver` (Ubuntu 24.04)，通过 Telegram Bot `@ElysiaClaw_Bot` 交互。项目维护者为 aoseluo（云尘 / 奈緒），采用 AI 协作开发模式，独立维护，不与上游 OpenClaw 同步。
+Elynyx 是基于 pi-mono 框架构建的多渠道 AI 助手平台（已完成品牌化迁移），运行在 `elysiaserver` (Ubuntu 24.04)，通过 Telegram Bot `@Elynyx_Bot` 交互。项目维护者为 aoseluo（云尘 / 奈緒），采用 AI 协作开发模式，独立维护，不与上游同步。
 
 当前处于认知架构演进的关键阶段：序 1-7 已全部完成。**传统 session 机制已彻底废除**，统一记忆模型为认知工作集（PLAN-13，取代 PLAN-09/12）。PLAN-09 P0/P1 已完成并部署。PLAN-13 执行计划已派生为 TASK-12~TASK-21（M0-M9 迁移链），**M0 已完成 + 已审查**（task 边界改控制流，P096–P100 已录入），M1/M2/M4 可并行启动。
 
@@ -36,7 +36,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 当前假设
-- 本地开发环境使用 `elysiaclaw.json` 和 `config.yaml` 配置，不影响生产
+- 本地开发环境使用 `elynx.json` 和 `config.yaml` 配置，不影响生产
 - 主模型 OpenRouter/owl-alpha 当前不可用，部分端到端验证受阻
 - `~/.pi/agent/sessions/` 下的 session JSONL 文件正常增长，自动 compact 机制有效
 - Gateway 绑定 `lan` 模式（Tailscale IP `100.111.4.5`），局域网内可访问
@@ -46,11 +46,11 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 ## 运行时上下文
 - 项目根目录：`/home/elysia/projects/pi-mono/`（非 `~/pi-mono/`）
 - 引擎文件目录：`/home/elysia/projects/pi-mono/engine/`（v5 重构后）
-- 原 `elysiaclaw_engine/` 已归档删除，所有内容迁移至 `engine/`
+- 原 `elynx_engine/` 已归档删除，所有内容迁移至 `engine/`
 - Node.js v22.22.1，通过 nvm 管理
 - tsgo 不在 PATH，必须用 `npm run build` 调用
-- pi-mono 框架层使用 npm workspaces，elysiaclaw 应用层使用 pnpm（不可混用）
-- `deploy.sh` 结构：3 Phase · 12 Step · 5 Guard
+- 统一使用 pnpm workspace 管理（迁移后不再有双包管理器问题）
+- `deploy.sh` 结构：3 Phase · 9 Step · 5 Guard
 
 
 ## 常用请求翻译表
@@ -58,23 +58,25 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 | 如果你说想要… | 实际需要动到的文件/地方 | 复杂度 | 备注 |
 |---------------|--------------------------|------|------|
 | 部署更新 | `cd ~/pi-mono && ./deploy.sh` | 低 | 一键部署 |
-| 新增框架层工具 | `packages/coding-agent/src/core/tools/` + 四层注册 | 高 | 需两边验证 TUI/Bot |
-| 新增应用层工具 | `elysiaclaw/src/agents/tools/` + pi-tools.ts + tool-catalog.ts | 中 | 需 deploy 到全局 |
-| 修改 Agent 循环/压缩 | `packages/coding-agent/src/core/` + `packages/agent/src/` | 高 | 影响全局，需充分测试 |
-| 修复 Telegram 输出 | `elysiaclaw/src/telegram/` | 中 | 涉及 bot-message-dispatch |
-| 增加新的 LLM provider | `~/.elysiaclaw/elysiaclaw.json` agents 段 | 低 | 配置修改 |
-| 查看 gateway 状态 | `elysiaclaw status` | 低 | 命令行 |
+| 新增框架层工具 | `elysiaclaw/src/agents/coding-agent/core/tools/` + 四层注册 | 高 | 需两边验证 TUI/Bot |
+| 新增应用层工具 | `elynx/src/agents/tools/` + pi-tools.ts + tool-catalog.ts | 中 | 需 deploy 到全局 |
+| 修改 Agent 循环/压缩 | `elysiaclaw/src/agents/coding-agent/core/` + `packages/agent/src/` | 高 | 影响全局，需充分测试 |
+| 修复 Telegram 输出 | `elynx/src/telegram/` | 中 | 涉及 bot-message-dispatch |
+| 增加新的 LLM provider | `~/.elynx/elynx.json` agents 段 | 低 | 配置修改 |
+| 查看 gateway 状态 | `elynx status` | 低 | 命令行 |
 | 查 session 数据 | `find ~/.pi/agent/sessions/ -name "*.jsonl"` | 低 | 递归查找 |
 | 成本报告 | `python3 ~/.pi/agent/cost-report.py` | 低 | Python 脚本 |
-| 修复流式输出 | `~/.elysiaclaw/elysiaclaw.json` L357 `blockStreamingDefault` | 低 | 配置项 |
+| 修复流式输出 | `~/.elynx/elynx.json` L357 `blockStreamingDefault` | 低 | 配置项 |
 | 回滚到旧版 | `git checkout` + `npm run build` + `./deploy.sh` | 中 | 需要完整重部署 |
 
 
 ## 会话交接记录
-引擎文件 v5 重构完成。从 `elysiaclaw_engine/` 迁移至 `engine/`，按 v5 规范重组。8 个 plan 已登记，设计文档从旧目录迁移至 `engine/plans/`。旧目录 `elysiaclaw_engine/` 已删除。
+引擎文件 v5 重构完成。从 `elynx_engine/` 迁移至 `engine/`，按 v5 规范重组。8 个 plan 已登记，设计文档从旧目录迁移至 `engine/plans/`。旧目录 `elynx_engine/` 已删除。
 
 
 ## 最近完成的事项
+0. **第二轮迁移修复**（2026-06-10）：tsconfig.json 8处 @mariozechner/ 路径别名 → @elynyx/ + test-our-changes.ts 和 session-transcripts.ts 破损导入修复 + ElysiaClawKit→ElynyxKit + OpenClawKit→ElynyxProtocol 目录重命名 + 31+ 处引用更新 + CLAWDBOT_SHOW_SECRETS/SHELL 添加 ELYNYX_ 优先级 + Dockerfile elysiaclaw.mjs→elynx.mjs + sandbox cache IDs 更新 + CLAUDE.md/AGENTS.md coding-agent 路径更新
+1. **pi-mono → elynx 迁移**（2026-06-10）：品牌化 @mariozechner→@elynyx（1553+ 处）+ elysiaclaw/ElysiaClaw→elynx/Elynyx（5000+ 处）+ 90 个文件重命名 + npm→pnpm workspace 统一 + coding-agent 源码合并到 elysiaclaw/src/agents/coding-agent/ + packages/coding-agent 删除 + deploy.sh 12→9 步简化 + apps/Dockerfile/脚本品牌名更新 + tsdown.config.ts 添加 coding-agent 入口点
 1. **流式空白 bug 修复 + 分块参数调优 + 上游测试修复 + 部署**（2026-06-10 会话26）：Telegram 流式输出 tool 调用时用户发消息导致大片空白（archivedToolPreviewIds 归档+清理修复）；分块参数调优为短句模式（draft-chunking minChars 200→80/maxChars 800→300/breakPreference→sentence, block-streaming MIN 800→200/MAX 1200→500/breakPreference→sentence）；上游 Telegram 测试 18→0 修复（fetch.test.ts 15 + audit.test.ts 2 + topic-agentid.test.ts 1）；部署 5 guards 全绿，gateway pid 814440，memory 122 files / 1373 chunks
 2. **P080 缓解 + P082 确认修复 + TASK-04 拆分重构**（2026-06-10 会话24）：P080 连续失败检测改 toolName 匹配 + OpenAI/Responses API 错误标记 `❌ Tool error:` + nudge 不重置计数器；P082 确认 wrapToolDefinition 已修复（16 扩展字段逐字段传播），PITFALLS 更新为 Resolved；attempt.ts 拆分重构 Step 1-3（3576→2359 行，-34%），提取 tool-call-repair.ts + ollama-compat.ts + system-prompt-builder.ts + injection-coordinator.ts；部署 5 guards 全绿，175 测试全绿
 2. **P102 修复 + TASK-19 M7 C3 元压缩**（2026-06-10 会话23）：P102 temporal 边永不创建 bug 修复（onSeal 回调 fallback getLatestIndexNode）；meta-compression.ts 新建（22 测试全绿）；rebuildCompressedTaskIds 进程重启恢复；只压缩已完成/已中止 task；session title 从 LLM 摘要提取
@@ -99,6 +101,7 @@ ElysiaClaw 是基于 pi-mono 框架构建的多渠道 AI 助手平台，运行�
 
 
 ## 已知不稳定项
+- ⚠️ **packages/ 预存 typebox 版本冲突** — @sinclair/typebox 双版本解析导致 1 个类型错误（非迁移引起）
 - **session 机制已废弃** — 传统 session JSONL 降级为调试备份，统一记忆模型为认知工作集 (PLAN-13)
 - `~/.pi/agent/sessions/` 不再参与索引和认知注入
 - ⚠️ **Telegram Bot 测试全部通过** — TASK-07 P3 完成 + 会话26 上游 18 修复：fetch.test.ts 15（globalThis.fetch 替换）+ audit.test.ts 2（同方案）+ topic-agentid.test.ts 1（pickFirstExistingAgentId mock），867/867 全绿

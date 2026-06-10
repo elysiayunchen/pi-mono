@@ -11,9 +11,9 @@
 - **Code Mode** (`/code` `/exit`) — 不再作为独立模式存在。代码能力是 agent 的内置手段，不是特殊状态。
 
 ### 已确认
-- `delegate_code_task` 是 **elysiaclaw 应用层工具**，不在 pi-coding-agent 框架层
+- `delegate_code_task` 是 **elynx 应用层工具**，不在 pi-coding-agent 框架层
 - 内部封装 `spawnSubagentDirect()` (subagent-spawn.ts)
-- 子代理生命周期由 elysiaclaw 子代理系统管理（37 个文件，完整的 spawn/kill/steer/list/announce）
+- 子代理生命周期由 elynx 子代理系统管理（37 个文件，完整的 spawn/kill/steer/list/announce）
 - 完成通知是 push-based（announce 机制），主 agent 无需轮询
 - 工具限制通过 `pi-tools.policy.ts` 的 deny list 机制实现
 - 子代理和主 agent 共享同一个 RateLimitScheduler（P2-D）
@@ -22,7 +22,7 @@
 ### 架构层级
 
 delegate_code_task (新工具)
-→ elysiaclaw/tools/delegate-code-task.ts
+→ elynx/tools/delegate-code-task.ts
 → spawnSubagentDirect() (subagent-spawn.ts)
 → callGateway("agent") (Gateway RPC)
 → 子 agent session (fresh context)
@@ -38,11 +38,11 @@ delegate_code_task (新工具)
 
 | 文件 | 目的 | 状态 |
 |---|---|---|
-| `elysiaclaw-tools.ts` L30+ | `createElysiaClawTools()` 完整实现，理解 elysiaclaw 工具注册模式 | 待读 |
+| `elynx-tools.ts` L30+ | `createElynyxTools()` 完整实现，理解 elynx 工具注册模式 | 待读 |
 | `attempt.ts` 完整 | system prompt 构建 + 消息注入点，确定分类器注入位置 | 待读 |
 | `common.ts` L1-80 | `jsonResult()`, `readStringParam()` 等工具辅助函数 | 待读 |
 | `subagent-announce.ts` `buildSubagentSystemPrompt` | 子代理 system prompt 构建方式 | 待读 |
-| `pi-tools.ts` L227-600 | `createElysiaClawCodingTools()` 中 sessions_spawn/subagents 注册方式 | 待读 |
+| `pi-tools.ts` L227-600 | `createElynyxCodingTools()` 中 sessions_spawn/subagents 注册方式 | 待读 |
 | `tool-catalog.ts` sessions_spawn/subagents 定义 | 工具在 catalog 中的 profile/section 归属 | 待读 |
 
 ---
@@ -51,7 +51,7 @@ delegate_code_task (新工具)
 
 ### Step 1: 创建工具文件
 
-**文件**: `elysiaclaw/src/agents/tools/delegate-code-task.ts`
+**文件**: `elynx/src/agents/tools/delegate-code-task.ts`
 
 ```typescript
 // 关键接口
@@ -89,15 +89,15 @@ expectsCompletionMessage: true
 
 Step 2: 工具注册（四层链）
 
-注意: delegate_code_task 在 elysiaclaw 层定义，不需要 pi-coding-agent 的四层链。
+注意: delegate_code_task 在 elynx 层定义，不需要 pi-coding-agent 的四层链。
 
 
 注册路径：
 
-1.工具定义: elysiaclaw/src/agents/tools/delegate-code-task.ts (Step 1)
-2.createElysiaClawTools(): elysiaclaw/src/agents/elysiaclaw-tools.ts — import + 注册
+1.工具定义: elynx/src/agents/tools/delegate-code-task.ts (Step 1)
+2.createElynyxTools(): elynx/src/agents/elynx-tools.ts — import + 注册
 3.tool-catalog.ts: 添加 delegate_code_task 定义（section: "sessions", profile: "coding"）
-4.elysiaclaw.json tools.allow: 添加 delegate_code_task
+4.elynx.json tools.allow: 添加 delegate_code_task
 
 Step 3: 子代理 system prompt 注入
 
@@ -196,9 +196,9 @@ Step 6: 构建部署测试
 
 ```bash
 cd ~/projects/pi-mono && npm run build    # pi-mono 框架层（delegate_code_task 不在此层）
-cd ~/projects/pi-mono/elysiaclaw && pnpm build  # 可能触发 DTS 错误，需绕过
+cd ~/projects/pi-mono/elynx && pnpm build  # 可能触发 DTS 错误，需绕过
 cd ~/projects/pi-mono && ./deploy.sh
-elysiaclaw gateway restart
+elynx gateway restart
 ```
 
 # 测试
@@ -235,7 +235,7 @@ HANDOFF.md	更新项目状态
 
 风险	说明	缓解
 DTS 错误阻塞	pnpm build 在 build:plugin-sdk:dts 阶段报 6 个 TS 错误	绕过: node scripts/tsdown-build.mjs
-子代理工具限制	SUBAGENT_TOOL_DENY_ALWAYS 可能不够精确	需要在 elysiaclaw.json tools.subagents.tools.deny 中配置
+子代理工具限制	SUBAGENT_TOOL_DENY_ALWAYS 可能不够精确	需要在 elynx.json tools.subagents.tools.deny 中配置
 agent 不分发	LLM 可能总是自己调查	system prompt 强引导 + Layer 2 后置提醒
 announce 格式	子代理结果可能被截断或格式化	验证 announce 链路完整性
 路径偏移	项目根目录已从 ~/pi-mono/ 变为 ~/projects/pi-mono/	引擎文件已全部修正

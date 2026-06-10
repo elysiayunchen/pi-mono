@@ -72,9 +72,9 @@ Create provider file exporting:
 ### 5. Tests (`packages/ai/test/`)
 Add provider to: `stream.test.ts`, `tokens.test.ts`, `abort.test.ts`, `empty.test.ts`, `context-overflow.test.ts`, `image-limits.test.ts`, `unicode-surrogate.test.ts`, `tool-call-without-result.test.ts`, `image-tool-result.test.ts`, `total-tokens.test.ts`, `cross-provider-handoff.test.ts`.
 
-### 6. Coding Agent (`packages/coding-agent/`)
-- `src/core/model-resolver.ts`: Add default model ID to `DEFAULT_MODELS`
-- `src/cli/args.ts`: Add env var documentation
+### 6. Coding Agent (`elysiaclaw/src/agents/coding-agent/`)
+- `core/model-resolver.ts`: Add default model ID to `DEFAULT_MODELS`
+- `cli/args.ts`: Add env var documentation
 - `README.md`: Add provider setup instructions
 
 ### 7. Documentation

@@ -1,4 +1,4 @@
-# @mariozechner/pi-ai
+# @elynyx/ai
 
 统一的 LLM API，支持自动模型发现、提供商配置、令牌与成本追踪，以及简单的上下文持久化和会话中途切换到其他模型。
 
@@ -72,15 +72,15 @@
 ## 安装
 
 ```bash
-npm install @mariozechner/pi-ai
+npm install @elynyx/ai
 ```
 
-TypeBox 的导出已从 `@mariozechner/pi-ai` 重新导出：`Type`、`Static` 和 `TSchema`。
+TypeBox 的导出已从 `@elynyx/ai` 重新导出：`Type`、`Static` 和 `TSchema`。
 
 ## 快速入门
 
 ```typescript
-import { Type, getModel, stream, complete, Context, Tool, StringEnum } from '@mariozechner/pi-ai';
+import { Type, getModel, stream, complete, Context, Tool, StringEnum } from '@elynyx/ai';
 
 // 完全类型化，支持提供商和模型的自动补全
 const model = getModel('openai', 'gpt-4o-mini');
@@ -206,7 +206,7 @@ for (const block of response.content) {
 ### 定义工具
 
 ```typescript
-import { Type, Tool, StringEnum } from '@mariozechner/pi-ai';
+import { Type, Tool, StringEnum } from '@elynyx/ai';
 
 // 使用 TypeBox 定义工具参数
 const weatherTool: Tool = {
@@ -332,7 +332,7 @@ for await (const event of s) {
 当使用 `stream()` 或 `complete()` 实现自己的工具执行循环时，请使用 `validateToolCall` 在将参数传递给工具之前进行验证：
 
 ```typescript
-import { stream, validateToolCall, Tool } from '@mariozechner/pi-ai';
+import { stream, validateToolCall, Tool } from '@elynyx/ai';
 
 const tools: Tool[] = [weatherTool, calculatorTool];
 const s = stream(model, { messages, tools });
@@ -386,7 +386,7 @@ for await (const event of s) {
 
 ```typescript
 import { readFileSync } from 'fs';
-import { getModel, complete } from '@mariozechner/pi-ai';
+import { getModel, complete } from '@elynyx/ai';
 
 const model = getModel('openai', 'gpt-4o-mini');
 
@@ -423,7 +423,7 @@ for (const block of response.content) {
 ### 统一接口（streamSimple/completeSimple）
 
 ```typescript
-import { getModel, streamSimple, completeSimple } from '@mariozechner/pi-ai';
+import { getModel, streamSimple, completeSimple } from '@elynyx/ai';
 
 // 多个提供商的许多模型支持思考/推理
 const model = getModel('anthropic', 'claude-sonnet-4-20250514');
@@ -461,7 +461,7 @@ for (const block of response.content) {
 如需精细控制，请使用提供商特定选项：
 
 ```typescript
-import { getModel, complete } from '@mariozechner/pi-ai';
+import { getModel, complete } from '@elynyx/ai';
 
 // OpenAI 推理（o1、o3、gpt-5）
 const openaiModel = getModel('openai', 'gpt-5-mini');
@@ -550,7 +550,7 @@ if (message.stopReason === 'error' || message.stopReason === 'aborted') {
 中止信号允许你取消正在进行的请求。被中止的请求的 `stopReason` 为 `"aborted"`：
 
 ```typescript
-import { getModel, stream } from '@mariozechner/pi-ai';
+import { getModel, stream } from '@elynyx/ai';
 
 const model = getModel('openai', 'gpt-4o-mini');
 const controller = new AbortController();
@@ -649,7 +649,7 @@ import {
   fauxToolCall,
   registerFauxProvider,
   stream,
-} from '@mariozechner/pi-ai';
+} from '@elynyx/ai';
 
 const registration = registerFauxProvider({
   tokensPerSecond: 50 // 可选
@@ -734,7 +734,7 @@ multiModel.unregister();
 ### 查询提供商与模型
 
 ```typescript
-import { getProviders, getModels, getModel } from '@mariozechner/pi-ai';
+import { getProviders, getModels, getModel } from '@elynyx/ai';
 
 // 获取所有可用提供商
 const providers = getProviders();
@@ -760,7 +760,7 @@ console.log(`通过 ${model.api} API 使用 ${model.name}`);
 你可以为本地推理服务器或自定义端点创建自定义模型：
 
 ```typescript
-import { Model, stream } from '@mariozechner/pi-ai';
+import { Model, stream } from '@elynyx/ai';
 
 // 示例：使用 OpenAI 兼容 API 的 Ollama
 const ollamaModel: Model<'openai-completions'> = {
@@ -876,7 +876,7 @@ interface OpenAIResponsesCompat {
 模型按其 API 进行类型化，这保证了模型元数据的准确性。当你直接调用提供商函数时，提供商特定的选项类型会被强制执行。通用的 `stream` 和 `complete` 函数接受带有额外提供商字段的 `StreamOptions`。
 
 ```typescript
-import { streamAnthropic, type AnthropicOptions } from '@mariozechner/pi-ai';
+import { streamAnthropic, type AnthropicOptions } from '@elynyx/ai';
 
 // TypeScript 知道这是一个 Anthropic 模型
 const claude = getModel('anthropic', 'claude-sonnet-4-20250514');
@@ -905,7 +905,7 @@ await streamAnthropic(claude, context, options);
 ### 示例：多提供商对话
 
 ```typescript
-import { getModel, complete, Context } from '@mariozechner/pi-ai';
+import { getModel, complete, Context } from '@elynyx/ai';
 
 // 从 Claude 开始
 const claude = getModel('anthropic', 'claude-sonnet-4-20250514');
@@ -950,7 +950,7 @@ const geminiResponse = await complete(gemini, context);
 `Context` 对象可以使用标准 JSON 方法轻松序列化和反序列化，使得持久化对话、实现聊天历史或在服务之间传递上下文变得简单：
 
 ```typescript
-import { Context, getModel, complete } from '@mariozechner/pi-ai';
+import { Context, getModel, complete } from '@elynyx/ai';
 
 // 创建并使用上下文
 const context: Context = {
@@ -987,7 +987,7 @@ const continuation = await complete(newModel, restored);
 该库支持浏览器环境。你必须显式传递 API 密钥，因为浏览器中不可用环境变量：
 
 ```typescript
-import { getModel, complete } from '@mariozechner/pi-ai';
+import { getModel, complete } from '@elynyx/ai';
 
 // 浏览器中必须显式传递 API 密钥
 const model = getModel('anthropic', 'claude-3-5-haiku-20241022');
@@ -1004,7 +1004,7 @@ const response = await complete(model, {
 ### 浏览器兼容性说明
 
 - Amazon Bedrock（`bedrock-converse-stream`）不支持浏览器环境。
-- OAuth 登录流程不支持浏览器环境。在 Node.js 中使用 `@mariozechner/pi-ai/oauth` 入口点。
+- OAuth 登录流程不支持浏览器环境。在 Node.js 中使用 `@elynyx/ai/oauth` 入口点。
 - 在浏览器构建中，Bedrock 仍可能出现在模型列表中。调用 Bedrock 模型会在运行时失败。
 - 如果你需要 Bedrock 或基于 OAuth 的认证，请使用服务端代理或后端服务。
 
@@ -1067,7 +1067,7 @@ export PI_AI_ANTIGRAVITY_VERSION="1.23.0"
 ### 检查环境变量
 
 ```typescript
-import { getEnvApiKey } from '@mariozechner/pi-ai';
+import { getEnvApiKey } from '@elynyx/ai';
 
 // 检查是否在环境变量中设置了 API 密钥
 const key = getEnvApiKey('openai');  // 检查 OPENAI_API_KEY
@@ -1108,7 +1108,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 ```
 
 ```typescript
-import { getModel, complete } from '@mariozechner/pi-ai';
+import { getModel, complete } from '@elynyx/ai';
 
 (async () => {
   const model = getModel('google-vertex', 'gemini-2.5-flash');
@@ -1131,16 +1131,16 @@ import { getModel, complete } from '@mariozechner/pi-ai';
 最快的认证方式：
 
 ```bash
-npx @mariozechner/pi-ai login              # 交互式提供商选择
-npx @mariozechner/pi-ai login anthropic    # 登录特定提供商
-npx @mariozechner/pi-ai list               # 列出可用提供商
+npx @elynyx/ai login              # 交互式提供商选择
+npx @elynyx/ai login anthropic    # 登录特定提供商
+npx @elynyx/ai list               # 列出可用提供商
 ```
 
 凭据保存在当前目录的 `auth.json` 中。
 
 ### 编程式 OAuth
 
-该库通过 `@mariozechner/pi-ai/oauth` 入口点提供登录和令牌刷新函数。凭据存储由调用者负责。
+该库通过 `@elynyx/ai/oauth` 入口点提供登录和令牌刷新函数。凭据存储由调用者负责。
 
 ```typescript
 import {
@@ -1158,13 +1158,13 @@ import {
   // 类型
   type OAuthProvider,  // 'anthropic' | 'openai-codex' | 'github-copilot' | 'google-gemini-cli' | 'google-antigravity'
   type OAuthCredentials,
-} from '@mariozechner/pi-ai/oauth';
+} from '@elynyx/ai/oauth';
 ```
 
 ### 登录流程示例
 
 ```typescript
-import { loginGitHubCopilot } from '@mariozechner/pi-ai/oauth';
+import { loginGitHubCopilot } from '@elynyx/ai/oauth';
 import { writeFileSync } from 'fs';
 
 const credentials = await loginGitHubCopilot({
@@ -1188,8 +1188,8 @@ writeFileSync('auth.json', JSON.stringify(auth, null, 2));
 使用 `getOAuthApiKey()` 获取 API 密钥，过期时自动刷新：
 
 ```typescript
-import { getModel, complete } from '@mariozechner/pi-ai';
-import { getOAuthApiKey } from '@mariozechner/pi-ai/oauth';
+import { getModel, complete } from '@elynyx/ai';
+import { getOAuthApiKey } from '@elynyx/ai/oauth';
 import { readFileSync, writeFileSync } from 'fs';
 
 // 加载你存储的凭据
@@ -1248,7 +1248,7 @@ const response = await complete(model, {
 - 使用 `registerApiProvider()` 注册 API
 - 在 `package.json` 中为提供商模块添加包子路径导出（`./dist/providers/<provider>.js`）
 - 在 `src/providers/register-builtins.ts` 中添加惰性加载器包装器，不要在那里静态导入提供商实现模块
-- 在 `src/index.ts` 中添加需要从 `@mariozechner/pi-ai` 保持可用的根级别 `export type` 重新导出
+- 在 `src/index.ts` 中添加需要从 `@elynyx/ai` 保持可用的根级别 `export type` 重新导出
 - 在 `env-api-keys.ts` 中为新提供商添加凭据检测
 - 确保 `streamSimple` 通过 `getEnvApiKey()` 或提供商特定认证处理认证查找
 

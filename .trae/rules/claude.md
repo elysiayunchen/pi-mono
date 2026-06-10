@@ -30,7 +30,7 @@ pi-mono fork，由 **aoseluo (云尘 / 奈緒)** 以 AI 协作模式独立维护
 | 层级 | 包管理器 | 位置 |
 |------|----------|------|
 | pi-mono 框架层 | **npm** (workspaces) | 根目录 + `packages/*` |
-| elysiaclaw 应用层 | **pnpm** | `elysiaclaw/` |
+| elynx 应用层 | **pnpm** | `elynx/` |
 
 两者不可混用。
 

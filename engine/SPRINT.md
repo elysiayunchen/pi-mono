@@ -1,4 +1,4 @@
-# SPRINT — ElysiaClaw
+# SPRINT — Elynyx
 > 开始日期：2026-06-07 | 状态：进行中
 
 
@@ -72,7 +72,7 @@
 - **来源 plan：** [PLAN-11](plans/PLAN-11.md) Bot 测试基础设施修复与依赖对齐
 - **用户可见的变化：** 无直接用户可见变化，但恢复 28 个测试文件的执行能力，为后续 Bot 功能开发提供测试保障
 - **完成标准（对应 PLAN-11.spec AC-1~AC-4）：**
-  1. ✅ AC-1 (crit): `@mariozechner/pi-tui` 升级到 v0.64.0，28+1 个测试文件恢复加载
+  1. ✅ AC-1 (crit): `@elynyx/tui` 升级到 v0.64.0，28+1 个测试文件恢复加载
   2. ✅ AC-2 (high): `fetch.test.ts` 20/20 全绿
   3. ✅ AC-3 (high): Telegram 测试套件 94/94 全绿（5 个 MediaPaths 预存 bug 已修复）
   4. ✅ AC-4 (medium): `npm run check` 零新增类型错误，无回归
@@ -80,7 +80,7 @@
 - **P3 修复详情：** 4 个 MediaPaths 超时 — `fetch.ts` resolveTelegramTransport `sourceFetch` 默认优先 `globalThis.fetch`（可被 vi.spyOn mock），`undiciFetch` 降级为 fallback；1 个 named-account DM 测试断言修正 — 代码只丢弃 GROUP 消息不丢弃 DM（DM 使用 per-account session key），测试改为验证 DM 正确路由
 - **验证方法：** 见 PLAN-11.spec 验证命令
 - **约束：** 不能破坏生产运行时行为；升级 pi-tui 后需验证无 breaking change
-- **起点：** `elysiaclaw/src/telegram/bot.create-telegram-bot.test-harness.ts` + `elysiaclaw/src/telegram/bot.test.ts`
+- **起点：** `elynx/src/telegram/bot.create-telegram-bot.test-harness.ts` + `elynx/src/telegram/bot.test.ts`
 - **前置依赖：** 无
 - **风险：** pi-tui v0.64.0 可能引入 breaking change（缓解：逐文件检查编译错误）
 
@@ -108,7 +108,7 @@
   6. ✅ `npm run check`零错误，vitest 13/13全绿
 - **验证方法：** verify → PLAN-09.spec:AC-1, AC-2, AC-9
 - **约束：** 不能破坏现有session数据；不能影响gateway稳定性
-- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + `elysiaclaw/src/session-rotation/`
+- **起点：** `elynx/src/agents/pi-embedded-runner/run/attempt.ts` + `elynx/src/session-rotation/`
 - **前置依赖：** 无
 - **风险：** 注入方向改变可能影响模型行为，需充分测试
 
@@ -125,7 +125,7 @@
   6. ✅ `npm run check`零错误
 - **验证方法：** verify → PLAN-09.spec:AC-3, AC-4, AC-5, AC-6
 - **约束：** 不能降低现有压缩效果
-- **起点：** `elysiaclaw/src/context-engine/injection-budget.ts` + `elysiaclaw/src/session-rotation/task-segment-tracker.ts`
+- **起点：** `elynx/src/context-engine/injection-budget.ts` + `elynx/src/session-rotation/task-segment-tracker.ts`
 - **前置依赖：** TASK-01完成 ✅
 - **风险：** 预算参数选择不当可能导致过早或过晚压缩
 
@@ -137,12 +137,12 @@
   1. ✅ `ask-user-question.ts` 工具实现：Zod schema + execute 逻辑
   2. ✅ `ask-user-question-helpers.ts` 纯函数提取：callback 解析、pending question 管理、ID 生成
   3. ✅ `bot-handlers.ts` callback_query 路由：`ask_user:` 前缀拦截 → `resolveAskUserQuestion` → 清除按钮
-  4. ✅ 四层注册：L1 工具文件 → L2 elysiaclaw-tools.ts → L3 tool-catalog.ts → L4 运行时配置
+  4. ✅ 四层注册：L1 工具文件 → L2 elynx-tools.ts → L3 tool-catalog.ts → L4 运行时配置
   5. ✅ 11 个单元测试全绿（callback 解析 6 + resolve 3 + ID 生成 2）
   6. ✅ `pnpm build` 零错误
 - **验证方法：** verify → PLAN-07.spec:AC-14
 - **约束：** 不影响现有 Telegram 消息处理流程 ✅（ask_user callback 在 approval 之后、pagination 之前独立路由，return 退出）
-- **起点：** `elysiaclaw/src/telegram/` → `elysiaclaw/src/agents/tools/`
+- **起点：** `elynx/src/telegram/` → `elynx/src/agents/tools/`
 - **前置依赖：** 无
 - **风险：** inline keyboard callback 处理需要新增 Telegram update handler ✅ 已在 bot-handlers.ts 中实现
 
@@ -156,7 +156,7 @@
   4. 生产部署后功能无回归
 - **验证方法：** `npm run check` + `npm test` + deploy.sh 后 E2E 验证
 - **约束：** 不能改变任何外部行为；不能破坏现有 API 契约
-- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts`（2861+ 行）
+- **起点：** `elynx/src/agents/pi-embedded-runner/run/attempt.ts`（2861+ 行）
 - **前置依赖：** TASK-01完成（P0注入方向修正后拆分更清晰）
 - **风险：** 大文件拆分容易引入回归；需要充分的测试覆盖
 
@@ -232,7 +232,7 @@
   3. seal 头内容断言含模型自述字段
 - **验证方法：** 84 个 session-rotation 测试全绿 + seal 头内容断言 + 强制 seal 回退路径验证 + `npm run check` 零新增错误
 - **约束：** 模型写头增加 1 次 LLM 调用，需控制 token 开销；强制 seal 必须有 fallback
-- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` seal 区 + `elysiaclaw/src/session-rotation/task-segment-tracker.ts`
+- **起点：** `elynx/src/agents/pi-embedded-runner/run/attempt.ts` seal 区 + `elynx/src/session-rotation/task-segment-tracker.ts`
 - **实现摘要：** SealSegmentParams 新增 modelIndexHead 可选字段；sealSegment 中 node.summary = params.modelIndexHead ?? buildIndexNodeSummary(segment)；attempt.ts 新增 createModelIndexHead（调 completeSimple）+ buildIndexHeadPrompt（组装提示词）；休止 seal 调用点先调模型写头再传入 sealSegment
 
 ### TASK-14: PLAN-13 M2 — B3 单路径（crit:p1） ✅
@@ -245,7 +245,7 @@
   3. ✅ grep `resolveIndexHeadBlockForSession` 生产路径零命中（除注释）
 - **验证方法：** grep 旧路径零命中 + B3 注入断言走 IndexNode 路径 + 84 个 session-rotation 测试全绿 + `npm run check` 零新增错误
 - **约束：** 不能破坏 B3 注入功能；删除前确认 IndexNode 路径已完全承载 B3 内容
-- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + `elysiaclaw/src/session-rotation/handoff-inject.test.ts`
+- **起点：** `elynx/src/agents/pi-embedded-runner/run/attempt.ts` + `elynx/src/session-rotation/handoff-inject.test.ts`
 - **实现摘要：** 删除 attempt.ts 中 resolveIndexHeadBlockForSession 导入+调用，移除 dual-track B3 注入块；handoff-inject.test.ts 删除对应测试和 mockConversations；B3 注释更新为 PLAN-13 I6 单路径原则
 
 ### TASK-15: PLAN-13 M3 — 删 dual-track（crit:p1） ✅
@@ -259,7 +259,7 @@
   4. grep 旧符号零命中 + `npm run check` 零错误 + DB schema 验证
 - **验证方法：** grep 旧符号零命中 + `npm run check` 零错误 + conversation-store DB schema 验证
 - **约束：** DB ALTER 需兼容现有数据；删除前确认无生产路径引用
-- **起点：** `elysiaclaw/src/session-rotation/dual-track-index.ts` + `elysiaclaw/src/session-rotation/conversation-store.ts` + `elysiaclaw/src/session-rotation/conversation-types.ts`
+- **起点：** `elynx/src/session-rotation/dual-track-index.ts` + `elynx/src/session-rotation/conversation-store.ts` + `elynx/src/session-rotation/conversation-types.ts`
 - **前置依赖：** TASK-14 (M2) 完成
 - **风险：** DB ALTER 在生产环境需谨慎（缓解：先删代码引用，再 ALTER）
 - **详细实现指导：**
@@ -268,7 +268,7 @@
   3. **删除函数**：`conversation-store.ts` 中 `consumeDualTrackIndex`/`appendMacroIndexEntry*`/`appendMicroIndexEntry*`
   4. **删除导出**：`session-rotation/index.ts` 中 dual-track 相关导出
   5. **DB 变更**：conversations 表 ALTER 删除 `macro_index`/`micro_index` 列
-  6. **验证**：`grep -rn 'MacroIndexEntry|MicroIndexEntry|DualTrackIndex|consumeDualTrackIndex|appendMacro|appendMicro' elysiaclaw/src/ | grep -v test` 零命中
+  6. **验证**：`grep -rn 'MacroIndexEntry|MicroIndexEntry|DualTrackIndex|consumeDualTrackIndex|appendMacro|appendMicro' elynx/src/ | grep -v test` 零命中
 
 ### TASK-16: PLAN-13 M4 — 动态滑动窗口（crit:p1） ✅
 - **状态：** 已完成（2026-06-10）
@@ -280,7 +280,7 @@
   3. 封口前后消息数组断言 + B3 头存续验证
 - **验证方法：** 封口前后消息数组断言 + B3 头存续 + `npm run check` 零错误
 - **约束：** recency 锚默认复用 keep-recent 20k；移除消息不能影响 B3/B4/B5 注入
-- **起点：** `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` + 消息数组管理
+- **起点：** `elynx/src/agents/pi-embedded-runner/run/attempt.ts` + 消息数组管理
 - **前置依赖：** TASK-12 (M0) 完成
 - **风险：** 消息移除时机需精确，不能移除 active task 的消息
 - **详细实现指导：**
@@ -295,7 +295,7 @@
   - `packages/coding-agent/src/core/compaction/auto-compact.ts` — 新增 `SealedRange` 接口、`getMessageTimestamp`/`isInSealedRange` 辅助函数、`autoCompactMessages` 新增 `sealedRanges` 参数，`toSummarize` 中时间戳匹配 sealed range 的消息直接丢弃（零 LLM），仅对孤儿消息回退 LLM 小摘要；`AutoCompactResult` 新增 `sealedDiscarded` 字段
   - `packages/coding-agent/src/core/sdk.ts` — `CreateAgentSessionOptions` 新增 `getSealedTaskRanges?: () => SealedRange[]` 回调；`transformContext` 闭包中调用回调获取 sealed ranges 并传递给 `autoCompactMessages`
   - `packages/coding-agent/src/index.ts` — 导出 `SealedRange`、`AutoCompactResult`、`shouldAutoCompact` 等 auto-compact 类型/函数
-  - `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` — `sessionOpts` 新增 `getSealedTaskRanges: () => taskTracker.getSealedRanges()`
+  - `elynx/src/agents/pi-embedded-runner/run/attempt.ts` — `sessionOpts` 新增 `getSealedTaskRanges: () => taskTracker.getSealedRanges()`
 - **架构决策：** patch-agent.cjs 已由 M3 删除，改为通过 `CreateAgentSessionOptions` 正式回调注入（无 monkey-patch 风险）
 - **验证：** `npm run check` + `npx tsgo --noEmit` 零回归
 
@@ -310,7 +310,7 @@
   4. 1M 窗口下阈值随窗口缩放，非硬编码
 - **验证方法：** 不同窗口尺寸下阈值断言 + `npm run check` 零错误
 - **约束：** 阈值变更需在 TUI+Bot 双路径验证
-- **起点：** `elysiaclaw/src/context-engine/injection-budget.ts` + `packages/coding-agent/src/core/compaction/multi-layer.ts` + `packages/coding-agent/src/core/compaction/auto-compact.ts`
+- **起点：** `elynx/src/context-engine/injection-budget.ts` + `packages/coding-agent/src/core/compaction/multi-layer.ts` + `packages/coding-agent/src/core/compaction/auto-compact.ts`
 - **前置依赖：** TASK-17 (M5) 完成
 - **风险：** compact_ratio 参数需实测调优
 - **详细实现指导：**
@@ -331,7 +331,7 @@
   4. 新增 `meta-compression.ts` 模块
 - **验证方法：** 元压缩触发断言 + 图谱查询验证 task IndexNode 仍存在 + `npm run check` 零错误
 - **约束：** 元压缩只替换 B3 注入内容，IndexNode 和边仍在图谱中可回查
-- **起点：** 新增 `elysiaclaw/src/session-rotation/meta-compression.ts` + 升级 `elysiaclaw/src/session-rotation/dual-track-index.ts`（M3 后已删，改为操作 conversation-store）
+- **起点：** 新增 `elynx/src/session-rotation/meta-compression.ts` + 升级 `elynx/src/session-rotation/dual-track-index.ts`（M3 后已删，改为操作 conversation-store）
 - **前置依赖：** TASK-18 (M6) 完成
 - **风险：** 元压缩丢信息（缓解：IndexNode 仍在图谱中可回查）
 - **详细实现指导：**
@@ -352,7 +352,7 @@
   5. grep `handoff`/`rotation` 在已废概念处零命中（注释除外）
 - **验证方法：** grep 旧概念零命中 + `npm run check` 零错误 + 全量 import 路径正确
 - **约束：** 纯重命名，不改变任何逻辑；需更新所有 import 路径
-- **起点：** `elysiaclaw/src/session-rotation/` 全目录
+- **起点：** `elynx/src/session-rotation/` 全目录
 - **前置依赖：** TASK-15 (M3) 完成
 - **风险：** 大范围重命名容易遗漏 import；需全量 grep 验证
 - **详细实现指导：**

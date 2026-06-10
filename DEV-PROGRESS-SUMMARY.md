@@ -1,23 +1,23 @@
-# ElysiaClaw — 开发进度改动汇总与落地措施
+# Elynyx — 开发进度改动汇总与落地措施
 
 > 生成时间: 2026-06-07
-> 数据源: `engine/` 引擎文件系统（原 `elysiaclaw_engine/` 已迁移删除）
+> 数据源: `engine/` 引擎文件系统（原 `elynx_engine/` 已迁移删除）
 > 定位: 架构师当前开发进度的全景汇总，突出架构设计哲学、开发流程、卡点与解决方案，附落地措施路线图
 
 ---
 
 ## 一、项目概览
 
-ElysiaClaw 是基于 pi-mono（Mario Zechner / badlogic 的 Agent SDK）构建的**个人 AI 助手平台**，通过 Telegram Bot `@ElysiaClaw_Bot` 与用户交互。项目由维护者 aoseluo（云尘 / 奈緒）以**非专业程序员 + AI 协作开发**模式独立维护，是 OpenClaw 的个人 fork，不与上游同步。
+Elynyx 是基于 pi-mono（Mario Zechner / badlogic 的 Agent SDK）构建的**个人 AI 助手平台**，通过 Telegram Bot `@Elynyx_Bot` 与用户交互。项目由维护者 aoseluo（云尘 / 奈緒）以**非专业程序员 + AI 协作开发**模式独立维护，是 Elynyx 的个人 fork，不与上游同步。
 
 核心架构为**双项目结构**：
 
 | 层 | 项目 | 职责 |
 |---|---|---|
 | 地基 | pi-mono (0.64.0) | Agent 核心循环 + Session 管理 + LLM API 统一接口 + 上下文压缩 + 基础工具 |
-| 房子 | elysiaclaw (0.64.x) | 渠道适配(Telegram等) + 应用层工具 + Gateway 控制平面 + 配置系统 + 安全策略 |
+| 房子 | elynx (0.64.x) | 渠道适配(Telegram等) + 应用层工具 + Gateway 控制平面 + 配置系统 + 安全策略 |
 
-**关键架构事实**：Bot 模式(Telegram)与 TUI 模式走完全独立的工具注册路径——TUI 用 `createPiCodingTools`，Bot 用 `createElysiaClawCodingTools`。新增/修改工具必须两边都验证（Pitfall #17/#25/#54）。
+**关键架构事实**：Bot 模式(Telegram)与 TUI 模式走完全独立的工具注册路径——TUI 用 `createPiCodingTools`，Bot 用 `createElynyxCodingTools`。新增/修改工具必须两边都验证（Pitfall #17/#25/#54）。
 
 ---
 
@@ -25,17 +25,17 @@ ElysiaClaw 是基于 pi-mono（Mario Zechner / badlogic 的 Agent SDK）构建�
 
 ### 2.1 演进式架构 (Evolutionary Architecture)
 
-ElysiaClaw 将代码生成视为从**模糊意图 (Set A)** 到**精确语法 (Set B)** 的映射。核心原则：
+Elynyx 将代码生成视为从**模糊意图 (Set A)** 到**精确语法 (Set B)** 的映射。核心原则：
 
 - **最小化推理熵**：通过高保真的系统提示维持映射稳定性
 - **不可变映射**：逻辑偏移时重置上下文，而非在损坏状态上打补丁
-- **契约优先开发**：pi-mono（结构完整性）+ elysiaclaw（用户面 Gateway），任何对框架核心的修改必须验证 Gateway 协议
+- **契约优先开发**：pi-mono（结构完整性）+ elynx（用户面 Gateway），任何对框架核心的修改必须验证 Gateway 协议
 
 ### 2.2 差分意识 (Differential Consciousness)
 
-ElysiaClaw 与 Elynyx Code 不是主从关系，而是**认知分工**：
+Elynyx 与 Elynyx Code 不是主从关系，而是**认知分工**：
 
-- **ElysiaClaw** = 永恒记忆 / 编排大脑 — 多渠道接入、长期记忆、Agent Teams
+- **Elynyx** = 永恒记忆 / 编排大脑 — 多渠道接入、长期记忆、Agent Teams
 - **Elynyx Code** = 精准行动 / 代码之手 — 多 Provider 路由、工具链、沙箱执行
 
 ### 2.3 本栈语言优越性 (TypeScript / Node)
@@ -55,9 +55,9 @@ ElysiaClaw 与 Elynyx Code 不是主从关系，而是**认知分工**：
 ### 3.0 阶段零：项目初始化与上游 fork (2026-03 ~ 2026-04-03)
 
 **开发流程**：
-1. 从 OpenClaw v2026.3.13 fork 出个人维护分支
+1. 从 Elynyx v2026.3.13 fork 出个人维护分支
 2. 理解 pi-mono 框架的极简主义哲学："One loop & Bash is all you need"
-3. 确立双项目结构：pi-mono（地基）+ elysiaclaw（房子）
+3. 确立双项目结构：pi-mono（地基）+ elynx（房子）
 4. 搭建部署流水线：`deploy.sh` 一键构建+部署+重启
 
 **卡点与解决**：
@@ -81,7 +81,7 @@ ElysiaClaw 与 Elynyx Code 不是主从关系，而是**认知分工**：
 | s07-s12 + P1-A/P2-A/P2-B/P2-D(Ph3)/P3-A | 04-03 | 大规模功能实现 | s09 路径错误、teammate 权限缺失 | 改用 `node:os` + `path.join`；s12 Worktree 通过 `createBashTool(worktreePath)` 天然沙箱（#18/#19） |
 | s09 首次修复 + s12 残留修复 | 04-04 | Bug fixes | 工具类型错误三处（details/execute/status） | 逐一补全，用 `npm run check` 验证（#15） |
 | s09 二次修复 + P1-A/P1-C/P2-D(Ph1+2)/P3-B | 04-07 | 补全 + 新功能 | patch-agent.cjs 非幂等导致 gateway 崩溃 | 重写脚本，加 Step 0 清理损坏代码，逐方法严格检测（#22b） |
-| 包名迁移 | 04-07 | OpenClaw → ElysiaClaw | symlink 入口断裂、plugin manifest 文件名、.bashrc 残留 | symlink 直接指向 `dist/entry.js`；批量 rename manifest；修正 .bashrc source 路径（#29/#33/#34） |
+| 包名迁移 | 04-07 | Elynyx → Elynyx | symlink 入口断裂、plugin manifest 文件名、.bashrc 残留 | symlink 直接指向 `dist/entry.js`；批量 rename manifest；修正 .bashrc source 路径（#29/#33/#34） |
 
 **核心卡点详解 — patch-agent.cjs 非幂等（#22b）**：
 - **现象**：多次运行 patch 脚本后，注入代码被 `// REMOVED_` 前缀包裹，agent.js 第 133 行出现孤立语句，`SyntaxError` 导致 gateway 崩溃
@@ -90,10 +90,10 @@ ElysiaClaw 与 Elynyx Code 不是主从关系，而是**认知分工**：
 - **预防**：每次 deploy.sh 前检查 agent.js 语法
 
 **核心卡点详解 — Bot 模式绕过 pi-coding-agent（#25）**：
-- **现象**：`elysiaclaw` 是完全自包含 bundle，bot 请求不经过我们替换的 `pi-coding-agent`，`wrapStreamForCost()` 对 bot 无效
+- **现象**：`elynx` 是完全自包含 bundle，bot 请求不经过我们替换的 `pi-coding-agent`，`wrapStreamForCost()` 对 bot 无效
 - **根因**：TUI 和 Bot 走完全独立的工具注册路径
 - **解决**：双轨方案——TUI 走 `wrapStreamForCost()` 拦截 done 事件；Bot 走读取 `sessions.json` 的 Python 报告脚本
-- **影响**：这是理解 ElysiaClaw 最重要的架构事实，新增工具必须两边都注册
+- **影响**：这是理解 Elynyx 最重要的架构事实，新增工具必须两边都注册
 
 ### 3.2 阶段二：架构优化与系统审计 (2026-04-05 ~ 2026-04-10)
 
@@ -117,7 +117,7 @@ ElysiaClaw 与 Elynyx Code 不是主从关系，而是**认知分工**：
 - **现象**：s07-s12 工具存在于 dist 但未在 `src/index.ts` 导出，bot 环境全部无法使用
 - **根因**：手动维护工具注册列表遗漏——新增工具后只改了 `tools/index.ts`，忘了 `src/index.ts`（Master tool export）
 - **解决**：补全 14 行导出声明 + deploy.sh 加装 Guard 3（工具注册一致性检查）
-- **预防**：每次新增工具后必须检查四层：Layer 1(pi-coding-agent allTools) → Layer 2(elysiaclaw pi-tools.ts) → Layer 3(tool-catalog.ts) → Layer 4(elysiaclaw.json tools.allow)
+- **预防**：每次新增工具后必须检查四层：Layer 1(pi-coding-agent allTools) → Layer 2(elynx pi-tools.ts) → Layer 3(tool-catalog.ts) → Layer 4(elynx.json tools.allow)
 
 ### 3.3 阶段三：packages 精简 + Code Mode 废弃 (2026-06-05)
 
@@ -212,7 +212,7 @@ ElysiaClaw 与 Elynyx Code 不是主从关系，而是**认知分工**：
 | 阶段 | 内容 | 卡点 | 解决 |
 |---|---|---|---|
 | 1 | 核心类型 + Conversation Store | 无 | SQLite 持久化 (node:sqlite DatabaseSync) |
-| 2 | rotate_session 工具 + B3 Handoff 注入 | 四层注册遗漏 | elysiaclaw-tools.ts + tool-catalog.ts 注册 |
+| 2 | rotate_session 工具 + B3 Handoff 注入 | 四层注册遗漏 | elynx-tools.ts + tool-catalog.ts 注册 |
 | 3 | 自动轮换触发 | 安全点硬约束写死 | checkAutoRotation + safety 门控 |
 | 健全性测试 | 5 项逻辑缺陷 | 旧段孤儿、同名匹配、handoff 回退、错误处理不一致、正则重复 | 逐一修复 + 24 新测试 |
 | 4 | Task Segment + 双轨索引 | 无 | plan-todo-review-recall 四阶段 + CompressedPhaseResult |
@@ -470,7 +470,7 @@ PERCEIVE → RECALL → PLAN → ACT → REVIEW → CONSOLIDATE → (回 PERCEIV
 
 ### 7.1 协作模式定义
 
-ElysiaClaw 的维护者是非专业程序员，采用 **AI 协作开发模型**：
+Elynyx 的维护者是非专业程序员，采用 **AI 协作开发模型**：
 
 | 角色 | 职责 |
 |---|---|
@@ -510,7 +510,7 @@ AI 协作者接手时的标准阅读顺序：
 3. 新增工具必须检查四层注册（#51）
 4. deploy.sh 后验证 gateway（#22b）
 5. YAML 缩进敏感（#30）
-6. pnpm = elysiaclaw，npm = pi-mono，不可混用（#49/#52）
+6. pnpm = elynx，npm = pi-mono，不可混用（#49/#52）
 7. 大文件分段读取（#78）
 8. 工具调用失败先报告再重试，最多 2 次（#80）
 9. 信 ✅ 前先 grep 生产调用者（#85）
@@ -613,7 +613,7 @@ AI 协作者接手时的标准阅读顺序：
 | `attempt.ts:1433-1438` | TaskSegmentTracker | 任务段追踪初始化 | 🔄 接线待验证 |
 | `attempt.ts:2783-2784` | 安全点硬约束写死 | 自动轮换假自动 | ⬜ W0-T1 |
 | `sdk.ts:374` | contextPressureBudget | 注入预算扣减阈值 | 🔄 基础接入，完整版待升级 |
-| `elysiaclaw.json:357` | blockStreamingDefault | `"on"` 导致 `canStreamAnswerDraft=false` → answerLane.stream 未创建 → onPartialReply=undefined → text_delta 流式输出被丢弃 | ✅ 改为 `"off"` (2026-06-08) |
+| `elynx.json:357` | blockStreamingDefault | `"on"` 导致 `canStreamAnswerDraft=false` → answerLane.stream 未创建 → onPartialReply=undefined → text_delta 流式输出被丢弃 | ✅ 改为 `"off"` (2026-06-08) |
 | `get-reply-directives.ts` | resolvedBlockStreaming | agentCfg.blockStreamingDefault 默认 "on" 启动块流式，与流式草稿预览互斥 | ✅ 配置级修复 (2026-06-08) |
 
 ---
@@ -622,9 +622,9 @@ AI 协作者接手时的标准阅读顺序：
 
 | 包 | 结果 |
 |---|---|
-| @mariozechner/pi-agent-core | 36/36 ✅ |
-| @mariozechner/pi-coding-agent | 907/907 ✅ (16 预存失败全部修复) |
-| @mariozechner/pi-tui | 505/506 (1 flaky) |
+| @elynyx/agent-core | 36/36 ✅ |
+| @elynyx/coding-agent | 907/907 ✅ (16 预存失败全部修复) |
+| @elynyx/tui | 505/506 (1 flaky) |
 | session-rotation 模块 | 134/134 ✅ |
 | user-model 模块 | 23/23 ✅ |
 
@@ -650,8 +650,8 @@ AI 协作者接手时的标准阅读顺序：
 | TOOL-PARITY-PLAN.md | Tool Parity 迁移计划（15/17 完成） |
 | archive/DELEGATE-CODE-TASK-PLAN.md | 子代理代码委派实施计划（已完成） |
 | archive/MEMORY-ACTIVATION-RUNBOOK.md | 记忆引擎激活执行手册（已完成） |
-| archive/CLAUD-CODE-COMPARISON.md | Claude Code vs ElysiaClaw 逐层对标 |
-| archive/USER-PITFALLS.md | 旧 OpenClaw/Windows 时代历史踩坑 |
+| archive/CLAUD-CODE-COMPARISON.md | Claude Code vs Elynyx 逐层对标 |
+| archive/USER-PITFALLS.md | 旧 Elynyx/Windows 时代历史踩坑 |
 | archive/sprint-history.md | 18 个已完成 Sprint 的完整工程记录 |
 
 ---
@@ -663,14 +663,14 @@ AI 协作者接手时的标准阅读顺序：
 ### 模式 1：工具注册四层遗漏
 
 **表现**：新工具在 TUI 可用但 Bot 不可用，或 dist 中存在但 `src/index.ts` 未导出
-**根因**：四层注册（allTools → pi-tools.ts → tool-catalog.ts → elysiaclaw.json）手动维护，容易遗漏
+**根因**：四层注册（allTools → pi-tools.ts → tool-catalog.ts → elynx.json）手动维护，容易遗漏
 **防范**：deploy.sh Guard 3 自动检查 + 每次新增工具后跑完整四层验证
 **关联坑号**：#16/#23/#46/#47/#51/#54
 
 ### 模式 2：Bot/TUI 双路径差异
 
 **表现**：功能在 TUI 正常但 Bot 异常，或反之
-**根因**：TUI 走 `createPiCodingTools`，Bot 走 `createElysiaClawCodingTools`，完全独立
+**根因**：TUI 走 `createPiCodingTools`，Bot 走 `createElynyxCodingTools`，完全独立
 **防范**：新增/修改功能必须两边都测试
 **关联坑号**：#17/#25/#39/#54
 
@@ -692,7 +692,7 @@ AI 协作者接手时的标准阅读顺序：
 
 **表现**：`npm run build` 报大量类型错误，版本号不对
 **根因**：pnpm 从 registry 拉取旧版本放进 `node_modules/.pnpm/`
-**防范**：pi-mono 用 npm，elysiaclaw 用 pnpm，永远不混用
+**防范**：pi-mono 用 npm，elynx 用 pnpm，永远不混用
 **关联坑号**：#49/#52
 
 ---

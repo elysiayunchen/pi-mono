@@ -1,5 +1,5 @@
-# SYSTEM — ElysiaClaw
-> Last updated: 2026-06-08 | 以下规则为强制执行，非建议。
+# SYSTEM — Elynyx
+> Last updated: 2026-06-10 | 以下规则为强制执行，非建议。
 
 
 ## Prime Directives
@@ -122,24 +122,22 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 ## 依赖管理
 | 规则 | 详情 |
 |------|------|
-| pi-mono 框架层包管理器 | npm (workspaces) — `/home/elysia/projects/pi-mono/` |
-| elysiaclaw 应用层包管理器 | pnpm — `/home/elysia/projects/pi-mono/elysiaclaw/` |
-| 添加 pi-mono 依赖 | `npm install --workspace=packages/coding-agent <pkg>` |
-| 添加 elysiaclaw 依赖 | `cd elysiaclaw && pnpm add <pkg>` |
-| 禁止 | 不要手动编辑 lockfile；不要在根目录运行 pnpm install（PITFALLS #49/#52） |
+| 统一包管理器 | pnpm workspace — 整个 monorepo 统一使用 pnpm |
+| 添加框架层依赖 | `pnpm add --filter @elynyx/ai <pkg>` |
+| 添加 elysiaclaw 依赖 | `pnpm add --filter elynx <pkg>` |
+| 禁止 | 不要手动编辑 lockfile；不要在根目录运行 npm install |
 
 
 ## 构建与运行命令
 | 操作 | 命令 | 说明 |
 |------|------|------|
-| 完整构建 | `cd ~/pi-mono && npm run build` | 框架层 4 包（tui → ai → agent → coding-agent） |
-| 类型检查 | `cd ~/pi-mono && npm run check` | biome lint + tsgo type-check |
-| 测试 | `cd ~/pi-mono && npm test` | 全部 workspace 测试 |
-| 一键部署 | `cd ~/pi-mono && ./deploy.sh` | 3 Phase · 12 Step · 5 Guard |
-| elysiaclaw 构建 | `cd ~/pi-mono/elysiaclaw && node scripts/tsdown-build.mjs` | 绕过 pnpm build（PITFALLS #38） |
-| Gateway 重启 | `elysiaclaw gateway restart` | 部署后重启 |
-| 日志查看 | `elysiaclaw logs` | 查看 gateway 日志 |
-| 状态检查 | `elysiaclaw status` | 检查 gateway 状态 |
+| 完整构建 | `cd ~/pi-mono && pnpm run build` | 框架层 3 包（tui → ai → agent） |
+| 类型检查 | `cd ~/pi-mono && pnpm run check` | biome lint + tsgo type-check |
+| elysiaclaw 构建 | `cd ~/pi-mono/elysiaclaw && pnpm run build` | tsdown 构建（含 coding-agent 入口点） |
+| 一键部署 | `cd ~/pi-mono && ./deploy.sh` | 3 Phase · 9 Step · 5 Guard |
+| Gateway 重启 | `elynx gateway restart` | 部署后重启 |
+| 日志查看 | `elynx logs` | 查看 gateway 日志 |
+| 状态检查 | `elynx status` | 检查 gateway 状态 |
 
 
 ## 代码规范
@@ -154,17 +152,15 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 ## 危险命令
 ⚠️ `rm -rf ~/.pi/agent/sessions/` — 删除全部 session 数据 — 确认备份后再执行
 ⚠️ `npm install` 在 pi-mono 根目录 — 可能覆盖 patch（PITFALLS #11）— 之后必须运行 `scripts/patch-agent.cjs` 验证
-⚠️ `pnpm install` 在 pi-mono 根目录 — 污染 npm workspace 依赖树（PITFALLS #49）— 绝对禁止
-⚠️ 直接编辑 `~/.elysiaclaw/config.yaml` — YAML 缩进错误静默破坏 gateway（PITFALLS #30）— 修改后必须用 Python yaml.safe_load 验证
+⚠️ 直接编辑 `~/.elynx/config.yaml` — YAML 缩进错误静默破坏 gateway（PITFALLS #30）— 修改后必须用 Python yaml.safe_load 验证
 
 
 ## 测试策略
-- 提交前必须运行 `npm run check` 确保类型检查通过
+- 提交前必须运行 `pnpm run check` 确保类型检查通过
 - 新增功能必须包含测试
 - 测试基线不得回归：
-  - `@mariozechner/pi-agent-core`: 36/36 ✅
-  - `@mariozechner/pi-coding-agent`: 907/907 ✅
-  - `@mariozechner/pi-tui`: 505/506 (1 flaky)
+  - `@elynyx/agent-core`: 36/36 ✅
+  - `@elynyx/tui`: 505/506 (1 flaky)
 - 代码+测试存在 ≠ 完成：必须有生产路径实跑 + 端到端验证（PITFALLS #85）
 - 具体功能的验收由对应 SPRINT 任务的「验证方法」/ plan 的 spec twin 承载
 
@@ -173,13 +169,13 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 - 分支命名：`feature/<name>`, `fix/<name>`, `refactor/<name>`
 - 提交消息格式：`type(scope): description`（如 `feat(tools): add delegate_code_task`）
 - 绝对不能提交：`.env`、密钥、API keys、大文件（>1MB）、dist/ 产物
-- `elysiaclaw/` git push 需手动执行（auto-mode 阻止）
+- `elynx/` git push 需手动执行（auto-mode 阻止）
 
 
 ## 安全边界
 - 认证模型：Telegram Bot Token 认证 + Gateway Token 双层
-- 密钥管理：`~/.elysiaclaw/.env` 存储所有 API keys
-- AI 禁区：绝对不能修改 `~/.elysiaclaw/.env` 中的密钥；不能提交密钥到 git
+- 密钥管理：`~/.elynx/.env` 存储所有 API keys
+- AI 禁区：绝对不能修改 `~/.elynx/.env` 中的密钥；不能提交密钥到 git
 - 敏感数据：API keys、用户 session 数据（`~/.pi/agent/sessions/`）
 
 
@@ -187,8 +183,8 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 **ALWAYS:**
 1. Read source before writing — cat/grep first
 2. 新增工具必须检查 `src/index.ts` 导出（PITFALLS #16/#23）
-3. 新增工具四层注册：L1(allTools) → L2(pi-tools.ts) → L3(tool-catalog.ts) → L4(elysiaclaw.json)（PITFALLS #51）
-4. 框架层工具注册：两个路径独立，TUI 走 `createPiCodingTools`，Bot 走 `createElysiaClawCodingTools`（PITFALLS #17/#54）
+3. 新增工具四层注册：L1(allTools) → L2(pi-tools.ts) → L3(tool-catalog.ts) → L4(elynx.json)（PITFALLS #51）
+4. 框架层工具注册：两个路径独立，TUI 走 `createPiCodingTools`，Bot 走 `createElynyxCodingTools`（PITFALLS #17/#54）
 5. deploy.sh 后验证 gateway 能正常响应（PITFALLS #22b）
 6. 字段名不要猜，用 grep 核实实际接口定义（PITFALLS #26）
 7. 信 ✅ 前先 grep 生产调用者：`grep -rn funcName src | grep -v test`，零命中即死代码（PITFALLS #85）
@@ -196,14 +192,13 @@ MUST NOT silently pick one and proceed on blocked or ambiguous decisions.
 9. 回写引擎文件前 MUST re‑anchor（重读磁盘版本）
 
 **NEVER:**
-1. NEVER 在 pi-mono 根目录运行 pnpm install（PITFALLS #49/#52）
-2. NEVER 用 heredoc 写文件（PITFALLS #1）
-3. NEVER 用 sed 做字符串替换（PITFALLS #2）
-4. NEVER 直接调 tsgo（PITFALLS #6），用 `npm run build`
-5. NEVER 在 bot 和 TUI 模式只验证一个路径（PITFALLS #17/#54）
-6. NEVER 假设 YAML 缩进正确（PITFALLS #30），修改后必须验证
-7. NEVER 用 `as` 类型断言偷懒传播工具定义字段（PITFALLS #82）
-8. NEVER 相信代码+测试存在就代表功能完成（PITFALLS #85）
+1. NEVER 用 heredoc 写文件（PITFALLS #1）
+2. NEVER 用 sed 做字符串替换（PITFALLS #2）
+3. NEVER 直接调 tsgo（PITFALLS #6），用 `pnpm run build`
+4. NEVER 在 bot 和 TUI 模式只验证一个路径（PITFALLS #17/#54）
+5. NEVER 假设 YAML 缩进正确（PITFALLS #30），修改后必须验证
+6. NEVER 用 `as` 类型断言偷懒传播工具定义字段（PITFALLS #82）
+7. NEVER 相信代码+测试存在就代表功能完成（PITFALLS #85）
 
 **When uncertain:** 询问架构师，不要猜测，并给出通俗解释为什么不确定。
 

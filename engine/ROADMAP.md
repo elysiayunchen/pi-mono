@@ -1,4 +1,4 @@
-# ROADMAP — ElysiaClaw
+# ROADMAP — Elynyx
 > 当前版本：认知架构演进中期 | Last updated: 2026-06-09
 
 
@@ -92,7 +92,7 @@
 
 
 ## 明确不做的事
-- 与上游 OpenClaw 同步（独立维护，不再合并上游）
+- 与上游 Elynyx 同步（独立维护，不再合并上游）
 - 重建 Python 记忆系统（TS 引擎已取代）
 - 恢复 Code Mode（已由 delegate_code_task 取代）
 - 多语言支持（专注中文 + English 双语）

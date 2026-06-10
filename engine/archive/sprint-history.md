@@ -1,4 +1,4 @@
-# ElysiaClaw — Sprint 历史归档
+# Elynyx — Sprint 历史归档
 
 > 本文件归档所有已完成的 Sprint 记录，保留完整工程决定和修复细节。
 > 活跃 Sprint 见 `../SPRINT.md`。
@@ -400,9 +400,9 @@ W0-T6 (端到端验证) ─── 依赖 T1-T5 全部完成
 | 文件 | 模块（序号） | 用例 |
 |------|------|------|
 | `packages/coding-agent/test/multi-layer.test.ts` | L0 工具结果驱逐（序4，框架层） | 22 |
-| `elysiaclaw/src/context-engine/input-classifier.test.ts` | 输入分类器（序6） | 27 |
-| `elysiaclaw/src/context-engine/injection-budget.test.ts` | 注入预算器（序5） | 7 |
-| `elysiaclaw/src/user-model/user-model.test.ts` | 用户画像（序7，含 SQLite 往返） | 16 |
+| `elynx/src/context-engine/input-classifier.test.ts` | 输入分类器（序6） | 27 |
+| `elynx/src/context-engine/injection-budget.test.ts` | 注入预算器（序5） | 7 |
+| `elynx/src/user-model/user-model.test.ts` | 用户画像（序7，含 SQLite 往返） | 16 |
 
 ### 修复的 Bug（详见 PITFALLS #73-#75）
 
@@ -468,9 +468,9 @@ W0-T6 (端到端验证) ─── 依赖 T1-T5 全部完成
 |---|---|
 | pi-mono build | ✅ 干净通过 |
 | pi-coding-agent 测试 | 858/861 (3 failures: 1 upstream tool_call timing, 1 regression dynamic-provider, 1 TUI edit-tool-redraw) |
-| elysiaclaw build | ❌ `build:plugin-sdk:dts` 失败 — 6 个预存 TS 错误 (坑 #38) |
+| elynx build | ❌ `build:plugin-sdk:dts` 失败 — 6 个预存 TS 错误 (坑 #38) |
 | Gateway | ✅ v2026.4.4, local mode, 29 sessions |
-| Tailscale | ✅ 实际 active (100.111.4.5), `elysiaclaw status` 显示 off (坑 #44) |
+| Tailscale | ✅ 实际 active (100.111.4.5), `elynx status` 显示 off (坑 #44) |
 | Telegram | ✅ OK |
 | code-sessions/ | 📁 目录存在但为空 |
 | ripgrep | ✅ v14.1.0 |
@@ -492,7 +492,7 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 
 ### 实施内容
 
-**新工具**: `elysiaclaw/src/agents/tools/delegate-code-task.ts`
+**新工具**: `elynx/src/agents/tools/delegate-code-task.ts`
 - 内部封装 `spawnSubagentDirect()` (subagent-spawn.ts)
 - 子代理使用 `mode: "run"`（一次性执行，不保持 session）
 - 只读工具集: read/grep/find/ls + git-log/diff/status
@@ -500,10 +500,10 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 - 完成通知: push-based announce 机制
 
 **四层注册**:
-1. 工具定义: `elysiaclaw/src/agents/tools/delegate-code-task.ts`
-2. createElysiaClawTools(): `elysiaclaw/src/agents/elysiaclaw-tools.ts` — import + 注册
+1. 工具定义: `elynx/src/agents/tools/delegate-code-task.ts`
+2. createElynyxTools(): `elynx/src/agents/elynx-tools.ts` — import + 注册
 3. tool-catalog.ts: 添加 delegate_code_task 定义 (section: "sessions")
-4. elysiaclaw.json tools.allow: 添加 delegate_code_task
+4. elynx.json tools.allow: 添加 delegate_code_task
 
 **策略注入**: attempt.ts 中注入 MANDATORY delegate_code_task 指引，引导 LLM 判断多文件分析任务时分发给子代理。
 
@@ -512,10 +512,10 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 ### 完成标准 (Definition of Done)
 
 - [x] delegate_code_task 工具文件已创建
-- [x] 四层注册链完成 (elysiaclaw-tools.ts + tool-catalog.ts + tools.allow)
+- [x] 四层注册链完成 (elynx-tools.ts + tool-catalog.ts + tools.allow)
 - [x] 策略指引注入 attempt.ts
 - [x] Code Mode 检测块已从 attempt.ts 移除
-- [x] elysiaclaw dist 构建并部署到全局目录
+- [x] elynx dist 构建并部署到全局目录
 - [x] 所有引擎文件路径已修正 (~/pi-mono/ → ~/projects/pi-mono/)
 - [x] 修复坑 #65: createDelegateCodeTaskTool 注册到 tools 数组
 - [x] 新增 model 可选参数（子代理独立模型）
@@ -554,7 +554,7 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 | 任务 | 内容 |
 |------|------|
 | T2 | 开 config: memorySearch.sources=[memory,sessions] + experimental.sessionMemory=true |
-| T3 | 全量回填: `elysiaclaw memory index --force` → 121 files · 508 chunks |
+| T3 | 全量回填: `elynx memory index --force` → 121 files · 508 chunks |
 | T4 | 并行验证: TS FTS trigram + pplx-embed-v1-4b vs Python LIKE，8 个 query TS 优于或持平 Python |
 | T4b | FTS tokenizer 修复: unicode61 → trigram（`memory-schema.ts` + `manager-sync-ops.ts`），3+ 字符 CJK 搜索从 0 恢复 |
 | T4c | Embedding 模型切换: nvidia/llama-nemotron-embed-vl-1b-v2:free → perplexity/pplx-embed-v1-4b（2560d），"流式" 等短 CJK 查询从 0 → 3 条 |
@@ -565,15 +565,15 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 
 | 仓库 | 文件 | 操作 |
 |------|------|------|
-| elysiaclaw | `src/memory/memory-schema.ts` | 修改: FTS tokenize='trigram' |
-| elysiaclaw | `src/memory/manager-sync-ops.ts` | 修改: resetIndex() DROP+CREATE 迁移 |
-| elysiaclaw | `src/agents/tools/session-search-tool.ts` | 删除 |
-| elysiaclaw | `scripts/session-indexer.py` | 删除 |
-| elysiaclaw | `src/agents/pi-embedded-runner/run/attempt.ts` | 修改: MEMORY_SEARCH_GUIDANCE + RECALL 注入 |
-| elysiaclaw | `src/agents/elysiaclaw-tools.ts` | 修改: 移除 session_search import/注册 |
-| elysiaclaw | `src/agents/tool-catalog.ts` | 修改: 移除 session_search 条目 |
-| ~/.elysiaclaw | `elysiaclaw.json` | 修改: model→pplx-embed-v1-4b, tools.allow 移除 session_search |
-| ~/.elysiaclaw | `session-index.db` | 删除 |
+| elynx | `src/memory/memory-schema.ts` | 修改: FTS tokenize='trigram' |
+| elynx | `src/memory/manager-sync-ops.ts` | 修改: resetIndex() DROP+CREATE 迁移 |
+| elynx | `src/agents/tools/session-search-tool.ts` | 删除 |
+| elynx | `scripts/session-indexer.py` | 删除 |
+| elynx | `src/agents/pi-embedded-runner/run/attempt.ts` | 修改: MEMORY_SEARCH_GUIDANCE + RECALL 注入 |
+| elynx | `src/agents/elynx-tools.ts` | 修改: 移除 session_search import/注册 |
+| elynx | `src/agents/tool-catalog.ts` | 修改: 移除 session_search 条目 |
+| ~/.elynx | `elynx.json` | 修改: model→pplx-embed-v1-4b, tools.allow 移除 session_search |
+| ~/.elynx | `session-index.db` | 删除 |
 
 ### 技术关键词
 
@@ -583,8 +583,8 @@ Code Mode (`/code` `/exit`) 已废弃。新策略: 代码能力内置为 agent �
 
 ### 验证
 
-- `elysiaclaw memory status`: 121 files, 508 chunks, vector ready, fts ready ✅
-- `elysiaclaw status`: Gateway reachable 68ms ✅
+- `elynx memory status`: 121 files, 508 chunks, vector ready, fts ready ✅
+- `elynx status`: Gateway reachable 68ms ✅
 - 搜索验证: "流式" 3 条、"代理配置" score=0.60、"gateway重启" 相关性强 ✅
 - 无 gateway 日志错误 ✅
 
@@ -645,7 +645,7 @@ Phase C (部署后): Step 10-12 → Guard 4,5
 
 ### 与 Claude Code 的差距（Task 1 后）
 
-| 参数 | Claude Code | ElysiaClaw | 状态 |
+| 参数 | Claude Code | Elynyx | 状态 |
 |---|---|---|---|
 | `output_mode` | ✅ (默认 files_with_matches) | ✅ (默认 content) | 对等（默认值不同） |
 | `-A` / `-B` | ✅ | ✅ | 对等 |
@@ -655,7 +655,7 @@ Phase C (部署后): Step 10-12 → Guard 4,5
 | `multiline` | ✅ | ✅ | 对等 |
 | 排序（mtime） | ✅ | ✅ | **已补全** |
 | 能力声明 | ✅ | ✅ | **已补全** |
-| `-n` 行号控制 | ✅ | ❌ | 未做（ElysiaClaw 默认显示） |
+| `-n` 行号控制 | ✅ | ❌ | 未做（Elynyx 默认显示） |
 | outputSchema | ✅ | ❌ | 未做（低优先级） |
 
 ### 文件改动
@@ -722,12 +722,12 @@ Phase C (部署后): Step 10-12 → Guard 4,5
 
 **附带发现**:
 - 服务器曾缺少 `rg`（已通过 `sudo apt install ripgrep` 安装）
-- `rg` 的 `--include` 参数不存在，正确写法是 `-g "*.ts"`（但 elysiaclaw 内置 grep 工具代码用 `--glob`，正确）
-- elysiaclaw 内置 grep 工具的 `ensureTool("rg")` 在启动时探测，需重启 gateway 才能刷新
+- `rg` 的 `--include` 参数不存在，正确写法是 `-g "*.ts"`（但 elynx 内置 grep 工具代码用 `--glob`，正确）
+- elynx 内置 grep 工具的 `ensureTool("rg")` 在启动时探测，需重启 gateway 才能刷新
 
 **实际操作**:
 - `sudo apt install ripgrep -y` ✅
-- `elysiaclaw gateway restart` ✅
+- `elynx gateway restart` ✅
 - 确认 `rg "export" -g "*.ts" ~/projects/pi-mono/packages/coding-agent/src | wc -l` → 993 ✅
 
 **结论**: grep 工具本身功能正常。免费模型的幻觉问题在切换到付费模型后自然消失。Task 1 的代码改动（output_mode、-A/-B、type 等参数补全）尚未开始。
@@ -742,14 +742,14 @@ Phase C (部署后): Step 10-12 → Guard 4,5
 
 ## Architecture Audit Sprint (2026-04-09)
 
-Goal: Map elysiaclaw vs pi-coding-agent architecture, find tool gap.
+Goal: Map elynx vs pi-coding-agent architecture, find tool gap.
 
 Findings:
 1. Tool registration needs four layers (define, import, catalog, allow)
-2. 12-layer tools not imported by elysiaclaw (grep, ls, plan_mode, todo, worktree, etc.)
+2. 12-layer tools not imported by elynx (grep, ls, plan_mode, todo, worktree, etc.)
 3. web_search imported but not in tools.allow
 4. task_imported but not in catalog/allow
-5. elysiaclaw build needs manual deploy to global
+5. elynx build needs manual deploy to global
 
 Docs updated: SYSTEM.md, ARCHITECTURE.md, PITFALLS.md
 
@@ -761,13 +761,13 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 
 **实际完成时间**: 2026-04-05
 **测试结果**: 构建通过（绕过 DTS 类型检查），gateway 重启成功
-**新增踩坑**: #37 (Python 补丁重复应用), #38 (DTS 类型错误阻塞构建), #39 (elysiaclaw 自建 system prompt)
+**新增踩坑**: #37 (Python 补丁重复应用), #38 (DTS 类型错误阻塞构建), #39 (elynx 自建 system prompt)
 
 ### 完成的工作
 
 #### Code Mode Phase 0 — 最小可行补丁（attempt.ts 路径）
-- 发现 elysiaclaw 的 `attempt.ts` 自己构建 system prompt，不使用 agent-session 的 `_buildSystemPrompt`
-- 在 `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` 加 `/code` 和 `/exit` 检测补丁
+- 发现 elynx 的 `attempt.ts` 自己构建 system prompt，不使用 agent-session 的 `_buildSystemPrompt`
+- 在 `elynx/src/agents/pi-embedded-runner/run/attempt.ts` 加 `/code` 和 `/exit` 检测补丁
 - 补丁逻辑：
   - `/code`: 调用 `session.setCodeMode(true)`，注入 CODE MODE ACTIVE system prompt，`effectivePrompt` 改为友好消息
   - `/exit`: 调用 `session.setCodeMode(false)`
@@ -776,7 +776,7 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 #### 补丁应用过程
 1. 第一次尝试用 sed → 破坏文件结构（坑 #2延伸）
 2. 第二次用 Python → marker 匹配两次导致重复（坑 #37）
-3. `git checkout` 恢复文件（elysiaclaw 有独立 git 仓库）
+3. `git checkout` 恢复文件（elynx 有独立 git 仓库）
 4. 第三次用 Python 干净应用 → 成功
 
 #### 构建过程
@@ -787,7 +787,7 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 #### 文件改动
 | 文件 | 操作 |
 |---|---|
-| `elysiaclaw/src/agents/pi-embedded-runner/run/attempt.ts` | 修改：加 code mode 检测补丁 |
+| `elynx/src/agents/pi-embedded-runner/run/attempt.ts` | 修改：加 code mode 检测补丁 |
 
 ### 遗留问题
 - `/code` 已注入 system prompt，但 LLM 是否真正以 code mode 身份回复需要实际测试验证
@@ -845,7 +845,7 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 
 > ⚠️ **注意**: 本 Sprint 产出的 Python `session_search`（session-indexer.py + SQLite LIKE）已于同日被「记忆引擎激活」Sprint 的 TS `memory_search`（sqlite-vec + FTS trigram + embeddings）取代。Python 旁路已删除。此 Sprint 记录保留为历史参考。
 
-**Sprint 目标**: 解决 ElysiaClaw agent 上下文管理差劲、没有跨会话记忆的问题
+**Sprint 目标**: 解决 Elynyx agent 上下文管理差劲、没有跨会话记忆的问题
 **开始时间**: 2026-06-06
 **完成时间**: 2026-06-06
 **状态**: ✅ 已完成 → ⚠️ 已被取代（Python session_search 已删除，TS memory_search 为当前方案）
@@ -858,7 +858,7 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 3. 经常不记得自主使用 skill — 系统提示未强制引导
 4. 自我迭代能力弱 — 无法从历史对话学习
 
-根因：`~/.elysiaclaw/agents/main/sessions/*.jsonl` 未被索引，没有检索工具。
+根因：`~/.elynx/agents/main/sessions/*.jsonl` 未被索引，没有检索工具。
 
 ### 已完成
 
@@ -866,12 +866,12 @@ Next: Fix tool registration gap (four layers). — **已完成 (2026-04-09)**
 |------|------|------|
 | Session 全文索引器 | `scripts/session-indexer.py` | 增量索引所有 JSONL → SQLite LIKE 搜索，支持中英文，索引 70 个会话 |
 | `session_search` 工具 | `src/agents/tools/session-search-tool.ts` | 调用 indexer，返回匹配会话（日期/摘要/snippet） |
-| 四层注册 | `elysiaclaw-tools.ts` + `tool-catalog.ts` + `tools.allow` | session_search 完整注册 |
+| 四层注册 | `elynx-tools.ts` + `tool-catalog.ts` + `tools.allow` | session_search 完整注册 |
 | 系统提示注入 | `attempt.ts: SESSION_SEARCH_GUIDANCE` | MANDATORY 指引：触发条件（"之前"/"上次"/"记得吗"）+ 使用规则 |
 
 ### 技术细节
 
-- SQLite 存储：`~/.elysiaclaw/session-index.db`
+- SQLite 存储：`~/.elynx/session-index.db`
 - 搜索策略：LIKE 全表扫描（70 条记录，< 5ms），支持多词 OR 语义
 - 增量索引：检测文件 mtime 变化，只处理新/改变的文件
 - 去噪：跳过 CLAUDE.md `<project-memory>` 注入内容，只索引真实用户消息
@@ -930,10 +930,10 @@ WS-1 / WS-2 并行(渠道层,不需主模型即可验证)→ WS-3 注入预算�
 | 类 | 文件数 | 错误数 | 根因 | 修复方式 |
 |------|------|------|------|------|
 | Skill.source 缺失 | 7 | 7 | pi-coding-agent `Skill` 接口无 `source` 字段 | 框架层加 `source?: string` + 应用层 `d.ts` 模块声明合并 |
-| redact-snapshot undefined | 1 | 41 | `ElysiaClawConfig` 字段全可选，测试深层访问无空值守卫 | `const cfg = result.config as typeof snapshot.config` |
+| redact-snapshot undefined | 1 | 41 | `ElynyxConfig` 字段全可选，测试深层访问无空值守卫 | `const cfg = result.config as typeof snapshot.config` |
 | ModelRegistry private | 1 | 1 | 私有构造函数不可 extends | `extends (actual.ModelRegistry as any)` + 去 `override` |
 | compaction 参数序号 | 2 | 2 | `generateSummary` 加了 `headers` 参数后测试序号失效 | `call[5]`→`call[6]`；补充 `undefined` 占位 |
-| configure-plan 拼写 | 1 | 1 | `elysiaclawCandidates` 应为 `__elysiaclawCandidates` | 重命名 |
+| configure-plan 拼写 | 1 | 1 | `elynxCandidates` 应为 `__elynxCandidates` | 重命名 |
 | skills-status 类型收缩 | 1 | 1 | `source?: string` 赋值给 `string` 字段 | `?? "unknown"` 默认值 |
 | Skill 测试缺 sourceInfo | 4 | 4 | fake Skill 对象未包含必填 `sourceInfo` | `as unknown as Skill` + 导入 Skill 类型 |
 
@@ -993,10 +993,10 @@ WS-1 / WS-2 并行(渠道层,不需主模型即可验证)→ WS-3 注入预算�
 ### 常用命令
 ```bash
 # 查看日志
-elysiaclaw logs
+elynx logs
 
 # 检查 gateway 状态
-elysiaclaw status
+elynx status
 
 # 构建 + 部署
 cd ~/pi-mono && ./deploy.sh
@@ -1005,7 +1005,7 @@ cd ~/pi-mono && ./deploy.sh
 cd ~/pi-mono && npm run build
 
 # 验证 YAML 配置
-python3 -c "import yaml; print(yaml.safe_load(open(os.path.expanduser('~/.elysiaclaw/config.yaml')).read()))"
+python3 -c "import yaml; print(yaml.safe_load(open(os.path.expanduser('~/.elynx/config.yaml')).read()))"
 
 # 查看用户 sessions
 ls -la ~/.pi/agent/sessions/
@@ -1038,7 +1038,7 @@ grep "ToolDefinition" ~/projects/pi-mono/packages/coding-agent/src/index.ts
 ### Patch 验证
 ```bash
 grep -n "setSystemPrompt\\|replaceMessages" \\
-  ~/.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw/node_modules/@mariozechner/pi-agent-core/dist/agent.js
+  ~/.nvm/versions/node/v22.22.1/lib/node_modules/elynx/node_modules/@elynyx/agent-core/dist/agent.js
 ```
 
 ---
@@ -1079,11 +1079,11 @@ grep -n "setSystemPrompt\\|replaceMessages" \\
 |------|------|
 | packages/coding-agent/src/core/tools/index.ts | 修改: +3 import, allTools +3, allToolDefinitions +3, createAllTools +5, createAllToolDefinitions +3 |
 | packages/coding-agent/src/index.ts | 修改: +6 re-export |
-| ~/.elysiaclaw/config.yaml | 修改: gateway.mode lan → local |
+| ~/.elynx/config.yaml | 修改: gateway.mode lan → local |
 | deploy.sh | 替换: 加装 3 道守卫 |
 | scripts/patch-agent.cjs | 替换: 加装 smoke test |
 | 4 个 .bak 文件 | 移动到备份目录 |
-| elysiaclaw_engine/*.md | 更新: 5 份文档全部同步 |
+| elynx_engine/*.md | 更新: 5 份文档全部同步 |
 
 ---
 
@@ -1109,7 +1109,7 @@ grep -n "setSystemPrompt\\|replaceMessages" \\
 
 **完整链路**:
 ```
-blockStreamingDefault="on" (elysiaclaw.json:357)
+blockStreamingDefault="on" (elynx.json:357)
   → resolvedBlockStreaming="on" (get-reply-directives.ts)
   → accountBlockStreamingEnabled=true (bot-message-dispatch.ts)
   → canStreamAnswerDraft=false (bot-message-dispatch.ts)
@@ -1125,7 +1125,7 @@ blockStreamingDefault="on" (elysiaclaw.json:357)
 
 | 文件 | 修改 |
 |---|---|
-| `/home/elysia/.elysiaclaw/elysiaclaw.json` L357 | `"blockStreamingDefault": "on"` → `"off"` |
+| `/home/elysia/.elynx/elynx.json` L357 | `"blockStreamingDefault": "on"` → `"off"` |
 
 ### 验证
 
@@ -1146,12 +1146,12 @@ blockStreamingDefault="on" (elysiaclaw.json:357)
 
 | 文件 | 作用 |
 |---|---|
-| `elysiaclaw/src/auto-reply/reply/get-reply-directives.ts` | 解析 blockStreaming 配置 |
-| `elysiaclaw/src/telegram/bot-message-dispatch.ts` | 控制 canStreamAnswerDraft 判断 |
-| `elysiaclaw/src/telegram/lane-delivery-text-deliverer.ts` | answerLane.stream 创建 |
-| `elysiaclaw/src/agents/pi-embedded-subscribe.handlers.messages.ts` | text_delta → onPartialReply 转发 |
-| `elysiaclaw/src/auto-reply/reply/agent-runner-execution.ts` | onPartialReply 处理 |
-| `elysiaclaw/src/auto-reply/reply/reply-delivery.ts` | 块回复交付处理 |
+| `elynx/src/auto-reply/reply/get-reply-directives.ts` | 解析 blockStreaming 配置 |
+| `elynx/src/telegram/bot-message-dispatch.ts` | 控制 canStreamAnswerDraft 判断 |
+| `elynx/src/telegram/lane-delivery-text-deliverer.ts` | answerLane.stream 创建 |
+| `elynx/src/agents/pi-embedded-subscribe.handlers.messages.ts` | text_delta → onPartialReply 转发 |
+| `elynx/src/auto-reply/reply/agent-runner-execution.ts` | onPartialReply 处理 |
+| `elynx/src/auto-reply/reply/reply-delivery.ts` | 块回复交付处理 |
 
 ---
 
@@ -1194,6 +1194,6 @@ blockStreamingDefault="on" (elysiaclaw.json:357)
 
 | 文件 | 作用 |
 |------|------|
-| `elysiaclaw/src/telegram/bot-message-dispatch.ts` | P1/P4/D1: 流式开关确定性 + 清理跳过已完成 lane + 诊断日志 |
-| `elysiaclaw/src/telegram/draft-stream.ts` | P2/P3: HTML 降级 + streamFailed 诊断 |
-| `elysiaclaw/src/telegram/draft-stream.test.ts` | 测试：maxChars 行为（截断→停止已回滚，测试与 git HEAD 一致） |
+| `elynx/src/telegram/bot-message-dispatch.ts` | P1/P4/D1: 流式开关确定性 + 清理跳过已完成 lane + 诊断日志 |
+| `elynx/src/telegram/draft-stream.ts` | P2/P3: HTML 降级 + streamFailed 诊断 |
+| `elynx/src/telegram/draft-stream.test.ts` | 测试：maxChars 行为（截断→停止已回滚，测试与 git HEAD 一致） |

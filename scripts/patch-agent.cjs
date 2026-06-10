@@ -6,13 +6,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-const OPENCLAW = path.join(
+const ELYNYX = path.join(
   os.homedir(),
-  '.nvm/versions/node/v22.22.1/lib/node_modules/elysiaclaw'
+  '.nvm/versions/node/v22.22.1/lib/node_modules/elynx'
 );
 const AGENT_JS = path.join(
-  OPENCLAW,
-  'node_modules/@mariozechner/pi-agent-core/dist/agent.js'
+  ELYNYX,
+  'node_modules/@elynyx/agent-core/dist/agent.js'
 );
 
 if (fs.existsSync(AGENT_JS) === false) {
